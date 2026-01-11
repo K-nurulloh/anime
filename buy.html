@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Anime</title>
-    <link rel="stylesheet" href="./css/output.css">
+    <title>Document</title>
+    <link rel="stylesheet" href="../css/output.css">
 </head>
 <body>
     <header>
-      <div class="navbar bg-base-100 shadow-sm">
+         <div class="navbar bg-base-100 shadow-sm">
 
   <!-- CHAP -->
   <div class="navbar-start">
@@ -64,82 +64,41 @@
 
   </div>
 </div>
-
-</header>
+    </header>
 
     <main>
-        <div class="hero bg-base-200 min-h-screen">
-  <div class="hero-content flex-col lg:flex-row-reverse">
-    <div class="carousel rounded-box w-64">
-  <div class="carousel-item w-full">
-    <img
-      src="https://img.daisyui.com/images/stock/photo-1559703248-dcaaec9fab78.webp"
-      class="w-full"
-      alt="Tailwind CSS Carousel component" />
-  </div>
-  <div class="carousel-item w-full">
-    <img
-      src="https://img.daisyui.com/images/stock/photo-1565098772267-60af42b81ef2.webp"
-      class="w-full"
-      alt="Tailwind CSS Carousel component" />
-  </div>
-  <div class="carousel-item w-full">
-    <img
-      src="https://img.daisyui.com/images/stock/photo-1572635148818-ef6fd45eb394.webp"
-      class="w-full"
-      alt="Tailwind CSS Carousel component" />
-  </div>
-  <div class="carousel-item w-full">
-    <img
-      src="https://img.daisyui.com/images/stock/photo-1494253109108-2e30c049369b.webp"
-      class="w-full"
-      alt="Tailwind CSS Carousel component" />
-  </div>
-  <div class="carousel-item w-full">
-    <img
-      src="https://img.daisyui.com/images/stock/photo-1550258987-190a2d41a8ba.webp"
-      class="w-full"
-      alt="Tailwind CSS Carousel component" />
-  </div>
-  <div class="carousel-item w-full">
-    <img
-      src="https://img.daisyui.com/images/stock/photo-1559181567-c3190ca9959b.webp"
-      class="w-full"
-      alt="Tailwind CSS Carousel component" />
-  </div>
-  <div class="carousel-item w-full">
-    <img
-      src="https://img.daisyui.com/images/stock/photo-1601004890684-d8cbf643f5f2.webp"
-      class="w-full"
-      alt="Tailwind CSS Carousel component" />
-  </div>
+        <div class="relative max-w-xl mx-auto mt-5 mb-5">
+  <input
+    id="searchInput"
+    type="text"
+    placeholder="Mahsulot qidirish..."
+    class="w-full px-5 py-3 rounded-2xl border
+           bg-white dark:bg-[#020617]
+           text-black dark:text-white
+           border-gray-300 dark:border-gray-700
+           focus:ring-2 focus:ring-purple-500 outline-none"
+  />
+
+  <div
+    id="results"
+    class="absolute left-0 right-0 mt-3
+           bg-white dark:bg-[#020617]
+           border border-gray-200 dark:border-gray-700
+           rounded-2xl shadow-2xl hidden z-50
+           overflow-hidden"
+  ></div>
 </div>
-    <div>
-      <h1 class="text-5xl font-bold">Box Office News!</h1>
-      <p class="py-6">
-        Provident cupiditate voluptatem et in. Quaerat fugiat ut assumenda excepturi exercitationem
-        quasi. In deleniti eaque aut repudiandae et a id nisi.
-      </p>
-      <button class="btn btn-primary">Get Started</button>
+
+
+    <!-- Kartalar container -->
+    <div id="cards" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4"></div>
+
     </div>
   </div>
-</div>
-
- <h1 class="text-3xl font-bold mb-6 text-center">Mahsulotlar</h1>
-
- <!-- Tabs -->
-  <div class="flex justify-center border-b border-gray-200 mb-4">
-    <button class="pb-2 border-b-2 border-purple-500 text-purple-500 font-semibold">Yangi</button>
-  </div>
-
-  <!-- Product Grid -->
-  <div id="cards" class="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4"></div>
-  
     </main>
 
     <footer>
-
-        <div class="dock dock-xs">
+             <div class="dock dock-xs">
   <a href="./index.html">
     <svg class="size-[1.2em]" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="currentColor" stroke-linejoin="miter" stroke-linecap="butt"><polyline points="1 11 12 2 23 11" fill="none" stroke="currentColor" stroke-miterlimit="10" stroke-width="2"></polyline><path d="m5,13v7c0,1.105.895,2,2,2h10c1.105,0,2-.895,2-2v-7" fill="none" stroke="currentColor" stroke-linecap="square" stroke-miterlimit="10" stroke-width="2"></path><line x1="12" y1="22" x2="12" y2="18" fill="none" stroke="currentColor" stroke-linecap="square" stroke-miterlimit="10" stroke-width="2"></line></g></svg>
   </a>
@@ -153,10 +112,8 @@
   </button>
 </div>
 
-
-
     </footer>
-    
-    <script src="./js/app.js"></script>
+
+<script src="./js/app.js"></script>
 </body>
 </html>

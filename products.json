@@ -1,0 +1,146 @@
+[
+  {
+    "id": 1,
+    "company": "SNEAKER COMPANY",
+    "title": "Nike Air Zoom",
+    "searchKey": "nike",
+    "desc": "Yengil va qulay sport oyoq kiyimi, har kuni ishlatish uchun ideal.",
+    "price": "1 200 000 so'm",
+    "oldPrice": "1 500 000 so'm",
+    "discount": "20%",
+    "img": "https://img.daisyui.com/images/stock/photo-1606107557195-0e29a4b5b4aa.webp",
+    "thumbs": [
+      "https://img.daisyui.com/images/stock/photo-1606107557195-0e29a4b5b4aa.webp",
+      "https://img.daisyui.com/images/stock/photo-1505740420928-5e560c06d30e.webp",
+      "https://img.daisyui.com/images/stock/photo-1523275335684-37898b6baf30.webp"
+    ]
+  },
+  {
+    "id": 2,
+    "company": "ADIDAS SPORTS",
+    "title": "Adidas Run",
+    "searchKey": "adidas",
+    "desc": "Har kuni qulay krossovka, engil va zamonaviy dizayn.",
+    "price": "980 000 so'm",
+    "oldPrice": "1 100 000 so'm",
+    "discount": "11%",
+    "img": "https://img.daisyui.com/images/stock/photo-1505740420928-5e560c06d30e.webp",
+    "thumbs": [
+      "https://img.daisyui.com/images/stock/photo-1505740420928-5e560c06d30e.webp",
+      "https://img.daisyui.com/images/stock/photo-1606107557195-0e29a4b5b4aa.webp",
+      "https://img.daisyui.com/images/stock/photo-1526170375885-4d8ecf77b99f.webp"
+    ]
+  },
+  {
+    "id": 3,
+    "company": "PUMA",
+    "title": "Puma Street",
+    "searchKey": "kiyim",
+    "desc": "Zamonaviy ko‘chalar uchun dizayn, har qanday kiyimga mos.",
+    "price": "1 050 000 so'm",
+    "oldPrice": "1 200 000 so'm",
+    "discount": "13%",
+    "img": "https://img.daisyui.com/images/stock/photo-1523275335684-37898b6baf30.webp",
+    "thumbs": [
+      "https://img.daisyui.com/images/stock/photo-1523275335684-37898b6baf30.webp",
+      "https://img.daisyui.com/images/stock/photo-1526170375885-4d8ecf77b99f.webp",
+      "https://img.daisyui.com/images/stock/photo-1606107557195-0e29a4b5b4aa.webp"
+    ]
+  },
+  {
+    "id": 4,
+    "company": "SNEAKER COMPANY",
+    "title": "Nike Air Zoom",
+    "searchKey": "kitob",
+    "desc": "Yengil va qulay sport oyoq kiyimi, har kuni ishlatish uchun ideal.",
+    "price": "1 200 000 so'm",
+    "oldPrice": "1 500 000 so'm",
+    "discount": "20%",
+    "img": "https://img.daisyui.com/images/stock/photo-1606107557195-0e29a4b5b4aa.webp",
+    "thumbs": [
+      "https://img.daisyui.com/images/stock/photo-1606107557195-0e29a4b5b4aa.webp",
+      "https://img.daisyui.com/images/stock/photo-1505740420928-5e560c06d30e.webp",
+      "https://img.daisyui.com/images/stock/photo-1523275335684-37898b6baf30.webp"
+    ]
+  },
+  {
+    "id": 5,
+    "company": "ADIDAS SPORTS",
+    "title": "Adidas Run",
+    "searchKey": "masaliq",
+    "desc": "Har kuni qulay krossovka, engil va zamonaviy dizayn.",
+    "price": "980 000 so'm",
+    "oldPrice": "1 100 000 so'm",
+    "discount": "11%",
+    "img": "https://img.daisyui.com/images/stock/photo-1505740420928-5e560c06d30e.webp",
+    "thumbs": [
+      "https://img.daisyui.com/images/stock/photo-1505740420928-5e560c06d30e.webp",
+      "https://img.daisyui.com/images/stock/photo-1606107557195-0e29a4b5b4aa.webp",
+      "https://img.daisyui.com/images/stock/photo-1526170375885-4d8ecf77b99f.webp"
+    ]
+  },
+  {
+    "id": 6,
+    "company": "PUMA",
+    "title": "Puma Street",
+    "searchKey": "nike",
+    "desc": "Zamonaviy ko‘chalar uchun dizayn, har qanday kiyimga mos.",
+    "price": "1 050 000 so'm",
+    "oldPrice": "1 200 000 so'm",
+    "discount": "13%",
+    "img": "https://img.daisyui.com/images/stock/photo-1523275335684-37898b6baf30.webp",
+    "thumbs": [
+      "https://img.daisyui.com/images/stock/photo-1523275335684-37898b6baf30.webp",
+      "https://img.daisyui.com/images/stock/photo-1526170375885-4d8ecf77b99f.webp",
+      "https://img.daisyui.com/images/stock/photo-1606107557195-0e29a4b5b4aa.webp"
+    ]
+  },
+  {
+    "id": 7,
+    "company": "SNEAKER COMPANY",
+    "title": "Nike Air Zoom",
+    "searchKey": "nike",
+    "desc": "Yengil va qulay sport oyoq kiyimi, har kuni ishlatish uchun ideal.",
+    "price": "1 200 000 so'm",
+    "oldPrice": "1 500 000 so'm",
+    "discount": "20%",
+    "img": "https://img.daisyui.com/images/stock/photo-1606107557195-0e29a4b5b4aa.webp",
+    "thumbs": [
+      "https://img.daisyui.com/images/stock/photo-1606107557195-0e29a4b5b4aa.webp",
+      "https://img.daisyui.com/images/stock/photo-1505740420928-5e560c06d30e.webp",
+      "https://img.daisyui.com/images/stock/photo-1523275335684-37898b6baf30.webp"
+    ]
+  },
+  {
+    "id": 8,
+    "company": "ADIDAS SPORTSaa",
+    "title": "Adidas Run",
+    "searchKey": "nikee",
+    "desc": "Har kuni qulay krossovka, engil va zamonaviy dizayn.",
+    "price": "980 000 so'm",
+    "oldPrice": "1 100 000 so'm",
+    "discount": "11%",
+    "img": "https://img.daisyui.com/images/stock/photo-1505740420928-5e560c06d30e.webp",
+    "thumbs": [
+      "https://img.daisyui.com/images/stock/photo-1505740420928-5e560c06d30e.webp",
+      "https://img.daisyui.com/images/stock/photo-1606107557195-0e29a4b5b4aa.webp",
+      "https://img.daisyui.com/images/stock/photo-1526170375885-4d8ecf77b99f.webp"
+    ]
+  },
+  {
+    "id": 9,
+    "company": "PUMA",
+    "title": "Puma Street",
+    "searchKey": "nike",
+    "desc": "Zamonaviy ko‘chalar uchun dizayn, har qanday kiyimga mos.",
+    "price": "1 050 000 so'm",
+    "oldPrice": "1 200 000 so'm",
+    "discount": "13%",
+    "img": "https://img.daisyui.com/images/stock/photo-1523275335684-37898b6baf30.webp",
+    "thumbs": [
+      "https://img.daisyui.com/images/stock/photo-1523275335684-37898b6baf30.webp",
+      "https://img.daisyui.com/images/stock/photo-1526170375885-4d8ecf77b99f.webp",
+      "https://img.daisyui.com/images/stock/photo-1606107557195-0e29a4b5b4aa.webp"
+    ]
+  }
+]
