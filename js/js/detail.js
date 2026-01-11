@@ -125,3 +125,126 @@ fetch("products.json")
   });
 
   });
+
+const feedbackList = document.getElementById("feedback-list");
+const showAllBtn = document.getElementById("feedback-show-all");
+const feedbackInput = document.getElementById("feedback-input");
+const feedbackSubmit = document.getElementById("feedback-submit");
+const starContainer = document.getElementById("feedback-stars");
+const starCount = document.getElementById("feedback-stars-count");
+
+// Dastlabki feedbacklar
+let defaultFeedbacks = [
+  {name: "Ali", text: "Juda yaxshi mahsulot!", stars: 5},
+  {name: "Vali", text: "Qulay va chiroyli.", stars: 4},
+  {name: "Gulbahor", text: "Tez yetkazildi.", stars: 5},
+  {name: "Shoxrux", text: "Rangi ekran bilan mos keladi.", stars: 4},
+  {name: "Nilufar", text: "O‘rtacha sifat.", stars: 3},
+  {name: "Bahrom", text: "Juda foydali.", stars: 5},
+];
+
+// LocalStorage dan o'qish
+let allFeedbacks = JSON.parse(localStorage.getItem("allFeedbacks")) || defaultFeedbacks;
+
+// Single feedback card yaratish
+function createFeedbackCard(f) {
+  const card = document.createElement("div");
+  card.className = "opacity-0 transform translate-y-5 bg-white dark:bg-gray-800 p-4 rounded-xl shadow-md flex flex-col justify-between w-full sm:w-[48%] transition duration-500";
+
+  const starIcons = '★'.repeat(f.stars) + '☆'.repeat(5-f.stars);
+
+  card.innerHTML = `
+    <div class="flex flex-col gap-1">
+      <span class="font-semibold text-black dark:text-white">${f.name}</span>
+      <span class="text-sm text-gray-700 dark:text-gray-300">${f.text}</span>
+    </div>
+    <div class="text-yellow-400 font-bold mt-2">${starIcons}</div>
+  `;
+
+  setTimeout(() => {
+    card.classList.remove("opacity-0", "translate-y-5");
+    card.classList.add("opacity-100", "translate-y-0");
+  }, Math.random() * 300);
+
+  return card;
+}
+
+// Render preview (2 ta)
+function renderFeedbackPreview() {
+  feedbackList.innerHTML = "";
+  feedbackList.className = "flex flex-wrap gap-3";
+  const preview = allFeedbacks.slice(0, 2);
+  preview.forEach(f => feedbackList.appendChild(createFeedbackCard(f)));
+
+  showAllBtn.classList.toggle("hidden", allFeedbacks.length <= 2);
+
+  // LocalStorage ga saqlash
+  localStorage.setItem("allFeedbacks", JSON.stringify(allFeedbacks));
+}
+
+// Yulduzlar tanlash
+let selectedStars = 5;
+function renderStars() {
+  starContainer.innerHTML = "";
+  for(let i=1; i<=5; i++) {
+    const star = document.createElement("span");
+    star.className = "cursor-pointer transition-transform hover:scale-125";
+    star.innerHTML = i <= selectedStars ? "★" : "☆";
+    star.onclick = () => {
+      selectedStars = i;
+      renderStars();
+      starCount.textContent = selectedStars;
+    };
+    starContainer.appendChild(star);
+  }
+  starCount.textContent = selectedStars;
+}
+renderStars();
+
+// Feedback submit
+feedbackSubmit.onclick = () => {
+  const text = feedbackInput.value.trim();
+  if(!text) return;
+
+  const newFeedback = {name: "Siz", text, stars: selectedStars};
+  allFeedbacks.unshift(newFeedback);
+
+  feedbackInput.value = "";
+  selectedStars = 5;
+  renderStars();
+
+  renderFeedbackPreview();
+};
+
+// Enter bosilganda yuborish
+feedbackInput.addEventListener("keydown", e => {
+  if(e.key === "Enter") feedbackSubmit.onclick();
+});
+
+// Barchasini ko'rish
+showAllBtn.onclick = () => {
+  const modal = document.createElement("div");
+  modal.className = "fixed inset-0 flex items-start justify-center bg-black/40 z-50 pt-28 overflow-auto";
+
+  modal.innerHTML = `
+    <div class="bg-white dark:bg-gray-900 p-6 rounded-t-3xl w-11/12 max-w-lg max-h-[80vh] shadow-xl relative flex flex-col">
+      <button id="close-feedback-modal" class="absolute top-3 right-3 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white text-2xl font-bold">×</button>
+      <h3 class="text-lg font-bold mb-4 text-black dark:text-white text-center">Barcha fikrlar</h3>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 overflow-y-auto pr-1" id="modal-feedback-list" style="max-height:70vh;"></div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+  const modalList = document.getElementById("modal-feedback-list");
+  allFeedbacks.forEach((f, index) => {
+    const card = createFeedbackCard(f);
+    card.style.transitionDelay = `${index*50}ms`;
+    modalList.appendChild(card);
+  });
+
+  document.getElementById("close-feedback-modal").onclick = () => modal.remove();
+};
+
+// Dastlabki preview render
+renderFeedbackPreview();
+
