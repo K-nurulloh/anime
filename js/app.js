@@ -1,59 +1,86 @@
-let ALL_PRODUCTSS = [];
-const cardsContainerr = document.getElementById("cards");
+// ================================
+// GLOBAL VARIABLES
+// ================================
+let ALL_PRODUCTS = [];
+let lastIndex = 0;
+let perPage = 8;
+let currentKey = null;
 
-// FETCH HAMMA PRODUCTS
+const cardsContainer = document.getElementById("cards");
+const searchInputt = document.getElementById("searchInput");
+const results = document.getElementById("results");
+const searchBtn = document.getElementById("search-btn");
+const searchBox = document.getElementById("search-box");
+const searchInput = document.getElementById("search-input");
+const searchResults = document.getElementById("search-results");
+
+// ================================
+// FETCH PRODUCTS
+// ================================
 fetch("products.json")
   .then(res => res.json())
-  .then(products => {
-    ALL_PRODUCTSS = products;
-
-    // Dastlab 8 ta card random tarzda chiqarish
-    renderCardsRandom(ALL_PRODUCTSS, 8);
+  .then(data => {
+    ALL_PRODUCTS = data;
+    renderRandomCards(perPage); // dastlabki cardlar
   });
 
 // ================================
-// FUNCTION: CARDLARNI RENDER QILISH RANDOM + FADE-IN
+// CREATE CARD
 // ================================
-function renderCardsRandom(products, count = 4) {
-  if (!products.length) return;
+function createCard(item) {
+  const card = document.createElement("div");
+  card.className = `
+    opacity-0 transform scale-95 translate-y-8
+    bg-white dark:bg-gray-800 rounded-xl shadow-md p-2 cursor-pointer
+    hover:shadow-xl hover:-translate-y-1 hover:scale-105
+    transition duration-500 ease-out
+  `;
 
-  // Random tanlash
+  card.innerHTML = `
+    <div class="w-full h-36 bg-gray-100 dark:bg-gray-700 rounded-xl mb-2 flex items-center justify-center overflow-hidden">
+      <img src="${item.img}" class="object-contain w-full h-full">
+    </div>
+    <h3 class="text-sm font-medium text-gray-700 dark:text-gray-200 mb-1 line-clamp-2">${item.title}</h3>
+    <div class="flex items-center gap-2 mb-2">
+      <span class="text-purple-600 font-bold text-sm">${item.price}</span>
+      ${item.oldPrice ? `<span class="line-through text-gray-400 dark:text-gray-400 text-xs">${item.oldPrice}</span>` : ''}
+    </div>
+    <button class="w-full bg-purple-600 text-white rounded-md py-1 text-xs hover:bg-purple-700 mt-1 cursor-pointer">
+      Sotib olish
+    </button>
+  `;
+
+  card.onclick = () => window.location.href = `detail.html?id=${item.id}`;
+  return card;
+}
+
+
+
+// ================================
+// RENDER RANDOM CARDS WITH STAGGERED EFFECT
+// ================================
+function renderRandomCards(count = 4) {
+  const source = currentKey
+    ? ALL_PRODUCTS.filter(p => p.searchKey === currentKey)
+    : ALL_PRODUCTS;
+
+  if (!source.length) return;
+
   const itemsToShow = [];
   for (let i = 0; i < count; i++) {
-    const randIndex = Math.floor(Math.random() * products.length);
-    itemsToShow.push(products[randIndex]);
+    const randIndex = Math.floor(Math.random() * source.length);
+    itemsToShow.push(source[randIndex]);
   }
 
   itemsToShow.forEach((item, index) => {
-    const card = document.createElement("div");
+    const card = createCard(item);
+    cardsContainer.appendChild(card);
 
-    card.className = `
-      opacity-0 transform translate-y-10
-      bg-white dark:bg-gray-800 rounded-xl shadow-md p-2 cursor-pointer hover:shadow-lg transition duration-500
-    `;
-
-    card.innerHTML = `
-      <div class="w-full h-36 bg-gray-100 dark:bg-gray-700 rounded-xl mb-2 flex items-center justify-center overflow-hidden">
-        <img src="${item.img}" class="object-contain w-full h-full">
-      </div>
-      <h3 class="text-sm font-medium text-gray-700 dark:text-gray-200 mb-1 line-clamp-2">${item.title}</h3>
-      <div class="flex items-center gap-2 mb-2">
-        <span class="text-purple-600 font-bold text-sm">${item.price}</span>
-        ${item.oldPrice ? `<span class="line-through text-gray-400 dark:text-gray-400 text-xs">${item.oldPrice}</span>` : ''}
-      </div>
-      <button class="w-full bg-purple-600 text-white rounded-md py-1 text-xs hover:bg-purple-700 mt-1 cursor-pointer">
-        Sotib olish
-      </button>
-    `;
-
-    card.onclick = () => window.location.href = `detail.html?id=${item.id}`;
-    cardsContainerr.appendChild(card);
-
-    // Random fade-in delay
-    const delay = index * 150 + Math.random() * 300;
+    // Staggered effect: har bir kartaga alohida delay
+    const delay = index * 150 + Math.random() * 150;
     setTimeout(() => {
-      card.classList.remove("opacity-0", "translate-y-10");
-      card.classList.add("opacity-100", "translate-y-0");
+      card.classList.remove("opacity-0", "translate-y-8", "scale-95");
+      card.classList.add("opacity-100", "translate-y-0", "scale-100");
     }, delay);
   });
 }
@@ -62,39 +89,20 @@ function renderCardsRandom(products, count = 4) {
 // INFINITE SCROLL RANDOM
 // ================================
 window.addEventListener("scroll", () => {
-  const scrollBottom = window.innerHeight + window.scrollY;
-  const containerBottom = cardsContainer.offsetTop + cardsContainer.offsetHeight;
-
-  if (scrollBottom + 200 >= containerBottom) {
-    // Scroll pastga yetganda har safar random 4 ta card chiqarish
-    renderCardsRandom(ALL_PRODUCTS, 4);
+  const bottom = cardsContainer.getBoundingClientRect().bottom;
+  if (bottom < window.innerHeight + 200) {
+    renderRandomCards(perPage); // scroll bo‘lganda yangi kartalar
   }
 });
 
-
-
-  // ================== QIDIRUV (ALOXIDA) ==================
-const searchBtn = document.getElementById("search-btn");
-const searchBox = document.getElementById("search-box");
-const searchInput = document.getElementById("search-input");
-const searchResults = document.getElementById("search-results");
-
-let ALL_PRODUCTS = [];
-
-// products.json dan kelgan ma’lumotni ushlab qolamiz
-fetch("products.json")
-  .then(res => res.json())
-  .then(data => {
-    ALL_PRODUCTS = data;
-  });
-
-// Qidiruvni ochish
+// ================================
+// SEARCH BUTTON + BOX
+// ================================
 searchBtn.addEventListener("click", () => {
   searchBox.classList.remove("hidden");
   searchInput.focus();
 });
 
-// Fon bosilsa yopiladi
 searchBox.addEventListener("click", (e) => {
   if (e.target === searchBox) {
     searchBox.classList.add("hidden");
@@ -103,7 +111,9 @@ searchBox.addEventListener("click", (e) => {
   }
 });
 
-// Qidirish
+// ================================
+// SEARCH PRODUCTS BY TITLE
+// ================================
 searchInput.addEventListener("input", () => {
   const value = searchInput.value.toLowerCase().trim();
   searchResults.innerHTML = "";
@@ -126,37 +136,34 @@ searchInput.addEventListener("input", () => {
       `;
 
       li.onclick = () => {
+        currentKey = null;
+        cardsContainer.innerHTML = "";
+        renderRandomCards(perPage);
+        searchBox.classList.add("hidden");
         window.location.href = `detail.html?id=${p.id}`;
       };
 
       searchResults.appendChild(li);
     });
 });
-// ======================================================
 
-let PRODUCTS = [];
-
-// Fetch products.json
-fetch("products.json")
-  .then(res => res.json())
-  .then(data => PRODUCTS = data);
-
-const searchInputt = document.getElementById("searchInput");
-const results = document.getElementById("results");
-const cardsContainer = document.getElementById("cards");
-
-// Play Market style: inputga yozganing paytida faqat searchKey
+// ================================
+// PLAY MARKET STYLE SEARCH (searchKey)
+// ================================
 searchInputt.addEventListener("input", () => {
   const value = searchInputt.value.toLowerCase().trim();
   results.innerHTML = "";
 
   if (!value) {
     results.classList.add("hidden");
+    currentKey = null;
+    cardsContainer.innerHTML = "";
+    renderRandomCards(perPage);
     return;
   }
 
   const filteredKeys = [...new Set(
-    PRODUCTS
+    ALL_PRODUCTS
       .filter(p => p.searchKey.toLowerCase().includes(value))
       .map(p => p.searchKey)
   )];
@@ -182,86 +189,14 @@ searchInputt.addEventListener("input", () => {
 });
 
 document.addEventListener("click", e => {
-  if (!e.target.closest(".relative")) {
-    results.classList.add("hidden");
-  }
+  if (!e.target.closest(".relative")) results.classList.add("hidden");
 });
 
-// Fade-in cards with random delay
+// ================================
+// SHOW CARDS BY SEARCH KEY
+// ================================
 function showCards(key) {
-  results.classList.add("hidden");
+  currentKey = key;
   cardsContainer.innerHTML = "";
-
-  const products = PRODUCTS.filter(p => p.searchKey === key);
-
-  products.forEach((item, index) => {
-    const card = document.createElement("div");
-
-    card.className = `
-      opacity-0 transform translate-y-10
-      bg-white dark:bg-gray-800 rounded-xl shadow-md p-2 cursor-pointer hover:shadow-lg transition duration-500
-    `;
-
-    card.innerHTML = `
-      <div class="w-full h-36 bg-gray-100 dark:bg-gray-700 rounded-xl mb-2 flex items-center justify-center overflow-hidden">
-        <img src="${item.img}" class="object-contain w-full h-full">
-      </div>
-      <h3 class="text-sm font-medium text-gray-700 dark:text-gray-200 mb-1 line-clamp-2">${item.title}</h3>
-      <div class="flex items-center gap-2 mb-2">
-        <span class="text-purple-600 font-bold text-sm">${item.price}</span>
-        ${item.oldPrice ? `<span class="line-through text-gray-400 dark:text-gray-400 text-xs">${item.oldPrice}</span>` : ''}
-      </div>
-      <button class="w-full bg-purple-600 text-white rounded-md py-1 text-xs hover:bg-purple-700 mt-1 cursor-pointer">
-        Sotib olish
-      </button>
-    `;
-
-    card.onclick = () => window.location.href = `detail.html?id=${item.id}`;
-    cardsContainer.appendChild(card);
-
-    // Random fade-in
-    const delay = index * 150 + Math.random() * 200;
-    setTimeout(() => {
-      card.classList.remove("opacity-0", "translate-y-10");
-      card.classList.add("opacity-100", "translate-y-0");
-    }, delay);
-  });
-
-  // Scrollga qarab yangi cardlar asta-sekin qo‘shish
-  let lastIndex = products.length;
-  window.onscroll = () => {
-    const bottom = cardsContainer.getBoundingClientRect().bottom;
-    if (bottom < window.innerHeight + 200) { // pastga yetganda
-      const more = ALL_PRODUCTS.filter(p => p.searchKey === key).slice(lastIndex, lastIndex + 4);
-      more.forEach((item, i) => {
-        const card = document.createElement("div");
-        card.className = `
-          opacity-0 transform translate-y-10
-          bg-white dark:bg-gray-800 rounded-xl shadow-md p-2 cursor-pointer hover:shadow-lg transition duration-500
-        `;
-        card.innerHTML = `
-          <div class="w-full h-36 bg-gray-100 dark:bg-gray-700 rounded-xl mb-2 flex items-center justify-center overflow-hidden">
-            <img src="${item.img}" class="object-contain w-full h-full">
-          </div>
-          <h3 class="text-sm font-medium text-gray-700 dark:text-gray-200 mb-1 line-clamp-2">${item.title}</h3>
-          <div class="flex items-center gap-2 mb-2">
-            <span class="text-purple-600 font-bold text-sm">${item.price}</span>
-            ${item.oldPrice ? `<span class="line-through text-gray-400 dark:text-gray-400 text-xs">${item.oldPrice}</span>` : ''}
-          </div>
-          <button class="w-full bg-purple-600 text-white rounded-md py-1 text-xs hover:bg-purple-700 mt-1 cursor-pointer">
-            Sotib olish
-          </button>
-        `;
-        card.onclick = () => window.location.href = `detail.html?id=${item.id}`;
-        cardsContainer.appendChild(card);
-
-        const delay = i * 150 + Math.random() * 200;
-        setTimeout(() => {
-          card.classList.remove("opacity-0", "translate-y-10");
-          card.classList.add("opacity-100", "translate-y-0");
-        }, delay);
-      });
-      lastIndex += more.length;
-    }
-  };
+  renderRandomCards(perPage); // random cardlarni filter bo‘yicha chiqarish
 }

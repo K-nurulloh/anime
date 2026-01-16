@@ -1,56 +1,65 @@
 <!DOCTYPE html>
 <html lang="uz">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Product Detail</title>
+
+  <!-- Tailwind + DaisyUI -->
   <link href="https://cdn.jsdelivr.net/npm/daisyui@2.51.5/dist/full.css" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 p-6">
 
+<body class="bg-gray-100 dark:bg-gray-900 text-black dark:text-white p-6">
+
+  <!-- PRODUCT DETAIL -->
   <div id="detail" class="flex flex-col lg:flex-row gap-10 w-full"></div>
 
+  <!-- FEEDBACK -->
   <div id="feedback-section" class="mt-8 w-full max-w-4xl mx-auto">
-  <h2 class="text-xl font-bold mb-3 text-black dark:text-white">Fikrlar</h2>
-  
-  <!-- Yangi feedback yozish -->
-  <div class="flex gap-2 mb-4">
-    <input
-      id="feedback-input"
-      type="text"
-      placeholder="Fikringizni yozing..."
-      class="flex-1 p-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-black dark:text-white outline-none focus:ring-2 focus:ring-purple-500"
-    />
-    
+    <h2 class="text-xl font-bold mb-3">Fikrlar</h2>
+
+    <div class="flex gap-2 mb-4">
+      <input
+        id="feedback-input"
+        type="text"
+        placeholder="Fikringizni yozing..."
+        class="flex-1 p-2 rounded-xl border border-gray-300 dark:border-gray-600
+               bg-white dark:bg-gray-700 outline-none focus:ring-2 focus:ring-purple-500"
+      />
+      <button
+        id="feedback-submit"
+        class="px-4 py-2 bg-purple-600 text-white rounded-xl hover:bg-purple-700">
+        Yuborish
+      </button>
+    </div>
+
+    <div class="flex items-center gap-2 mb-3">
+      <span class="text-sm">Yulduzlar:</span>
+      <div id="feedback-stars" class="flex gap-1 text-xl text-yellow-400"></div>
+      <span id="feedback-stars-count" class="text-sm ml-2">5</span>
+    </div>
+
+    <div id="feedback-list" class="flex flex-wrap gap-3 mb-3"></div>
+
     <button
-      id="feedback-submit"
-      class="px-4 py-2 bg-purple-600 text-white rounded-xl hover:bg-purple-700"
-    >
-      Yuborish
+      id="feedback-show-all"
+      class="px-4 py-2 bg-purple-600 text-white rounded-xl hover:bg-purple-700 hidden">
+      Hammasini ko‘rish
     </button>
   </div>
 
-  <div class="flex items-center gap-2 mt-1 mb-3">
-      <span class="text-black dark:text-white text-sm">Yulduzlar: </span>
-      <div id="feedback-stars" class="flex gap-1 text-xl text-yellow-400"></div>
-      <span id="feedback-stars-count" class="text-black dark:text-white text-sm ml-2">5</span>
-    </div>
-
-  <!-- Feedback preview -->
-  <div id="feedback-list" class="flex flex-wrap gap-3 mb-3"></div>
-
-  <!-- Hammasini ko'rish tugmasi -->
-  <button id="feedback-show-all" class="px-4 py-2 bg-purple-600 text-white rounded-xl hover:bg-purple-700 dark:text-white mt-3 hidden">
-    Hammasini ko'rish
-  </button>
-</div>
-
-
-  <h2 class="text-2xl mt-10 ">O‘xshash mahsulotlar</h2>
+  <!-- OTHER PRODUCTS -->
+  <h2 class="text-2xl mt-10">O‘xshash mahsulotlar</h2>
   <div id="other" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-4"></div>
 
+  <!-- ACCOUNT SAQLANGAN MAHSULOTLAR (SCROLL TARGET) -->
+  <div id="saved-products" class="mt-16 max-w-4xl mx-auto">
+    <h2 class="text-xl font-bold mb-3">Saqlangan Mahsulotlar</h2>
+    <div id="saved-list" class="flex flex-wrap gap-3"></div>
+  </div>
 
+  <!-- DETAIL JS -->
   <script src="./js/js/detail.js"></script>
 </body>
 </html>

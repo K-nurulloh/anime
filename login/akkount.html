@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Account</title>
+  <link rel="stylesheet" href="../css/output.css">
+</head>
+<body class="bg-gray-100 dark:bg-[#0b1220] min-h-screen transition">
+
+<!-- ================= AUTH ================= -->
+<div id="authBox" class="min-h-screen flex items-center justify-center px-4">
+  <div class="w-full max-w-sm bg-white dark:bg-[#111827] rounded-2xl shadow-xl p-6">
+
+    <!-- TABS -->
+    <div class="flex mb-6 rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1f2937]">
+      <button id="loginTab" class="w-1/2 py-2 font-semibold bg-purple-600 text-white cursor-pointer">Kirish</button>
+      <button id="registerTab" class="w-1/2 py-2 font-semibold text-gray-500 cursor-pointer">Ro‘yxatdan o‘tish</button>
+    </div>
+
+    <!-- LOGIN -->
+    <div id="loginForm">
+      <input id="loginPhone" type="tel" placeholder="Telefon raqam"
+        class="w-full mb-3 px-4 py-3 rounded-xl bg-gray-100 dark:bg-[#1f2937] outline-none">
+      <input id="loginPassword" type="password" placeholder="Parol"
+        class="w-full mb-4 px-4 py-3 rounded-xl bg-gray-100 dark:bg-[#1f2937] outline-none">
+      <button id="loginBtn"
+        class="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-xl font-semibold cursor-pointer">
+        Kirish
+      </button>
+      <p id="loginError" class="text-red-500 text-sm text-center mt-3 hidden"></p>
+    </div>
+
+    <!-- REGISTER -->
+    <div id="registerForm" class="hidden">
+      <input id="regName" placeholder="Ismingiz"
+        class="w-full mb-3 px-4 py-3 rounded-xl bg-gray-100 dark:bg-[#1f2937] outline-none">
+      <input id="regPhone" type="tel" placeholder="Telefon raqam"
+        class="w-full mb-3 px-4 py-3 rounded-xl bg-gray-100 dark:bg-[#1f2937] outline-none">
+      <input id="regPassword" type="password" placeholder="Parol"
+        class="w-full mb-4 px-4 py-3 rounded-xl bg-gray-100 dark:bg-[#1f2937] outline-none">
+      <button id="registerBtn"
+        class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-semibold cursor-pointer">
+        Ro‘yxatdan o‘tish
+      </button>
+      <p id="registerError" class="text-red-500 text-sm text-center mt-3 hidden"></p>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ================= ACCOUNT ================= -->
+<div id="accountBox" class="hidden min-h-screen bg-gray-100 dark:bg-[#0b1220]">
+
+  <!-- HEADER -->
+  <header class="bg-white dark:bg-[#111827] shadow sticky top-0 z-10">
+    <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+      <h1 class="text-xl font-bold text-purple-600">Account</h1>
+      <button onclick="logout()" class="text-red-500 font-medium cursor-pointer hover:underline">Chiqish</button>
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <main class="max-w-6xl mx-auto px-4 py-6 space-y-6">
+
+    <!-- PROFILE CARD -->
+    <div class="bg-white dark:bg-[#111827] rounded-2xl shadow p-6 flex items-center gap-4">
+      <div class="relative">
+        <img id="profileImg" class="w-16 h-16 rounded-full object-cover hidden" />
+        <div id="avatar" class="w-16 h-16 rounded-full bg-purple-600 text-white flex items-center justify-center text-xl font-bold"></div>
+        <input type="file" accept="image/*" onchange="uploadAvatar(event)" class="absolute inset-0 opacity-0 cursor-pointer">
+      </div>
+      <div>
+        <h2 id="userName" class="font-bold text-lg text-black dark:text-white"></h2>
+        <p id="userPhone" class="text-gray-500 text-sm"></p>
+      </div>
+    </div>
+
+    <!-- ACTION GRID -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div onclick="openSection('orders')" class="bg-white dark:bg-[#111827] p-4 rounded-xl text-center shadow cursor-pointer">📦 Buyurtmalar</div>
+      <div onclick="openSection('promo')" class="bg-white dark:bg-[#111827] p-4 rounded-xl text-center shadow cursor-pointer">🎁 Promokodlar</div>
+      <div onclick="openSection('saved')" class="bg-white dark:bg-[#111827] p-4 rounded-xl text-center shadow cursor-pointer">🛒 Savat</div>
+      <div onclick="openSection('settings')" class="bg-white dark:bg-[#111827] p-4 rounded-xl text-center shadow cursor-pointer">⚙ Sozlamalar</div>
+    </div>
+
+    <!-- SAVAT LIST -->
+    <div id="saved-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 overflow-y-auto max-h-96 p-2"></div>
+
+  </main>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="dock dock-xs">
+    <a href="../index.html">🏠</a>
+    <a href="../buy.html" class="dock-active">🛒</a>
+    <a href="./login/akkount.html">👤</a>
+  </div>
+</footer>
+
+
+ <script src="../js/js/login.js"></script>
+</body>
+</html>
