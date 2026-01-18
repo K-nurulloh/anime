@@ -1,9 +1,9 @@
 <!DOCTYPE html>
- <html lang="uz" class="scroll-smooth">
+<html lang="uz" class="scroll-smooth">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Uzum Market — Katalog</title>
+    <title>Uzum Market — Tovarlar</title>
     <link rel="stylesheet" href="css/output.css" />
   </head>
   <body class="bg-slate-950 text-white">
@@ -57,43 +57,25 @@
           </select>
         </div>
       </div>
+    </header>
 
-        </header>
-
-    <main class="mx-auto max-w-6xl space-y-12 px-4 py-10">
-      <section class="rounded-3xl bg-gradient-to-r from-slate-900 via-slate-950 to-slate-900 p-8 shadow-sm">
-        <div class="max-w-xl space-y-4">
-          <p class="text-sm uppercase tracking-wide text-slate-300" data-i18n="hero_tag"></p>
-          <h1 class="text-3xl font-bold text-white" data-i18n="hero_title"></h1>
-          <p class="text-slate-300" data-i18n="hero_subtitle"></p>
-          <a
-            href="#catalog"
-            class="inline-flex rounded-xl bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-100"
-            data-i18n="hero_cta"
-          ></a>
-        </div>
-      </section>
-
+    <main class="mx-auto max-w-6xl space-y-10 px-4 py-10">
       <section class="space-y-4">
         <div class="flex items-center justify-between">
-          <h2 class="text-xl font-semibold text-white" data-i18n="categories_title"></h2>
-          <a href="catalog.html" class="text-sm text-slate-300 hover:text-white" data-i18n="catalog"></a>
+          <h1 class="text-2xl font-semibold text-white" data-i18n="catalog_title"></h1>
+          <p class="text-sm text-slate-300" data-i18n="catalog_subtitle"></p>
         </div>
         <div class="flex flex-wrap gap-3">
-          <a href="catalog.html?category=Telefon" class="rounded-full border border-slate-800 px-4 py-2 text-sm text-slate-200 hover:border-slate-600" data-i18n="category_phone"></a>
-          <a href="catalog.html?category=Kino" class="rounded-full border border-slate-800 px-4 py-2 text-sm text-slate-200 hover:border-slate-600" data-i18n="category_kino"></a>
-          <a href="catalog.html?category=Noutbuk" class="rounded-full border border-slate-800 px-4 py-2 text-sm text-slate-200 hover:border-slate-600" data-i18n="category_laptop"></a>
-          <a href="catalog.html?category=Uy" class="rounded-full border border-slate-800 px-4 py-2 text-sm text-slate-200 hover:border-slate-600" data-i18n="category_home"></a>
-          <a href="catalog.html?category=Kiyim" class="rounded-full border border-slate-800 px-4 py-2 text-sm text-slate-200 hover:border-slate-600" data-i18n="category_clothes"></a>
-          <a href="catalog.html?category=Aksessuar" class="rounded-full border border-slate-800 px-4 py-2 text-sm text-slate-200 hover:border-slate-600" data-i18n="category_accessory"></a>
+          <button class="category-chip rounded-full border border-slate-800 px-4 py-2 text-sm text-slate-200 hover:border-slate-600" data-category="Telefon" data-i18n="category_phone"></button>
+          <button class="category-chip rounded-full border border-slate-800 px-4 py-2 text-sm text-slate-200 hover:border-slate-600" data-category="Kino" data-i18n="category_kino"></button>
+          <button class="category-chip rounded-full border border-slate-800 px-4 py-2 text-sm text-slate-200 hover:border-slate-600" data-category="Noutbuk" data-i18n="category_laptop"></button>
+          <button class="category-chip rounded-full border border-slate-800 px-4 py-2 text-sm text-slate-200 hover:border-slate-600" data-category="Uy" data-i18n="category_home"></button>
+          <button class="category-chip rounded-full border border-slate-800 px-4 py-2 text-sm text-slate-200 hover:border-slate-600" data-category="Kiyim" data-i18n="category_clothes"></button>
+          <button class="category-chip rounded-full border border-slate-800 px-4 py-2 text-sm text-slate-200 hover:border-slate-600" data-category="Aksessuar" data-i18n="category_accessory"></button>
         </div>
       </section>
 
       <section id="catalog" class="space-y-6">
-        <div class="flex items-center justify-between">
-          <h2 class="text-xl font-semibold text-white" data-i18n="catalog_title"></h2>
-          <p class="text-sm text-slate-300" data-i18n="catalog_subtitle"></p>
-        </div>
         <div id="error-box" class="hidden rounded-2xl bg-rose-500/10 px-4 py-3 text-sm text-rose-200"></div>
         <div id="product-list" class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"></div>
         <div id="loader" class="flex justify-center">
@@ -101,29 +83,15 @@
         </div>
         <div id="sentinel" class="h-4"></div>
       </section>
-
-      <section class="space-y-6">
-        <div class="flex items-center justify-between">
-          <h2 class="text-xl font-semibold text-white" data-i18n="recommended_title"></h2>
-          <a href="seller.html" class="text-sm text-slate-300 hover:text-white" data-i18n="seller_panel"></a>
-        </div>
-        <div id="recommended-list" class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4"></div>
-      </section>
     </main>
-
-    
-    <footer class="border-t border-slate-800 py-8 text-center text-sm text-slate-300">
-      <p data-i18n="footer_note"></p>
-      <a href="about.html" class="text-slate-300 hover:text-white" data-i18n="about"></a>
-    </footer>
 
     <nav class="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-800 bg-slate-950/95 backdrop-blur md:hidden">
       <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-3 text-xs text-slate-300">
-        <a href="index.html" class="flex flex-col items-center gap-1 text-white">
+        <a href="index.html" class="flex flex-col items-center gap-1">
           <span>🏠</span>
           <span data-i18n="home"></span>
         </a>
-        <a href="catalog.html" class="flex flex-col items-center gap-1">
+        <a href="catalog.html" class="flex flex-col items-center gap-1 text-white">
           <span>🛍️</span>
           <span data-i18n="catalog"></span>
         </a>
@@ -139,6 +107,6 @@
       </div>
     </nav>
 
-      <script type="module" src="js/main.js"></script>
+    <script type="module" src="js/main.js"></script>
   </body>
 </html>

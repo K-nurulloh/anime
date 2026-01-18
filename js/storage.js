@@ -43,11 +43,8 @@ export const ensureSeedData = () => {
     writeStorage('currentUserId', null);
   }
 
-  if (!localStorage.getItem('settings')) {
-    writeStorage('settings', {
-      darkMode: false,
-      language: 'uz',
-    });
+  if (!localStorage.getItem('lang')) {
+    localStorage.setItem('lang', 'uz');
   }
 
   if (!localStorage.getItem('sellerProducts')) {
@@ -81,9 +78,6 @@ export const updateCurrentUser = (updater) => {
   saveUsers(users);
   return updatedUser;
 };
-
-export const getSettings = () => readStorage('settings', { darkMode: false, language: 'uz' });
-export const saveSettings = (settings) => writeStorage('settings', settings);
 
 export const getCart = () => {
   const currentUser = getCurrentUser();

@@ -1,6 +1,8 @@
 import { ensureSeedData } from './storage.js';
-import { initThemeToggle, updateCartBadge } from './ui.js';
+import { applyTranslations, initLangSwitcher } from './i18n.js';
+import { updateCartBadge } from './ui.js';
 
 ensureSeedData();
-initThemeToggle();
+applyTranslations();
+initLangSwitcher();
 updateCartBadge();

@@ -1,4 +1,5 @@
 import { readStorage } from './storage.js';
+import { t } from './i18n.js';
 
 export const fetchProducts = async () => {
   try {
@@ -11,6 +12,6 @@ export const fetchProducts = async () => {
     return { products: [...products, ...sellerProducts], error: null };
   } catch (error) {
     console.error('Fetch error', error);
-    return { products: [], error: 'Mahsulotlarni yuklashda xatolik yuz berdi.' };
+    return { products: [], error: t('fetch_error') };
   }
 };

@@ -88,18 +88,8 @@
     "desc": "Super Retina XDR displey, A16 Bionic chip va kuchli kamera tizimi.",
     "category": "Telefon",
     "rating": 4.8
-  },
-  {
-    "id": 10,
-      "title": "iPhone 14 Pro 128GB",
-    "price": 13900000,
-    "oldPrice": 15500000,
-    "img": "https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?auto=format&fit=crop&w=900&q=80",
-    "desc": "Super Retina XDR displey, A16 Bionic chip va kuchli kamera tizimi.",
-    "category": "Telefon",
-    "rating": 4.8
-  },
-  {
+    },
+    {
     "id": 10,
     "title": "Minimalist Hoodie",
     "price": 260000,
@@ -221,23 +211,23 @@
   },
   {
     "id": 22,
-    "title": "Canon Mirrorless Camera",
-    "price": 7200000,
-    "oldPrice": 8000000,
-    "img": "https://images.unsplash.com/photo-1452587925148-ce544e77e70d?auto=format&fit=crop&w=900&q=80",
-    "desc": "Professional suratlar uchun 4K kamera.",
-    "category": "Aksessuar",
-    "rating": 4.6
+    "title": "Mini Projector 4K",
+    "price": 3200000,
+    "oldPrice": 3900000,
+    "img": "https://images.unsplash.com/photo-1484704849700-f032a568e944?auto=format&fit=crop&w=900&q=80",
+    "desc": "Uy kinoteatri uchun ixcham 4K mini proyektor.",
+    "category": "Kino",
+    "rating": 4.4
   },
   {
     "id": 23,
-    "title": "Samsung Smart TV 55" ,
-    "price": 6100000,
-    "oldPrice": 6900000,
-    "img": "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&w=900&q=80",
-    "desc": "4K UHD, smart tizim va HDR qo'llab-quvvatlash.",
-    "category": "Uy",
-    "rating": 4.5
+    "title": "Home Cinema Soundbar",
+    "price": 2100000,
+    "oldPrice": 2600000,
+    "img": "https://images.unsplash.com/photo-1518441902117-f4e2b65050c6?auto=format&fit=crop&w=900&q=80",
+    "desc": "Surround audio bilan uy kinoteatri soundbar.",
+    "category": "Kino",
+    "rating": 4.3
   },
   {
     "id": 24,

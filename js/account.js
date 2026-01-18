@@ -6,14 +6,14 @@ import {
   getCurrentUser,
   getWishlist,
   saveWishlist,
-  getSettings,
-  saveSettings,
 } from './storage.js';
-import { renderProductCard, showToast, initThemeToggle, updateCartBadge } from './ui.js';
+import { renderProductCard, showToast, updateCartBadge } from './ui.js';
 import { fetchProducts } from './api.js';
+import { applyTranslations, initLangSwitcher, getLang, setLang, t } from './i18n.js';
 
 ensureSeedData();
-initThemeToggle();
+applyTranslations();
+initLangSwitcher();
 updateCartBadge();
 
 const authSection = document.querySelector('#auth-section');
@@ -59,11 +59,11 @@ loginForm.addEventListener('submit', (event) => {
   const users = getUsers();
   const user = users.find((item) => item.phone === phone && item.password === password);
   if (!user) {
-    showToast('Login xato', 'error');
+    showToast(t('login_error'), 'error');
     return;
   }
   setCurrentUserId(user.id);
-  showToast('Xush kelibsiz!');
+  showToast(t('welcome'));
   renderProfile();
   renderWishlist();
 });
@@ -76,7 +76,7 @@ registerForm.addEventListener('submit', (event) => {
   const password = formData.get('password');
   const users = getUsers();
   if (users.some((user) => user.phone === phone)) {
-    showToast('Bu telefon allaqachon ro\'yxatda', 'error');
+    showToast(t('phone_exists'), 'error');
     return;
   }
   const newUser = {
@@ -92,29 +92,26 @@ registerForm.addEventListener('submit', (event) => {
   users.push(newUser);
   saveUsers(users);
   setCurrentUserId(newUser.id);
-  showToast('Profil yaratildi');
+  showToast(t('profile_created'));
   renderProfile();
   renderWishlist();
 });
 
 logoutBtn.addEventListener('click', () => {
   setCurrentUserId(null);
-  showToast('Logout qilindi');
+  showToast(t('logout_done'));
   renderProfile();
 });
 
 settingsForm.addEventListener('submit', (event) => {
   event.preventDefault();
   const formData = new FormData(settingsForm);
-  const settings = getSettings();
-  const updated = {
-    ...settings,
-    darkMode: formData.get('darkMode') === 'on',
-    language: formData.get('language'),
-  };
-  saveSettings(updated);
-  showToast('Sozlamalar saqlandi');
-  document.documentElement.classList.toggle('dark', updated.darkMode);
+  const lang = formData.get('language');
+  setLang(lang);
+  applyTranslations();
+  const headerSwitch = document.querySelector('[data-lang-switch]');
+  if (headerSwitch) headerSwitch.value = lang;
+  showToast(t('settings_saved'));
 });
 
 wishlistList.addEventListener('click', (event) => {
@@ -123,16 +120,20 @@ wishlistList.addEventListener('click', (event) => {
   const id = Number(button.dataset.id);
   const wishlist = getWishlist().filter((item) => item.id !== id);
   saveWishlist(wishlist);
-  showToast('Wishlistdan olib tashlandi');
+  showToast(t('wishlist_removed'));
   renderWishlist();
 });
 
 const initSettingsForm = () => {
-  const settings = getSettings();
-  settingsForm.querySelector('[name="darkMode"]').checked = settings.darkMode;
-  settingsForm.querySelector('[name="language"]').value = settings.language;
+  settingsForm.querySelector('[name="language"]').value = getLang();
 };
 
 renderProfile();
 renderWishlist();
 initSettingsForm();
+
+window.addEventListener('langChanged', () => {
+  renderProfile();
+  renderWishlist();
+  initSettingsForm();
+});

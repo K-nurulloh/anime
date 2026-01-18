@@ -1,9 +1,11 @@
 import { fetchProducts } from './api.js';
 import { ensureSeedData, getCart, saveCart } from './storage.js';
-import { formatPrice, showToast, updateCartBadge, initThemeToggle } from './ui.js';
+import { formatPrice, showToast, updateCartBadge } from './ui.js';
+import { applyTranslations, initLangSwitcher, t } from './i18n.js';
 
 ensureSeedData();
-initThemeToggle();
+applyTranslations();
+initLangSwitcher();
 updateCartBadge();
 
 const cartList = document.querySelector('#cart-list');
@@ -27,15 +29,17 @@ const calculateTotals = () => {
   const total = subtotal - discount + delivery;
 
   summaryBox.innerHTML = `
-    <div class="space-y-2 text-sm text-slate-600 dark:text-slate-300">
-      <div class="flex justify-between"><span>Subtotal</span><span>${formatPrice(subtotal)} so'm</span></div>
-      <div class="flex justify-between"><span>Chegirma</span><span>-${formatPrice(discount)} so'm</span></div>
-      <div class="flex justify-between"><span>Yetkazish</span><span>${formatPrice(delivery)} so'm</span></div>
+    <div class="space-y-2 text-sm text-slate-300">
+      <div class="flex justify-between"><span>${t('subtotal')}</span><span>${formatPrice(subtotal)} so'm</span></div>
+      <div class="flex justify-between"><span>${t('discount')}</span><span>-${formatPrice(discount)} so'm</span></div>
+      <div class="flex justify-between"><span>${t('delivery')}</span><span>${formatPrice(delivery)} so'm</span></div>
     </div>
-    <div class="mt-4 flex justify-between text-lg font-bold text-slate-900 dark:text-white">
-      <span>Jami</span><span>${formatPrice(total)} so'm</span>
+    <div class="mt-4 flex justify-between text-lg font-bold text-white">
+      <span>${t('total')}</span><span>${formatPrice(total)} so'm</span>
     </div>
-    <a href="checkout.html" class="mt-4 block rounded-xl bg-slate-900 px-4 py-3 text-center text-sm font-semibold text-white hover:bg-slate-800">Checkout</a>
+    <a href="checkout.html" class="mt-4 block rounded-xl bg-white px-4 py-3 text-center text-sm font-semibold text-slate-900 hover:bg-slate-100">${t(
+      'checkout'
+    )}</a>
   `;
 };
 
@@ -53,25 +57,23 @@ const renderCart = () => {
       const product = productsMap.get(item.id);
       if (!product) return '';
       return `
-        <div class="flex flex-col gap-4 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm md:flex-row md:items-center dark:border-slate-800 dark:bg-slate-900">
+        <div class="flex flex-col gap-4 rounded-2xl border border-slate-800 bg-slate-900 p-4 shadow-sm md:flex-row md:items-center">
           <img src="${product.img}" alt="${product.title}" class="h-24 w-24 rounded-xl object-cover" />
           <div class="flex-1">
-            <h3 class="text-sm font-semibold text-slate-800 dark:text-white">${product.title}</h3>
-            <p class="text-xs text-slate-500">${product.category}</p>
+            <h3 class="text-sm font-semibold text-white">${product.title}</h3>
+            <p class="text-xs text-slate-300">${product.category}</p>
           </div>
-          <div class="text-sm font-semibold text-slate-800 dark:text-white">${formatPrice(
-            product.price
-          )} so'm</div>
+          <div class="text-sm font-semibold text-white">${formatPrice(product.price)} so'm</div>
           <div class="flex items-center gap-2">
-            <button class="qty-btn h-8 w-8 rounded-lg border border-slate-200 text-slate-700 dark:border-slate-700 dark:text-slate-200" data-action="dec" data-id="${
+            <button class="qty-btn h-8 w-8 rounded-lg border border-slate-700 text-slate-200" data-action="dec" data-id="${
               item.id
             }">-</button>
             <span class="min-w-[24px] text-center">${item.qty}</span>
-            <button class="qty-btn h-8 w-8 rounded-lg border border-slate-200 text-slate-700 dark:border-slate-700 dark:text-slate-200" data-action="inc" data-id="${
+            <button class="qty-btn h-8 w-8 rounded-lg border border-slate-700 text-slate-200" data-action="inc" data-id="${
               item.id
             }">+</button>
           </div>
-          <button class="remove-btn text-sm text-rose-500" data-id="${item.id}">O'chirish</button>
+          <button class="remove-btn text-sm text-rose-400" data-id="${item.id}">${t('delete')}</button>
         </div>
       `;
     })
@@ -95,7 +97,7 @@ const removeItem = (id) => {
   saveCart(cart);
   renderCart();
   updateCartBadge();
-  showToast('O\'chirildi');
+  showToast(t('removed'));
 };
 
 const init = async () => {
@@ -119,12 +121,16 @@ promoButton.addEventListener('click', () => {
   const code = promoInput.value.trim().toUpperCase();
   if (code === 'UZUM10') {
     discountPercent = 10;
-    showToast('Promo kod qabul qilindi');
+    showToast(t('promo_success'));
   } else {
     discountPercent = 0;
-    showToast('Promo kod noto\'g\'ri', 'error');
+    showToast(t('promo_error'), 'error');
   }
   calculateTotals();
 });
 
 init();
+
+window.addEventListener('langChanged', () => {
+  renderCart();
+});

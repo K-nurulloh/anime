@@ -1,9 +1,11 @@
 import { fetchProducts } from './api.js';
 import { ensureSeedData, getCart, saveCart, getWishlist, saveWishlist } from './storage.js';
-import { renderProductCard, renderSkeleton, showToast, updateCartBadge, initThemeToggle } from './ui.js';
+import { renderProductCard, renderSkeleton, showToast, updateCartBadge } from './ui.js';
+import { applyTranslations, initLangSwitcher, t } from './i18n.js';
 
 ensureSeedData();
-initThemeToggle();
+applyTranslations();
+initLangSwitcher();
 updateCartBadge();
 
 const productList = document.querySelector('#product-list');
@@ -14,6 +16,7 @@ const categoryFilter = document.querySelector('#categoryFilter');
 const priceSort = document.querySelector('#priceSort');
 const recommendedList = document.querySelector('#recommended-list');
 const errorBox = document.querySelector('#error-box');
+const categoryChips = document.querySelectorAll('.category-chip');
 
 let allProducts = [];
 let filteredProducts = [];
@@ -26,7 +29,7 @@ const renderNextBatch = () => {
   if (!productList) return;
   const nextItems = filteredProducts.slice(currentIndex, currentIndex + batchSize);
   if (!nextItems.length) {
-    loader.classList.add('hidden');
+    loader?.classList.add('hidden');
     return;
   }
   productList.insertAdjacentHTML('beforeend', nextItems.map(renderProductCard).join(''));
@@ -40,9 +43,9 @@ const resetList = () => {
 };
 
 const applyFilters = () => {
-  const query = searchInput.value.trim().toLowerCase();
-  const category = categoryFilter.value;
-  const sort = priceSort.value;
+  const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
+  const category = categoryFilter ? categoryFilter.value : 'all';
+  const sort = priceSort ? priceSort.value : 'default';
   filteredProducts = allProducts.filter((product) => {
     const matchesQuery =
       product.title.toLowerCase().includes(query) || product.desc.toLowerCase().includes(query);
@@ -62,8 +65,45 @@ const applyFilters = () => {
 
 const initFilters = () => {
   [searchInput, categoryFilter, priceSort].forEach((element) => {
+    if (!element) return;
     element.addEventListener('input', applyFilters);
     element.addEventListener('change', applyFilters);
+  });
+  if (categoryFilter) {
+    categoryFilter.addEventListener('change', () => updateQueryCategory(categoryFilter.value));
+  }
+};
+
+const syncCategoryFromQuery = () => {
+  const params = new URLSearchParams(window.location.search);
+  const category = params.get('category');
+  if (category && categoryFilter) {
+    categoryFilter.value = category;
+  }
+};
+
+const updateQueryCategory = (category) => {
+  const params = new URLSearchParams(window.location.search);
+  if (category === 'all') {
+    params.delete('category');
+  } else {
+    params.set('category', category);
+  }
+  const newUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname;
+  window.history.replaceState({}, '', newUrl);
+};
+
+const initCategoryChips = () => {
+  if (!categoryChips.length) return;
+  categoryChips.forEach((chip) => {
+    chip.addEventListener('click', () => {
+      const category = chip.dataset.category;
+      if (categoryFilter) {
+        categoryFilter.value = category;
+      }
+      updateQueryCategory(category);
+      applyFilters();
+    });
   });
 };
 
@@ -77,7 +117,7 @@ const handleAddToCart = (productId) => {
   }
   saveCart(cart);
   updateCartBadge();
-  showToast('Savatga qo\'shildi');
+  showToast(t('cart_added'));
 };
 
 const handleWishlist = (productId) => {
@@ -85,10 +125,10 @@ const handleWishlist = (productId) => {
   const index = wishlist.findIndex((item) => item.id === productId);
   if (index >= 0) {
     wishlist.splice(index, 1);
-    showToast('Wishlistdan olib tashlandi');
+    showToast(t('wishlist_removed'));
   } else {
     wishlist.push({ id: productId });
-    showToast('Saqlangan');
+    showToast(t('wishlist_added'));
   }
   saveWishlist(wishlist);
   document.querySelectorAll(`[data-id="${productId}"]`).forEach((button) => {
@@ -97,6 +137,7 @@ const handleWishlist = (productId) => {
 };
 
 const initListActions = (container) => {
+  if (!container) return;
   container.addEventListener('click', (event) => {
     const cartBtn = event.target.closest('.add-cart-btn');
     const wishlistBtn = event.target.closest('.wishlist-btn');
@@ -141,11 +182,18 @@ const init = async () => {
   allProducts = products;
   filteredProducts = [...products];
   productList.innerHTML = '';
-  renderNextBatch();
+  syncCategoryFromQuery();
+  applyFilters();
   initFilters();
+  initCategoryChips();
   initListActions(productList);
   initInfiniteScroll();
   renderRecommended();
 };
 
 init();
+
+window.addEventListener('langChanged', () => {
+  applyFilters();
+  renderRecommended();
+});
