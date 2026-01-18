@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="uz" class="scroll-smooth">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Uzum Market — Seller</title>
+    <link rel="stylesheet" href="css/output.css" />
+  </head>
+  <body class="bg-slate-50 text-slate-800 dark:bg-slate-950">
+    <header class="border-b border-slate-100 bg-white dark:border-slate-900 dark:bg-slate-950">
+      <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
+        <a href="index.html" class="text-xl font-bold text-slate-900 dark:text-white">Uzum Market</a>
+        <div class="flex items-center gap-4 text-sm">
+          <a href="cart.html" class="relative">
+            🛒
+            <span class="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-slate-900 text-xs text-white" data-cart-count>0</span>
+          </a>
+          <a href="account.html" class="text-slate-700 hover:text-slate-900 dark:text-slate-200">Account</a>
+        </div>
+      </div>
+    </header>
+
+    <main class="mx-auto max-w-6xl space-y-8 px-4 py-10">
+      <div id="access-denied" class="hidden rounded-2xl bg-rose-50 p-6 text-sm text-rose-600">
+        Access denied. Sotuvchi profiliga kiring.
+      </div>
+
+      <section id="seller-panel" class="space-y-8">
+        <div class="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <h1 class="text-2xl font-semibold text-slate-900 dark:text-white">Seller Panel</h1>
+          <p class="text-sm text-slate-500">Mahsulot qo'shish / tahrirlash / o'chirish.</p>
+        </div>
+
+        <div class="grid gap-6 lg:grid-cols-[1.1fr_1fr]">
+          <div class="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-white">Product form</h2>
+            <form id="product-form" class="mt-4 space-y-3">
+              <input name="title" required placeholder="Title" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950" />
+              <input name="price" required type="number" placeholder="Price" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950" />
+              <input name="img" required placeholder="Image URL" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950" />
+              <textarea name="desc" required placeholder="Description" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950"></textarea>
+              <select name="category" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950">
+                <option value="Telefon">Telefon</option>
+                <option value="Noutbuk">Noutbuk</option>
+                <option value="Uy">Uy</option>
+                <option value="Kiyim">Kiyim</option>
+                <option value="Aksessuar">Aksessuar</option>
+              </select>
+              <button class="w-full rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Saqlash</button>
+            </form>
+          </div>
+
+          <div class="space-y-4">
+            <div class="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <h2 class="text-lg font-semibold text-slate-900 dark:text-white">Mahsulotlar</h2>
+              <div id="seller-products" class="mt-4 space-y-3"></div>
+            </div>
+            <div class="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <h2 class="text-lg font-semibold text-slate-900 dark:text-white">So'nggi buyurtmalar</h2>
+              <div id="seller-orders" class="mt-4 space-y-3"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="js/seller.js"></script>
+  </body>
+</html>

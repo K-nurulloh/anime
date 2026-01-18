@@ -1,0 +1,97 @@
+
+<!DOCTYPE html>
+<html lang="uz" class="scroll-smooth">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Uzum Market — Account</title>
+    <link rel="stylesheet" href="css/output.css" />
+  </head>
+  <body class="bg-slate-50 text-slate-800 dark:bg-slate-950">
+    <header class="border-b border-slate-100 bg-white dark:border-slate-900 dark:bg-slate-950">
+      <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
+        <a href="index.html" class="text-xl font-bold text-slate-900 dark:text-white">Uzum Market</a>
+        <div class="flex items-center gap-4 text-sm">
+          <a href="cart.html" class="relative">
+            🛒
+            <span class="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-slate-900 text-xs text-white" data-cart-count>0</span>
+          </a>
+          <a href="account.html" class="text-slate-700 hover:text-slate-900 dark:text-slate-200">Account</a>
+        </div>
+      </div>
+    </header>
+
+    <main class="mx-auto max-w-6xl space-y-8 px-4 py-10">
+      <section id="auth-section" class="grid gap-6 lg:grid-cols-2">
+        <div class="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <h2 class="text-lg font-semibold text-slate-900 dark:text-white">Login</h2>
+          <form id="login-form" class="mt-4 space-y-3">
+            <input name="phone" required placeholder="Telefon" class="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm dark:border-slate-700 dark:bg-slate-950" />
+            <input type="password" name="password" required placeholder="Parol" class="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm dark:border-slate-700 dark:bg-slate-950" />
+            <button class="w-full rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Kirish</button>
+          </form>
+          <p class="mt-4 text-xs text-slate-500">Demo: +998901234567 / 1234</p>
+        </div>
+
+        <div class="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <h2 class="text-lg font-semibold text-slate-900 dark:text-white">Register</h2>
+          <form id="register-form" class="mt-4 space-y-3">
+            <input name="name" required placeholder="Ism" class="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm dark:border-slate-700 dark:bg-slate-950" />
+            <input name="phone" required placeholder="Telefon" class="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm dark:border-slate-700 dark:bg-slate-950" />
+            <input type="password" name="password" required placeholder="Parol" class="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm dark:border-slate-700 dark:bg-slate-950" />
+            <button class="w-full rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Ro'yxatdan o'tish</button>
+          </form>
+        </div>
+      </section>
+
+      <section id="profile-section" class="hidden space-y-8">
+        <div class="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-lg font-semibold text-slate-900 dark:text-white">Profil</h2>
+              <p class="text-sm text-slate-500">Xush kelibsiz!</p>
+            </div>
+            <button id="logout-btn" class="rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-600 dark:border-slate-700 dark:text-slate-200">Logout</button>
+          </div>
+          <div class="mt-4 grid gap-3 text-sm text-slate-700 dark:text-slate-200">
+            <p>Ism: <span data-profile-name class="font-semibold"></span></p>
+            <p>Telefon: <span data-profile-phone class="font-semibold"></span></p>
+          </div>
+          <div class="mt-4 flex flex-wrap gap-2">
+            <a href="orders.html" class="rounded-full bg-slate-100 px-4 py-2 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-200">Orders</a>
+            <a href="#wishlist" class="rounded-full bg-slate-100 px-4 py-2 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-200">Wishlist</a>
+            <a href="#settings" class="rounded-full bg-slate-100 px-4 py-2 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-200">Settings</a>
+          </div>
+        </div>
+
+        <div id="wishlist" class="space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Wishlist</h3>
+          </div>
+          <div id="wishlist-empty" class="hidden rounded-2xl bg-white p-6 text-center text-sm text-slate-500 shadow-sm dark:bg-slate-900">Wishlist bo'sh.</div>
+          <div id="wishlist-list" class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"></div>
+        </div>
+
+        <div id="settings" class="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Settings</h3>
+          <form id="settings-form" class="mt-4 space-y-4 text-sm text-slate-600 dark:text-slate-300">
+            <label class="flex items-center gap-2">
+              <input type="checkbox" name="darkMode" />
+              Dark mode
+            </label>
+            <label class="block">
+              <span class="text-xs text-slate-500">Language</span>
+              <select name="language" class="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950">
+                <option value="uz">O'zbekcha</option>
+                <option value="ru">Русский</option>
+              </select>
+            </label>
+            <button class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Saqlash</button>
+          </form>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="js/account.js"></script>
+  </body>
+</html>

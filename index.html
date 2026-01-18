@@ -1,162 +1,88 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Anime</title>
-    <link rel="stylesheet" href="./css/output.css">
-</head>
-<body>
-    <header>
-      <div class="navbar bg-base-100 shadow-sm">
-
-  <!-- CHAP -->
-  <div class="navbar-start">
-    <div class="dropdown">
-      <div tabindex="0" role="button" class="btn btn-ghost btn-circle">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
-          viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M4 6h16M4 12h16M4 18h7" />
-        </svg>
+ <html lang="uz" class="scroll-smooth">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Uzum Market — Katalog</title>
+    <link rel="stylesheet" href="css/output.css" />
+  </head>
+  <body class="bg-slate-50 text-slate-800 dark:bg-slate-950">
+    <header class="sticky top-0 z-40 border-b border-slate-100 bg-white/80 backdrop-blur dark:border-slate-900 dark:bg-slate-950/80">
+      <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4">
+        <a href="index.html" class="text-xl font-bold text-slate-900 dark:text-white">Uzum Market</a>
+        <div class="flex flex-1 flex-wrap items-center gap-3">
+          <input
+            id="searchInput"
+            type="search"
+            placeholder="Mahsulot qidirish..."
+            class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm focus:border-slate-400 focus:outline-none dark:border-slate-800 dark:bg-slate-900"
+          />
+          <select id="categoryFilter" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-900">
+            <option value="all">Kategoriya</option>
+            <option value="Telefon">Telefon</option>
+            <option value="Noutbuk">Noutbuk</option>
+            <option value="Uy">Uy</option>
+            <option value="Kiyim">Kiyim</option>
+            <option value="Aksessuar">Aksessuar</option>
+          </select>
+          <select id="priceSort" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-900">
+            <option value="default">Saralash</option>
+            <option value="asc">Arzon → Qimmat</option>
+            <option value="desc">Qimmat → Arzon</option>
+          </select>
+        </div>
+        <div class="flex items-center gap-4 text-sm">
+          <a href="cart.html" class="relative">
+            🛒
+            <span class="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-slate-900 text-xs text-white" data-cart-count>0</span>
+          </a>
+          <a href="account.html" class="text-slate-700 hover:text-slate-900 dark:text-slate-200">Account</a>
+          <label class="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
+            <input type="checkbox" class="peer hidden" data-theme-toggle />
+            <span class="rounded-full bg-slate-200 px-3 py-1 text-xs peer-checked:bg-slate-800 peer-checked:text-white">Dark</span>
+          </label>
+        </div>
       </div>
-      <ul
-        tabindex="-1"
-        class="menu menu-sm dropdown-content bg-base-100 rounded-box z-1 mt-3 w-52 p-2 shadow">
-        <li><a>Homepage</a></li>
-        <li><a>Portfolio</a></li>
-        <li><a>About</a></li>
-      </ul>
-    </div>
-  </div>
 
-  <!-- O‘RTA -->
-  <div class="navbar-center">
-    <a class="btn btn-ghost text-xl">daisyUI</a>
-  </div>
+         </header>
 
-  <!-- O‘NG (QIDIRUV) -->
-  <div class="navbar-end">
-    <button id="search-btn" class="btn btn-ghost btn-circle">
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
-        viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-      </svg>
-    </button>
-  </div>
+    <main class="mx-auto max-w-6xl space-y-12 px-4 py-10">
+      <section class="rounded-3xl bg-gradient-to-r from-amber-100 via-white to-slate-100 p-8 shadow-sm dark:from-slate-900 dark:via-slate-950 dark:to-slate-900">
+        <div class="max-w-xl space-y-4">
+          <p class="text-sm uppercase tracking-wide text-slate-500">Uzum Market demo</p>
+          <h1 class="text-3xl font-bold text-slate-900 dark:text-white">0 dan zamonaviy e-commerce tajribasi</h1>
+          <p class="text-slate-600 dark:text-slate-300">Yangi kelgan mahsulotlar, tezkor checkout va chiroyli UX.</p>
+          <a href="#catalog" class="inline-flex rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Katalogga o'tish</a>
+        </div>
+      </section>
 
-</div>
+      <section id="catalog" class="space-y-6">
+        <div class="flex items-center justify-between">
+          <h2 class="text-xl font-semibold text-slate-900 dark:text-white">Katalog</h2>
+          <p class="text-sm text-slate-500">Infinite scroll + filterlar</p>
+        </div>
+        <div id="error-box" class="hidden rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-600"></div>
+        <div id="product-list" class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"></div>
+        <div id="loader" class="flex justify-center">
+          <div class="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-slate-600"></div>
+        </div>
+        <div id="sentinel" class="h-4"></div>
+      </section>
 
-<!-- Yashirin qidiruv oynasi (o‘sha holicha qoladi) -->
-<div id="search-box" class="hidden fixed inset-0 bg-black/40 z-50 flex items-start justify-center pt-24">
-  <div class="bg-white dark:bg-gray-900 w-11/12 max-w-md rounded-xl p-4">
-    <input
-      id="search-input"
-      type="text"
-      placeholder="Mahsulot nomini yozing..."
-      class="w-full input input-bordered mb-3"
-    />
-    <ul
-  id="search-results"
-  class="space-y-2 max-h-80 overflow-y-auto">
-</ul>
-
-  </div>
-</div>
-
-</header>
-
-    <main>
-        <div class="hero bg-base-200 min-h-screen">
-  <div class="hero-content flex-col lg:flex-row-reverse">
-    <div class="carousel rounded-box w-64">
-  <div class="carousel-item w-full">
-    <img
-      src="https://img.daisyui.com/images/stock/photo-1559703248-dcaaec9fab78.webp"
-      class="w-full"
-      alt="Tailwind CSS Carousel component" />
-  </div>
-  <div class="carousel-item w-full">
-    <img
-      src="https://img.daisyui.com/images/stock/photo-1565098772267-60af42b81ef2.webp"
-      class="w-full"
-      alt="Tailwind CSS Carousel component" />
-  </div>
-  <div class="carousel-item w-full">
-    <img
-      src="https://img.daisyui.com/images/stock/photo-1572635148818-ef6fd45eb394.webp"
-      class="w-full"
-      alt="Tailwind CSS Carousel component" />
-  </div>
-  <div class="carousel-item w-full">
-    <img
-      src="https://img.daisyui.com/images/stock/photo-1494253109108-2e30c049369b.webp"
-      class="w-full"
-      alt="Tailwind CSS Carousel component" />
-  </div>
-  <div class="carousel-item w-full">
-    <img
-      src="https://img.daisyui.com/images/stock/photo-1550258987-190a2d41a8ba.webp"
-      class="w-full"
-      alt="Tailwind CSS Carousel component" />
-  </div>
-  <div class="carousel-item w-full">
-    <img
-      src="https://img.daisyui.com/images/stock/photo-1559181567-c3190ca9959b.webp"
-      class="w-full"
-      alt="Tailwind CSS Carousel component" />
-  </div>
-  <div class="carousel-item w-full">
-    <img
-      src="https://img.daisyui.com/images/stock/photo-1601004890684-d8cbf643f5f2.webp"
-      class="w-full"
-      alt="Tailwind CSS Carousel component" />
-  </div>
-</div>
-    <div>
-      <h1 class="text-5xl font-bold">Box Office News!</h1>
-      <p class="py-6">
-        Provident cupiditate voluptatem et in. Quaerat fugiat ut assumenda excepturi exercitationem
-        quasi. In deleniti eaque aut repudiandae et a id nisi.
-      </p>
-      <button class="btn btn-primary">Get Started</button>
-    </div>
-  </div>
-</div>
-
- <h1 class="text-3xl font-bold mb-6 text-center">Mahsulotlar</h1>
-
- <!-- Tabs -->
-  <div class="flex justify-center border-b border-gray-200 mb-4">
-    <button class="pb-2 border-b-2 border-purple-500 text-purple-500 font-semibold">Yangi</button>
-  </div>
-
-  <!-- Product Grid -->
-  <div id="cards" class="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4"></div>
-  
+      <section class="space-y-6">
+        <div class="flex items-center justify-between">
+          <h2 class="text-xl font-semibold text-slate-900 dark:text-white">Tavsiya qilinganlar</h2>
+          <a href="seller.html" class="text-sm text-slate-500 hover:text-slate-700">Sotuvchi paneli</a>
+        </div>
+        <div id="recommended-list" class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4"></div>
+      </section>
     </main>
 
-    <footer>
-
-        <div class="dock dock-xs">
-  <a href="./index.html">
-    <svg class="size-[1.2em]" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="currentColor" stroke-linejoin="miter" stroke-linecap="butt"><polyline points="1 11 12 2 23 11" fill="none" stroke="currentColor" stroke-miterlimit="10" stroke-width="2"></polyline><path d="m5,13v7c0,1.105.895,2,2,2h10c1.105,0,2-.895,2-2v-7" fill="none" stroke="currentColor" stroke-linecap="square" stroke-miterlimit="10" stroke-width="2"></path><line x1="12" y1="22" x2="12" y2="18" fill="none" stroke="currentColor" stroke-linecap="square" stroke-miterlimit="10" stroke-width="2"></line></g></svg>
-  </a>
-  
-  <a href="./buy.html" class="dock-active">
-    <svg class="size-[1.2em]" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="currentColor" stroke-linejoin="miter" stroke-linecap="butt"><polyline points="3 14 9 14 9 17 15 17 15 14 21 14" fill="none" stroke="currentColor" stroke-miterlimit="10" stroke-width="2"></polyline><rect x="3" y="3" width="18" height="18" rx="2" ry="2" fill="none" stroke="currentColor" stroke-linecap="square" stroke-miterlimit="10" stroke-width="2"></rect></g></svg>
-  </a>
-  
-  <a href="./login/akkount.html">
-    <svg class="size-[1.2em]" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="currentColor" stroke-linejoin="miter" stroke-linecap="butt"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-linecap="square" stroke-miterlimit="10" stroke-width="2"></circle><path d="m22,13.25v-2.5l-2.318-.966c-.167-.581-.395-1.135-.682-1.654l.954-2.318-1.768-1.768-2.318.954c-.518-.287-1.073-.515-1.654-.682l-.966-2.318h-2.5l-.966,2.318c-.581.167-1.135.395-1.654.682l-2.318-.954-1.768,1.768.954,2.318c-.287.518-.515,1.073-.682,1.654l-2.318.966v2.5l2.318.966c.167.581.395,1.135.682,1.654l-.954,2.318,1.768,1.768,2.318-.954c.518.287,1.073.515,1.654.682l.966,2.318h2.5l.966-2.318c.581-.167,1.135-.395,1.654-.682l2.318.954,1.768-1.768-.954-2.318c.287-.518.515-1.073.682-1.654l2.318-.966Z" fill="none" stroke="currentColor" stroke-linecap="square" stroke-miterlimit="10" stroke-width="2"></path></g></svg>
-  </button>
-</div>
-
-
-
+        <footer class="border-t border-slate-100 py-8 text-center text-sm text-slate-500 dark:border-slate-900">
+      <p>© 2024 Uzum Market Demo. Barcha huquqlar himoyalangan.</p>
+      <a href="about.html" class="text-slate-500 hover:text-slate-700">About</a>
     </footer>
-    
-    <script src="./js/app.js"></script>
-</body>
+
+       <script type="module" src="js/main.js"></script>
+  </body>
 </html>

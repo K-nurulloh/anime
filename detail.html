@@ -1,65 +1,44 @@
 <!DOCTYPE html>
-<html lang="uz">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Product Detail</title>
+   <html lang="uz" class="scroll-smooth">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Uzum Market — Detail</title>
+    <link rel="stylesheet" href="css/output.css" />
+  </head>
+  <body class="bg-slate-50 text-slate-800 dark:bg-slate-950">
+    <header class="sticky top-0 z-40 border-b border-slate-100 bg-white/80 backdrop-blur dark:border-slate-900 dark:bg-slate-950/80">
+      <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4">
+        <a href="index.html" class="text-xl font-bold text-slate-900 dark:text-white">Uzum Market</a>
+        <div class="flex items-center gap-4 text-sm">
+          <a href="cart.html" class="relative">
+            🛒
+            <span class="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-slate-900 text-xs text-white" data-cart-count>0</span>
+          </a>
+          <a href="account.html" class="text-slate-700 hover:text-slate-900 dark:text-slate-200">Account</a>
+          <label class="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
+            <input type="checkbox" class="peer hidden" data-theme-toggle />
+            <span class="rounded-full bg-slate-200 px-3 py-1 text-xs peer-checked:bg-slate-800 peer-checked:text-white">Dark</span>
+          </label>
+        </div>
+      </div>
+    </header>
 
-  <!-- Tailwind + DaisyUI -->
-  <link href="https://cdn.jsdelivr.net/npm/daisyui@2.51.5/dist/full.css" rel="stylesheet">
-  <script src="https://cdn.tailwindcss.com"></script>
-</head>
+    <main class="mx-auto max-w-6xl space-y-10 px-4 py-10">
+      <div id="error-box" class="hidden rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-600"></div>
+      <section id="detail-wrapper"></section>
 
-<body class="bg-gray-100 dark:bg-gray-900 text-black dark:text-white p-6">
+      <section class="space-y-4">
+        <h2 class="text-lg font-semibold text-slate-900 dark:text-white">O'xshashlar</h2>
+        <div id="similar-list" class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4"></div>
+      </section>
 
-  <!-- PRODUCT DETAIL -->
-  <div id="detail" class="flex flex-col lg:flex-row gap-10 w-full"></div>
+      <section class="space-y-4">
+        <h2 class="text-lg font-semibold text-slate-900 dark:text-white">Yana ko'rish</h2>
+        <div id="more-list" class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4"></div>
+      </section>
+    </main>
 
-  <!-- FEEDBACK -->
-  <div id="feedback-section" class="mt-8 w-full max-w-4xl mx-auto">
-    <h2 class="text-xl font-bold mb-3">Fikrlar</h2>
-
-    <div class="flex gap-2 mb-4">
-      <input
-        id="feedback-input"
-        type="text"
-        placeholder="Fikringizni yozing..."
-        class="flex-1 p-2 rounded-xl border border-gray-300 dark:border-gray-600
-               bg-white dark:bg-gray-700 outline-none focus:ring-2 focus:ring-purple-500"
-      />
-      <button
-        id="feedback-submit"
-        class="px-4 py-2 bg-purple-600 text-white rounded-xl hover:bg-purple-700">
-        Yuborish
-      </button>
-    </div>
-
-    <div class="flex items-center gap-2 mb-3">
-      <span class="text-sm">Yulduzlar:</span>
-      <div id="feedback-stars" class="flex gap-1 text-xl text-yellow-400"></div>
-      <span id="feedback-stars-count" class="text-sm ml-2">5</span>
-    </div>
-
-    <div id="feedback-list" class="flex flex-wrap gap-3 mb-3"></div>
-
-    <button
-      id="feedback-show-all"
-      class="px-4 py-2 bg-purple-600 text-white rounded-xl hover:bg-purple-700 hidden">
-      Hammasini ko‘rish
-    </button>
-  </div>
-
-  <!-- OTHER PRODUCTS -->
-  <h2 class="text-2xl mt-10">O‘xshash mahsulotlar</h2>
-  <div id="other" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-4"></div>
-
-  <!-- ACCOUNT SAQLANGAN MAHSULOTLAR (SCROLL TARGET) -->
-  <div id="saved-products" class="mt-16 max-w-4xl mx-auto">
-    <h2 class="text-xl font-bold mb-3">Saqlangan Mahsulotlar</h2>
-    <div id="saved-list" class="flex flex-wrap gap-3"></div>
-  </div>
-
-  <!-- DETAIL JS -->
-  <script src="./js/js/detail.js"></script>
-</body>
+    <script type="module" src="js/detail.js"></script>
+  </body>
 </html>
