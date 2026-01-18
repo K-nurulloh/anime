@@ -36,6 +36,16 @@ export const ensureSeedData = () => {
         orders: [],
         role: 'seller',
       },
+      {
+        id: 'a-3001',
+        name: 'Site Owner',
+        phone: '908557475',
+        password: 'nur123mm',
+        cart: [],
+        wishlist: [],
+        orders: [],
+        role: 'user',
+      },
     ]);
   }
 
@@ -111,3 +121,9 @@ export const saveWishlist = (wishlist) => {
 
 export const getOrders = () => readStorage('orders', []);
 export const saveOrders = (orders) => writeStorage('orders', orders);
+
+export const getAdminProducts = () => readStorage('adminProducts', []);
+export const saveAdminProducts = (products) => writeStorage('adminProducts', products);
+
+export const getProductComments = () => readStorage('productComments', {});
+export const saveProductComments = (comments) => writeStorage('productComments', comments);

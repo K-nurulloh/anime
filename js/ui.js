@@ -1,21 +1,31 @@
 import { getCart, getWishlist } from './storage.js';
 import { t, getLang } from './i18n.js';
 
+// ====== FORMATTERS ======
 export const formatPrice = (value) => {
   const number = Number(value) || 0;
   return number.toLocaleString(getLang() === 'ru' ? 'ru-RU' : 'uz-UZ');
 };
 
+// ====== PRODUCT CARDS ======
 export const renderProductCard = (product) => {
   const wishlist = getWishlist();
   const isSaved = wishlist.some((item) => item.id === product.id);
+  const image = product.images?.[0] || product.img || 'https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=800&q=80';
+  const rating = product.rating ?? 4.8;
+  const oldPrice = product.oldPrice && product.oldPrice > product.price ? product.oldPrice : null;
+  const discountPercent = oldPrice
+    ? Math.round(((oldPrice - product.price) / oldPrice) * 100)
+    : null;
   return `
     <article class="group rounded-2xl border border-slate-800 bg-slate-900 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
       <div class="relative overflow-hidden rounded-t-2xl bg-slate-950">
-        <img src="${product.img}" alt="${product.title}" class="h-48 w-full object-cover transition duration-300 group-hover:scale-105" loading="lazy" />
-        <span class="absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-slate-900">-${Math.round(
-          ((product.oldPrice - product.price) / product.oldPrice) * 100
-        )}%</span>
+        <img src="${image}" alt="${product.title}" class="h-48 w-full object-cover transition duration-300 group-hover:scale-105" loading="lazy" />
+        ${
+          discountPercent
+            ? `<span class="absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-slate-900">-${discountPercent}%</span>`
+            : ''
+        }
         <button class="wishlist-btn absolute right-3 top-3 rounded-full bg-white/90 p-2 text-lg" data-id="${
           product.id
         }" aria-label="Wishlist">
@@ -30,16 +40,18 @@ export const renderProductCard = (product) => {
           }</h3>
         </div>
         <div class="flex items-center gap-2 text-xs text-amber-500">
-          <span>★ ${product.rating}</span>
+          <span>★ ${rating}</span>
           <span class="text-slate-400">(120+)</span>
         </div>
         <div class="flex items-center gap-2">
           <span class="text-lg font-bold text-white">${formatPrice(
             product.price
           )} so'm</span>
-          <span class="text-xs text-slate-400 line-through">${formatPrice(
-            product.oldPrice
-          )} so'm</span>
+          ${
+            oldPrice
+              ? `<span class="text-xs text-slate-400 line-through">${formatPrice(oldPrice)} so'm</span>`
+              : ''
+          }
         </div>
         <div class="flex gap-2">
           <button class="add-cart-btn flex-1 rounded-xl bg-white px-3 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-100" data-id="${
@@ -54,6 +66,7 @@ export const renderProductCard = (product) => {
   `;
 };
 
+// ====== SKELETONS ======
 export const renderSkeleton = (count = 8) =>
   Array.from({ length: count })
     .map(
@@ -68,6 +81,7 @@ export const renderSkeleton = (count = 8) =>
     )
     .join('');
 
+// ====== TOASTS ======
 export const showToast = (message, tone = 'success') => {
   const toast = document.createElement('div');
   toast.className = `fixed right-6 top-6 z-50 rounded-xl px-4 py-3 text-sm font-semibold shadow-lg transition ${
@@ -81,6 +95,7 @@ export const showToast = (message, tone = 'success') => {
   }, 2000);
 };
 
+// ====== BADGES ======
 export const updateCartBadge = () => {
   const badge = document.querySelectorAll('[data-cart-count]');
   const cart = getCart();

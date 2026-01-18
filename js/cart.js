@@ -3,6 +3,7 @@ import { ensureSeedData, getCart, saveCart } from './storage.js';
 import { formatPrice, showToast, updateCartBadge } from './ui.js';
 import { applyTranslations, initLangSwitcher, t } from './i18n.js';
 
+// ====== INIT ======
 ensureSeedData();
 applyTranslations();
 initLangSwitcher();
@@ -14,9 +15,11 @@ const emptyState = document.querySelector('#empty-state');
 const promoInput = document.querySelector('#promo-code');
 const promoButton = document.querySelector('#apply-promo');
 
+// ====== STATE ======
 let productsMap = new Map();
 let discountPercent = 0;
 
+// ====== TOTALS ======
 const calculateTotals = () => {
   const cart = getCart();
   const subtotal = cart.reduce((sum, item) => {
@@ -43,6 +46,7 @@ const calculateTotals = () => {
   `;
 };
 
+// ====== RENDER ======
 const renderCart = () => {
   const cart = getCart();
   if (!cart.length) {
@@ -81,6 +85,7 @@ const renderCart = () => {
   calculateTotals();
 };
 
+// ====== CART ACTIONS ======
 const updateQuantity = (id, action) => {
   const cart = getCart();
   const item = cart.find((entry) => entry.id === id);
@@ -100,6 +105,7 @@ const removeItem = (id) => {
   showToast(t('removed'));
 };
 
+// ====== DATA BOOTSTRAP ======
 const init = async () => {
   const { products } = await fetchProducts();
   productsMap = new Map(products.map((product) => [product.id, product]));

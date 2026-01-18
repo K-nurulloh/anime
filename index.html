@@ -1,5 +1,5 @@
 <!DOCTYPE html>
- <html lang="uz" class="scroll-smooth">
+   <html lang="uz" class="scroll-smooth">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -7,7 +7,11 @@
     <link rel="stylesheet" href="css/output.css" />
   </head>
   <body class="bg-slate-950 text-white">
-    <header class="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/90 backdrop-blur">
+    <!-- ====== NAVBAR ====== -->
+    <header class="fixed top-0 z-50 flex h-14 w-full items-center border-b border-slate-800 bg-slate-950/95 px-4 md:hidden">
+      <a href="index.html" class="text-lg font-semibold text-white">Uzum Market</a>
+    </header>
+    <header class="sticky top-0 z-50 hidden border-b border-slate-800 bg-slate-950/90 backdrop-blur md:block">
       <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4">
         <a href="index.html" class="text-xl font-bold text-white">Uzum Market</a>
         <nav class="flex flex-1 flex-wrap items-center gap-3">
@@ -34,6 +38,7 @@
             <option value="Uy" data-i18n="category_home"></option>
             <option value="Kiyim" data-i18n="category_clothes"></option>
             <option value="Aksessuar" data-i18n="category_accessory"></option>
+            <option value="Kitob" data-i18n="category_book"></option>
           </select>
           <select id="priceSort" class="rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-white">
             <option value="default" data-i18n="sort_default"></option>
@@ -58,9 +63,9 @@
         </div>
       </div>
 
-        </header>
+         </header>
 
-    <main class="mx-auto max-w-6xl space-y-12 px-4 py-10">
+    <main class="mx-auto max-w-6xl space-y-12 px-4 pb-24 pt-14 md:pt-20">
       <section class="rounded-3xl bg-gradient-to-r from-slate-900 via-slate-950 to-slate-900 p-8 shadow-sm">
         <div class="max-w-xl space-y-4">
           <p class="text-sm uppercase tracking-wide text-slate-300" data-i18n="hero_tag"></p>
@@ -86,6 +91,7 @@
           <a href="catalog.html?category=Uy" class="rounded-full border border-slate-800 px-4 py-2 text-sm text-slate-200 hover:border-slate-600" data-i18n="category_home"></a>
           <a href="catalog.html?category=Kiyim" class="rounded-full border border-slate-800 px-4 py-2 text-sm text-slate-200 hover:border-slate-600" data-i18n="category_clothes"></a>
           <a href="catalog.html?category=Aksessuar" class="rounded-full border border-slate-800 px-4 py-2 text-sm text-slate-200 hover:border-slate-600" data-i18n="category_accessory"></a>
+          <a href="catalog.html?category=Kitob" class="rounded-full border border-slate-800 px-4 py-2 text-sm text-slate-200 hover:border-slate-600" data-i18n="category_book"></a>
         </div>
       </section>
 
@@ -111,13 +117,13 @@
       </section>
     </main>
 
-    
-    <footer class="border-t border-slate-800 py-8 text-center text-sm text-slate-300">
+     <footer class="border-t border-slate-800 py-8 text-center text-sm text-slate-300">
       <p data-i18n="footer_note"></p>
       <a href="about.html" class="text-slate-300 hover:text-white" data-i18n="about"></a>
     </footer>
 
-    <nav class="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-800 bg-slate-950/95 backdrop-blur md:hidden">
+    <!-- ====== BOTTOM NAV ====== -->
+    <nav class="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-800 bg-slate-950/95 backdrop-blur md:hidden">
       <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-3 text-xs text-slate-300">
         <a href="index.html" class="flex flex-col items-center gap-1 text-white">
           <span>🏠</span>
@@ -139,6 +145,6 @@
       </div>
     </nav>
 
-      <script type="module" src="js/main.js"></script>
+        <script type="module" src="js/main.js"></script>
   </body>
 </html>

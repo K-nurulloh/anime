@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="uz" class="scroll-smooth">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Uzum Market — Admin</title>
+    <link rel="stylesheet" href="css/output.css" />
+  </head>
+  <body class="bg-gradient-to-b from-[#0b1d3a] to-[#0e2a47] text-white">
+    <!-- ====== NAVBAR ====== -->
+    <header class="fixed top-0 z-50 flex h-14 w-full items-center border-b border-slate-700 bg-[#0f2f52] px-4 md:hidden">
+      <a href="index.html" class="text-lg font-semibold text-white">Uzum Market</a>
+    </header>
+    <header class="hidden border-b border-slate-700 bg-[#0f2f52] md:block">
+      <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
+        <a href="index.html" class="text-xl font-bold text-white">Uzum Market Admin</a>
+        <nav class="flex items-center gap-3 text-sm">
+          <a href="index.html" class="text-slate-200 hover:text-white">Home</a>
+          <a href="orders.html" class="text-slate-200 hover:text-white">Orders</a>
+        </nav>
+      </div>
+    </header>
+
+    <!-- ====== ADMIN CHECK ====== -->
+    <main class="mx-auto max-w-6xl space-y-10 px-4 pb-24 pt-14 md:pt-16">
+      <div id="access-denied" class="hidden rounded-2xl border border-rose-400/40 bg-rose-900/30 p-6 text-center text-sm text-rose-100">
+        Access denied
+      </div>
+
+      <!-- ====== ORDERS ====== -->
+      <section id="admin-panel" class="hidden space-y-10">
+        <section id="products" class="space-y-4">
+          <h2 class="text-xl font-semibold text-white">Yangi mahsulot qo‘shish</h2>
+          <div class="rounded-2xl border border-slate-700 bg-[#0f2f52] p-6 shadow-sm">
+            <form id="admin-product-form" class="space-y-4">
+              <div class="grid gap-4 md:grid-cols-2">
+                <label class="space-y-2 text-sm text-slate-300">
+                  <span>Mahsulot nomi</span>
+                  <input id="product-title" required class="w-full rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-2 text-sm text-white" />
+                </label>
+                <label class="space-y-2 text-sm text-slate-300">
+                  <span>Kategoriya</span>
+                  <select id="product-category" class="w-full rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-2 text-sm text-white">
+                    <option value="Telefon">Telefon</option>
+                    <option value="Kino">Kino</option>
+                    <option value="Noutbuk">Noutbuk</option>
+                    <option value="Uy">Uy</option>
+                    <option value="Kiyim">Kiyim</option>
+                    <option value="Aksessuar">Aksessuar</option>
+                    <option value="Kitob">Kitob</option>
+                  </select>
+                </label>
+                <label class="space-y-2 text-sm text-slate-300">
+                  <span>Narx</span>
+                  <input id="product-price" type="number" min="0" required class="w-full rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-2 text-sm text-white" />
+                </label>
+                <label class="space-y-2 text-sm text-slate-300">
+                  <span>Eski narx (ixtiyoriy)</span>
+                  <input id="product-old-price" type="number" min="0" class="w-full rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-2 text-sm text-white" />
+                </label>
+              </div>
+              <label class="space-y-2 text-sm text-slate-300">
+                <span>Tavsif</span>
+                <textarea id="product-description" required rows="4" class="w-full rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-2 text-sm text-white"></textarea>
+              </label>
+              <label class="space-y-2 text-sm text-slate-300">
+                <span>Rasmlar (1-10)</span>
+                <input id="product-images" type="file" accept="image/*" multiple class="w-full rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-2 text-sm text-white" />
+              </label>
+              <div id="image-preview" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"></div>
+              <div id="admin-products-empty" class="hidden rounded-2xl border border-slate-700 bg-slate-800/60 p-4 text-sm text-slate-200">
+                Hali mahsulot qo‘shilmagan
+              </div>
+              <div id="admin-products-list" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"></div>
+              <button class="rounded-xl bg-blue-500 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-600">Saqlash</button>
+            </form>
+          </div>
+        </section>
+
+        <section id="comments" class="space-y-4">
+          <h2 class="text-xl font-semibold text-white">Kommentariyalar</h2>
+          <div id="comments-empty" class="hidden rounded-2xl border border-slate-700 bg-[#0f2f52] p-6 text-sm text-slate-200">
+            Hozircha izoh yo‘q
+          </div>
+          <div id="admin-comments" class="space-y-4"></div>
+        </section>
+
+        <section id="payments" class="space-y-4">
+          <h1 class="text-2xl font-semibold text-white">Tekshiruvdagi buyurtmalar</h1>
+          <div id="pending-empty" class="hidden rounded-2xl border border-slate-700 bg-[#0f2f52] p-6 text-sm text-slate-200">
+            Tekshiruvda buyurtma yo'q.
+          </div>
+          <div id="pending-orders" class="grid gap-4"></div>
+        </section>
+
+        <section class="space-y-4">
+          <h2 class="text-xl font-semibold text-white">Barcha buyurtmalar</h2>
+          <div id="orders-empty" class="hidden rounded-2xl border border-slate-700 bg-[#0f2f52] p-6 text-sm text-slate-200">
+            Hali buyurtmalar yo'q.
+          </div>
+          <div id="all-orders" class="grid gap-4"></div>
+        </section>
+      </section>
+    </main>
+
+    <!-- ====== RECEIPT VERIFICATION ====== -->
+    <div id="receipt-modal" class="fixed inset-0 hidden items-center justify-center bg-slate-900/80 p-4">
+      <div class="max-w-3xl rounded-2xl border border-slate-700 bg-[#0f2f52] p-4">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-semibold text-white">Receipt preview</h3>
+          <button id="receipt-close" class="text-slate-300">✕</button>
+        </div>
+        <img id="receipt-image" src="" alt="receipt" class="mt-4 max-h-[70vh] w-full rounded-xl object-contain" />
+      </div>
+    </div>
+
+    <script type="module" src="js/admin.js"></script>
+  </body>
+</html>

@@ -1,8 +1,10 @@
-import { ensureSeedData, getOrders, getCurrentUser } from './storage.js';
+import { ensureSeedData, getCurrentUser } from './storage.js';
 import { formatPrice, updateCartBadge } from './ui.js';
 import { applyTranslations, initLangSwitcher, t, getLang } from './i18n.js';
 import { fetchProducts } from './api.js';
+import { db, collection, query, where, getDocs, orderBy } from './firebase.js';
 
+// ====== INIT ======
 ensureSeedData();
 applyTranslations();
 initLangSwitcher();
@@ -16,12 +18,17 @@ const modalClose = document.querySelector('#modal-close');
 
 let productsMap = new Map();
 
-const formatStatus = (status) => t(status);
+// ====== HELPERS ======
+const formatStatus = (status) => {
+  if (status === 'pending_verification') return 'Tekshiruvda';
+  if (status === 'confirmed') return 'Muvaffaqiyatli to‘landi';
+  if (status === 'rejected') return 'To‘lov tasdiqlanmadi';
+  return t(status);
+};
 
+// ====== ORDERS ======
 const renderOrders = () => {
-  const currentUser = getCurrentUser();
-  const orders = getOrders();
-  const data = currentUser ? orders.filter((order) => order.userId === currentUser.id) : orders;
+  const data = window.__orders || [];
 
   if (!data.length) {
     emptyState.classList.remove('hidden');
@@ -32,7 +39,7 @@ const renderOrders = () => {
   ordersList.innerHTML = data
     .map(
       (order) => `
-      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4 shadow-sm">
+      <div class="rounded-2xl border border-slate-700 bg-[#0f2f52] p-4 shadow-sm">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div>
             <p class="text-xs text-slate-400">${t('order_id')}</p>
@@ -40,7 +47,7 @@ const renderOrders = () => {
           </div>
           <div>
             <p class="text-xs text-slate-400">${t('order_date')}</p>
-            <p class="text-sm text-slate-300">${new Date(order.date).toLocaleDateString(getLang() === 'ru' ? 'ru-RU' : 'uz-UZ')}</p>
+            <p class="text-sm text-slate-300">${new Date(order.createdAt?.toDate ? order.createdAt.toDate() : order.createdAt).toLocaleDateString(getLang() === 'ru' ? 'ru-RU' : 'uz-UZ')}</p>
           </div>
           <div>
             <p class="text-xs text-slate-400">${t('order_status')}</p>
@@ -52,7 +59,7 @@ const renderOrders = () => {
             <p class="text-xs text-slate-400">${t('total')}</p>
             <p class="font-semibold text-white">${formatPrice(order.total)} so'm</p>
           </div>
-          <button class="order-detail-btn rounded-lg border border-slate-700 px-3 py-1 text-xs text-slate-200" data-id="${
+          <button class="order-detail-btn rounded-lg bg-blue-500 px-3 py-1 text-xs font-semibold text-white hover:bg-blue-600" data-id="${
             order.id
           }">${t('details')}</button>
         </div>
@@ -62,13 +69,13 @@ const renderOrders = () => {
     .join('');
 };
 
+// ====== MODAL ======
 const openModal = (orderId) => {
-  const orders = getOrders();
-  const order = orders.find((item) => item.id === orderId);
+  const order = window.__orders?.find((item) => item.id === orderId);
   if (!order) return;
   modalContent.innerHTML = `
     <h3 class="text-lg font-semibold text-white">${order.id}</h3>
-    <p class="text-sm text-slate-400">${new Date(order.date).toLocaleString(getLang() === 'ru' ? 'ru-RU' : 'uz-UZ')}</p>
+    <p class="text-sm text-slate-400">${new Date(order.createdAt?.toDate ? order.createdAt.toDate() : order.createdAt).toLocaleString(getLang() === 'ru' ? 'ru-RU' : 'uz-UZ')}</p>
     <div class="mt-4 space-y-2">
       ${order.items
         .map((item) => {
@@ -99,9 +106,27 @@ modal.addEventListener('click', (event) => {
   }
 });
 
+// ====== DATA BOOTSTRAP ======
 const init = async () => {
   const { products } = await fetchProducts();
   productsMap = new Map(products.map((product) => [product.id, product]));
+  const currentUser = getCurrentUser();
+  if (!currentUser) {
+    emptyState.classList.remove('hidden');
+    ordersList.innerHTML = '';
+    return;
+  }
+  const snapshot = await getDocs(
+    query(
+      collection(db, 'orders'),
+      where('userId', '==', currentUser.id),
+      orderBy('createdAt', 'desc')
+    )
+  );
+  window.__orders = snapshot.docs.map((docSnap) => ({
+    id: docSnap.id,
+    ...docSnap.data(),
+  }));
   renderOrders();
 };
 

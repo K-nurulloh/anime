@@ -3,6 +3,7 @@ import { ensureSeedData, getCart, saveCart, getWishlist, saveWishlist } from './
 import { renderProductCard, renderSkeleton, showToast, updateCartBadge } from './ui.js';
 import { applyTranslations, initLangSwitcher, t } from './i18n.js';
 
+// ====== INIT ======
 ensureSeedData();
 applyTranslations();
 initLangSwitcher();
@@ -23,8 +24,10 @@ let filteredProducts = [];
 let currentIndex = 0;
 const batchSize = 12;
 
+// ====== HELPERS ======
 const shuffle = (items) => [...items].sort(() => Math.random() - 0.5);
 
+// ====== INFINITE SCROLL ======
 const renderNextBatch = () => {
   if (!productList) return;
   const nextItems = filteredProducts.slice(currentIndex, currentIndex + batchSize);
@@ -42,6 +45,7 @@ const resetList = () => {
   renderNextBatch();
 };
 
+// ====== FILTERS ======
 const applyFilters = () => {
   const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
   const category = categoryFilter ? categoryFilter.value : 'all';
@@ -107,6 +111,7 @@ const initCategoryChips = () => {
   });
 };
 
+// ====== CART ACTIONS ======
 const handleAddToCart = (productId) => {
   const cart = getCart();
   const existing = cart.find((item) => item.id === productId);
@@ -162,6 +167,7 @@ const initInfiniteScroll = () => {
   observer.observe(sentinel);
 };
 
+// ====== RECOMMENDED ======
 const renderRecommended = () => {
   if (!recommendedList) return;
   const items = shuffle(allProducts).slice(0, 8);
@@ -169,6 +175,7 @@ const renderRecommended = () => {
   initListActions(recommendedList);
 };
 
+// ====== DATA BOOTSTRAP ======
 const init = async () => {
   if (!productList) return;
   productList.innerHTML = renderSkeleton(batchSize);

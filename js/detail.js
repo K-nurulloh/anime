@@ -1,8 +1,18 @@
 import { fetchProducts } from './api.js';
-import { ensureSeedData, getCart, saveCart, getWishlist, saveWishlist } from './storage.js';
+import {
+  ensureSeedData,
+  getCart,
+  saveCart,
+  getWishlist,
+  saveWishlist,
+  getCurrentUser,
+  getProductComments,
+  saveProductComments,
+} from './storage.js';
 import { renderProductCard, showToast, updateCartBadge } from './ui.js';
 import { applyTranslations, initLangSwitcher, t, getLang } from './i18n.js';
 
+// ====== INIT ======
 ensureSeedData();
 applyTranslations();
 initLangSwitcher();
@@ -12,28 +22,42 @@ const detailWrapper = document.querySelector('#detail-wrapper');
 const similarList = document.querySelector('#similar-list');
 const moreList = document.querySelector('#more-list');
 const errorBox = document.querySelector('#error-box');
+const commentForm = document.querySelector('#comment-form');
+const commentText = document.querySelector('#comment-text');
+const commentRating = document.querySelector('#comment-rating');
+const commentsList = document.querySelector('#comments-list');
+const commentsEmpty = document.querySelector('#comments-empty');
+const commentsLoginNote = document.querySelector('#comments-login-note');
 
 const params = new URLSearchParams(window.location.search);
-const productId = Number(params.get('id'));
+const productId = params.get('id');
 
+// ====== GALLERY ======
 const renderGallery = (images, title) => {
   const unique = images.length
     ? images
     : ['https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=800&q=80'];
+  const thumbnails = unique.slice(0, 10);
   return `
-    <div class="grid gap-3">
-      ${unique
-        .map(
-          (image) => `
-        <div class="overflow-hidden rounded-2xl bg-slate-900">
-          <img src="${image}" alt="${title}" class="h-72 w-full object-cover" />
-        </div>`
-        )
-        .join('')}
+    <div class="space-y-3">
+      <div class="overflow-hidden rounded-2xl bg-slate-900">
+        <img id="main-image" src="${thumbnails[0]}" alt="${title}" class="h-72 w-full object-cover" />
+      </div>
+      <div class="flex gap-3 overflow-x-auto">
+        ${thumbnails
+          .map(
+            (image, index) => `
+          <button class="gallery-thumb flex-shrink-0 overflow-hidden rounded-xl border border-slate-800" data-gallery-thumb data-image="${image}">
+            <img src="${image}" alt="${title} thumbnail ${index + 1}" class="h-16 w-16 object-cover" />
+          </button>`
+          )
+          .join('')}
+      </div>
     </div>
   `;
 };
 
+// ====== WISHLIST ======
 const handleWishlist = (productId) => {
   const wishlist = getWishlist();
   const index = wishlist.findIndex((item) => item.id === productId);
@@ -50,6 +74,7 @@ const handleWishlist = (productId) => {
   });
 };
 
+// ====== CART ACTIONS ======
 const addToCart = (productId) => {
   const cart = getCart();
   const existing = cart.find((item) => item.id === productId);
@@ -63,6 +88,7 @@ const addToCart = (productId) => {
   showToast(t('cart_added'));
 };
 
+// ====== CARD ACTIONS ======
 const initCardActions = (container) => {
   container.addEventListener('click', (event) => {
     const cartBtn = event.target.closest('.add-cart-btn');
@@ -76,6 +102,60 @@ const initCardActions = (container) => {
   });
 };
 
+// ====== COMMENTS ======
+const getCommentsForProduct = () => {
+  const comments = getProductComments();
+  return comments[productId] || [];
+};
+
+const renderComments = () => {
+  const comments = getCommentsForProduct().sort(
+    (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+  );
+  if (!comments.length) {
+    commentsEmpty.classList.remove('hidden');
+    commentsList.innerHTML = '';
+    return;
+  }
+  commentsEmpty.classList.add('hidden');
+  commentsList.innerHTML = comments
+    .map(
+      (comment) => `
+      <article class="rounded-2xl border border-slate-800 bg-slate-900 p-4 text-sm text-slate-200">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <p class="font-semibold text-white">${comment.userName} (${comment.userPhone || 'Telefon: N/A'})</p>
+          <span class="text-xs text-slate-400">${new Date(comment.createdAt).toLocaleString(getLang() === 'ru' ? 'ru-RU' : 'uz-UZ')}</span>
+        </div>
+        ${comment.rating ? `<p class="mt-1 text-xs text-amber-400">Reyting: ${comment.rating}/5</p>` : ''}
+        <p class="mt-2 text-slate-300">${comment.text}</p>
+        ${
+          comment.replies?.length
+            ? `
+          <div class="mt-3 space-y-2 border-t border-slate-800 pt-3">
+            ${comment.replies
+              .map(
+                (reply) => `
+              <div class="rounded-xl border border-slate-800 bg-slate-950 p-3 text-xs text-slate-200">
+                <p class="font-semibold text-white">${reply.adminName}</p>
+                <p class="mt-1 text-slate-300">${reply.text}</p>
+                <span class="mt-2 block text-[10px] text-slate-400">${new Date(reply.createdAt).toLocaleString(
+                  getLang() === 'ru' ? 'ru-RU' : 'uz-UZ'
+                )}</span>
+              </div>
+            `
+              )
+              .join('')}
+          </div>
+        `
+            : ''
+        }
+      </article>
+    `
+    )
+    .join('');
+};
+
+// ====== DATA BOOTSTRAP ======
 const init = async () => {
   const { products, error } = await fetchProducts();
   if (error) {
@@ -83,29 +163,38 @@ const init = async () => {
     errorBox.classList.remove('hidden');
     return;
   }
-  const product = products.find((item) => item.id === productId);
+  const product = products.find((item) => String(item.id) === String(productId));
   if (!product) {
     errorBox.textContent = t('not_found');
     errorBox.classList.remove('hidden');
     return;
   }
 
+  const images = product.images?.length ? product.images : product.img ? [product.img] : [];
+  const oldPrice = product.oldPrice && product.oldPrice > product.price ? product.oldPrice : product.price;
+
   detailWrapper.innerHTML = `
     <div class="grid gap-8 lg:grid-cols-[1.1fr_1fr]">
-      ${renderGallery([product.img], product.title)}
+      ${renderGallery(images, product.title)}
       <div class="flex flex-col gap-4">
         <div>
           <p class="text-sm text-slate-300">${product.category}</p>
           <h1 class="text-3xl font-bold text-white">${product.title}</h1>
         </div>
         <div class="flex items-center gap-2 text-amber-500">
-          <span>★ ${product.rating}</span>
+          <span>★ ${product.rating ?? 4.8}</span>
           <span class="text-slate-400">(stock: ${Math.floor(5 + Math.random() * 30)})</span>
         </div>
         <p class="text-slate-300">${product.desc}</p>
         <div class="flex items-center gap-3">
           <span class="text-2xl font-bold text-white">${product.price.toLocaleString(getLang() === 'ru' ? 'ru-RU' : 'uz-UZ')} so'm</span>
-          <span class="text-sm text-slate-400 line-through">${product.oldPrice.toLocaleString(getLang() === 'ru' ? 'ru-RU' : 'uz-UZ')} so'm</span>
+          ${
+            oldPrice > product.price
+              ? `<span class="text-sm text-slate-400 line-through">${oldPrice.toLocaleString(
+                  getLang() === 'ru' ? 'ru-RU' : 'uz-UZ'
+                )} so'm</span>`
+              : ''
+          }
         </div>
         <div class="flex flex-wrap gap-3">
           <button class="rounded-xl bg-white px-5 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-100" data-cart-add>${t(
@@ -129,6 +218,13 @@ const init = async () => {
 
   document.querySelector('[data-cart-add]').addEventListener('click', () => addToCart(product.id));
   wishlistBtn.addEventListener('click', () => handleWishlist(product.id));
+  document.querySelectorAll('[data-gallery-thumb]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const mainImage = document.querySelector('#main-image');
+      if (!mainImage) return;
+      mainImage.src = button.dataset.image;
+    });
+  });
 
   const similar = products.filter((item) => item.category === product.category && item.id !== product.id);
   similarList.innerHTML = similar.slice(0, 8).map(renderProductCard).join('');
@@ -140,10 +236,49 @@ const init = async () => {
 
   initCardActions(similarList);
   initCardActions(moreList);
+  renderComments();
+  const currentUser = getCurrentUser();
+  if (!currentUser) {
+    commentForm.classList.add('hidden');
+    commentsLoginNote.classList.remove('hidden');
+  } else {
+    commentForm.classList.remove('hidden');
+    commentsLoginNote.classList.add('hidden');
+  }
 };
 
 init();
 
 window.addEventListener('langChanged', () => {
   init();
+});
+
+commentForm?.addEventListener('submit', (event) => {
+  event.preventDefault();
+  const currentUser = getCurrentUser();
+  if (!currentUser) {
+    commentsLoginNote.classList.remove('hidden');
+    return;
+  }
+  const text = commentText.value.trim();
+  if (!text) return;
+  const rating = commentRating.value ? Number(commentRating.value) : null;
+  const comments = getProductComments();
+  const newComment = {
+    id: `c-${Date.now()}`,
+    productId,
+    userId: currentUser.id,
+    userName: currentUser.name,
+    userPhone: currentUser.phone,
+    text,
+    rating,
+    createdAt: new Date().toISOString(),
+    replies: [],
+  };
+  const list = comments[productId] || [];
+  comments[productId] = [newComment, ...list];
+  saveProductComments(comments);
+  commentText.value = '';
+  commentRating.value = '';
+  renderComments();
 });

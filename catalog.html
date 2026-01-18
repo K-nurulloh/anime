@@ -7,7 +7,11 @@
     <link rel="stylesheet" href="css/output.css" />
   </head>
   <body class="bg-slate-950 text-white">
-    <header class="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/90 backdrop-blur">
+    <!-- ====== NAVBAR ====== -->
+    <header class="fixed top-0 z-50 flex h-14 w-full items-center border-b border-slate-800 bg-slate-950/95 px-4 md:hidden">
+      <a href="index.html" class="text-lg font-semibold text-white">Uzum Market</a>
+    </header>
+    <header class="sticky top-0 z-50 hidden border-b border-slate-800 bg-slate-950/90 backdrop-blur md:block">
       <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4">
         <a href="index.html" class="text-xl font-bold text-white">Uzum Market</a>
         <nav class="flex flex-1 flex-wrap items-center gap-3">
@@ -34,6 +38,7 @@
             <option value="Uy" data-i18n="category_home"></option>
             <option value="Kiyim" data-i18n="category_clothes"></option>
             <option value="Aksessuar" data-i18n="category_accessory"></option>
+            <option value="Kitob" data-i18n="category_book"></option>
           </select>
           <select id="priceSort" class="rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-white">
             <option value="default" data-i18n="sort_default"></option>
@@ -59,7 +64,7 @@
       </div>
     </header>
 
-    <main class="mx-auto max-w-6xl space-y-10 px-4 py-10">
+    <main class="mx-auto max-w-6xl space-y-10 px-4 pb-24 pt-14 md:pt-20">
       <section class="space-y-4">
         <div class="flex items-center justify-between">
           <h1 class="text-2xl font-semibold text-white" data-i18n="catalog_title"></h1>
@@ -72,6 +77,7 @@
           <button class="category-chip rounded-full border border-slate-800 px-4 py-2 text-sm text-slate-200 hover:border-slate-600" data-category="Uy" data-i18n="category_home"></button>
           <button class="category-chip rounded-full border border-slate-800 px-4 py-2 text-sm text-slate-200 hover:border-slate-600" data-category="Kiyim" data-i18n="category_clothes"></button>
           <button class="category-chip rounded-full border border-slate-800 px-4 py-2 text-sm text-slate-200 hover:border-slate-600" data-category="Aksessuar" data-i18n="category_accessory"></button>
+          <button class="category-chip rounded-full border border-slate-800 px-4 py-2 text-sm text-slate-200 hover:border-slate-600" data-category="Kitob" data-i18n="category_book"></button>
         </div>
       </section>
 
@@ -85,7 +91,8 @@
       </section>
     </main>
 
-    <nav class="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-800 bg-slate-950/95 backdrop-blur md:hidden">
+    <!-- ====== BOTTOM NAV ====== -->
+    <nav class="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-800 bg-slate-950/95 backdrop-blur md:hidden">
       <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-3 text-xs text-slate-300">
         <a href="index.html" class="flex flex-col items-center gap-1">
           <span>🏠</span>

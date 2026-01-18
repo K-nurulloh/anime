@@ -11,7 +11,15 @@ import { fetchProducts } from './api.js';
 import { formatPrice, showToast, updateCartBadge } from './ui.js';
 import { applyTranslations, initLangSwitcher, t } from './i18n.js';
 import { STORE_PAYMENT } from './config.js';
+import {
+  db,
+  uploadImageToStorage,
+  serverTimestamp,
+  collection,
+  addDoc,
+} from './firebase.js';
 
+// ====== INIT ======
 ensureSeedData();
 applyTranslations();
 initLangSwitcher();
@@ -26,9 +34,15 @@ const receiptPreview = document.querySelector('#receipt-preview');
 const receiptSubmit = document.querySelector('#receipt-submit');
 const copyButtons = document.querySelectorAll('.copy-btn');
 
+// ====== STATE ======
 let productsMap = new Map();
 let receiptData = null;
+let receiptFile = null;
 
+// ====== HELPERS ======
+const normalizePhone = (value) => (value || '').toString().replace(/\D/g, '');
+
+// ====== SUMMARY ======
 const calculateSummary = () => {
   const cart = getCart();
   const subtotal = cart.reduce((sum, item) => {
@@ -51,6 +65,7 @@ const calculateSummary = () => {
   return { subtotal, delivery, total };
 };
 
+// ====== ORDER CREATION ======
 const createOrder = ({ status, paymentMethod, receipt }) => {
   const cart = getCart();
   if (!cart.length) {
@@ -74,7 +89,7 @@ const createOrder = ({ status, paymentMethod, receipt }) => {
     receipt: receipt || null,
     contact: {
       name: formData.get('name'),
-      phone: formData.get('phone'),
+      phone: normalizePhone(formData.get('phone')),
       city: formData.get('city'),
       district: formData.get('district'),
       address: formData.get('address'),
@@ -100,6 +115,7 @@ const createOrder = ({ status, paymentMethod, receipt }) => {
   }, 800);
 };
 
+// ====== DATA BOOTSTRAP ======
 const init = async () => {
   const { products } = await fetchProducts();
   productsMap = new Map(products.map((product) => [product.id, product]));
@@ -114,6 +130,7 @@ const init = async () => {
   document.querySelector('#store-bank').textContent = STORE_PAYMENT.bank;
 };
 
+// ====== RECEIPT VERIFICATION ======
 const showReceiptStep = () => {
   receiptStep.classList.remove('hidden');
   receiptStep.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -138,6 +155,7 @@ paymentDoneBtn.addEventListener('click', () => {
 receiptInput.addEventListener('change', () => {
   const file = receiptInput.files?.[0];
   if (!file) return;
+  receiptFile = file;
   const reader = new FileReader();
   reader.onload = () => {
     receiptData = {
@@ -151,18 +169,47 @@ receiptInput.addEventListener('change', () => {
   reader.readAsDataURL(file);
 });
 
-receiptSubmit.addEventListener('click', () => {
-  if (!receiptData) {
+receiptSubmit.addEventListener('click', async () => {
+  if (!receiptData || !receiptFile) {
     showToast(t('receipt_required'), 'error');
     return;
   }
-  createOrder({
-    status: 'pending_verification',
-    paymentMethod: 'card_transfer',
-    receipt: receiptData,
-  });
+  const currentUser = getCurrentUser();
+  if (!currentUser) {
+    showToast(t('login_error'), 'error');
+    return;
+  }
+  try {
+    const receiptUrl = await uploadImageToStorage(
+      receiptFile,
+      `receipts/${currentUser.id}`
+    );
+    const cart = getCart();
+    const { total } = calculateSummary();
+    const formData = new FormData(form);
+    await addDoc(collection(db, 'orders'), {
+      userId: currentUser.id,
+      userName: formData.get('name'),
+      userPhone: normalizePhone(formData.get('phone')),
+      items: cart,
+      total,
+      status: 'pending_verification',
+      receiptUrl,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    saveCart([]);
+    showToast(t('order_created'));
+    setTimeout(() => {
+      window.location.href = 'orders.html';
+    }, 800);
+  } catch (error) {
+    console.error('Order create error', error);
+    showToast(t('fetch_error'), 'error');
+  }
 });
 
+// ====== COPY ACTIONS ======
 copyButtons.forEach((button) => {
   button.addEventListener('click', () => {
     const target = document.querySelector(`#${button.dataset.copyTarget}`);

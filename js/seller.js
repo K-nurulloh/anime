@@ -2,6 +2,7 @@ import { ensureSeedData, getCurrentUser, readStorage, writeStorage, getOrders, s
 import { formatPrice, updateCartBadge, showToast } from './ui.js';
 import { applyTranslations, initLangSwitcher, t, getLang } from './i18n.js';
 
+// ====== INIT ======
 ensureSeedData();
 applyTranslations();
 initLangSwitcher();
@@ -17,6 +18,7 @@ const receiptModal = document.querySelector('#receipt-modal');
 const receiptImage = document.querySelector('#receipt-image');
 const receiptClose = document.querySelector('#receipt-close');
 
+// ====== PRODUCTS ======
 const renderProducts = () => {
   const products = readStorage('sellerProducts', []);
   if (!products.length) {
@@ -48,6 +50,7 @@ const renderProducts = () => {
     .join('');
 };
 
+// ====== ORDERS ======
 const renderOrders = () => {
   const orders = getOrders();
   ordersList.innerHTML = orders
@@ -64,6 +67,7 @@ const renderOrders = () => {
     .join('');
 };
 
+// ====== PENDING PAYMENTS ======
 const renderPendingPayments = () => {
   const orders = getOrders().filter((order) => order.status === 'pending_verification');
   if (!orders.length) {
@@ -97,6 +101,7 @@ const renderPendingPayments = () => {
     .join('');
 };
 
+// ====== ACCESS ======
 const init = () => {
   const currentUser = getCurrentUser();
   if (!currentUser || currentUser.role !== 'seller') {
@@ -111,6 +116,7 @@ const init = () => {
   renderPendingPayments();
 };
 
+// ====== STATUS ACTIONS ======
 const updateOrderStatus = (orderId, status) => {
   const orders = getOrders();
   const index = orders.findIndex((order) => order.id === orderId);
@@ -121,6 +127,7 @@ const updateOrderStatus = (orderId, status) => {
   renderPendingPayments();
 };
 
+// ====== PRODUCT CRUD ======
 productForm.addEventListener('submit', (event) => {
   event.preventDefault();
   const formData = new FormData(productForm);
@@ -175,6 +182,7 @@ productList.addEventListener('click', (event) => {
   }
 });
 
+// ====== RECEIPT REVIEW ======
 pendingList.addEventListener('click', (event) => {
   const receiptBtn = event.target.closest('.receipt-btn');
   const confirmBtn = event.target.closest('.confirm-btn');
