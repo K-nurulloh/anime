@@ -40,15 +40,15 @@ const renderGallery = (images, title) => {
   const thumbnails = unique.slice(0, 10);
   return `
     <div class="space-y-3">
-      <div class="overflow-hidden rounded-2xl bg-slate-900">
-        <img id="main-image" src="${thumbnails[0]}" alt="${title}" class="h-72 w-full object-cover" />
+      <div class="overflow-hidden rounded-2xl bg-white/5">
+        <img id="main-image" src="${thumbnails[0]}" alt="${title}" class="h-56 w-full object-cover" />
       </div>
       <div class="flex gap-3 overflow-x-auto">
         ${thumbnails
           .map(
             (image, index) => `
-          <button class="gallery-thumb flex-shrink-0 overflow-hidden rounded-xl border border-slate-800" data-gallery-thumb data-image="${image}">
-            <img src="${image}" alt="${title} thumbnail ${index + 1}" class="h-16 w-16 object-cover" />
+          <button class="gallery-thumb flex-shrink-0 overflow-hidden rounded-xl border border-white/10" data-gallery-thumb data-image="${image}">
+            <img src="${image}" alt="${title} thumbnail ${index + 1}" class="h-14 w-14 object-cover" />
           </button>`
           )
           .join('')}
@@ -174,18 +174,18 @@ const init = async () => {
   const oldPrice = product.oldPrice && product.oldPrice > product.price ? product.oldPrice : product.price;
 
   detailWrapper.innerHTML = `
-    <div class="grid gap-8 lg:grid-cols-[1.1fr_1fr]">
+    <div class="grid gap-6 lg:grid-cols-[1.1fr_1fr]">
       ${renderGallery(images, product.title)}
-      <div class="flex flex-col gap-4">
+      <div class="section flex flex-col gap-4">
         <div>
-          <p class="text-sm text-slate-300">${product.category}</p>
+          <p class="text-sm text-white/70">${product.category}</p>
           <h1 class="text-3xl font-bold text-white">${product.title}</h1>
         </div>
-        <div class="flex items-center gap-2 text-amber-500">
+        <div class="flex items-center gap-2 text-amber-300">
           <span>★ ${product.rating ?? 4.8}</span>
-          <span class="text-slate-400">(stock: ${Math.floor(5 + Math.random() * 30)})</span>
+          <span class="text-white/60">(stock: ${Math.floor(5 + Math.random() * 30)})</span>
         </div>
-        <p class="text-slate-300">${product.desc}</p>
+        <p class="text-white/70">${product.desc}</p>
         <div class="flex items-center gap-3">
           <span class="text-2xl font-bold text-white">${product.price.toLocaleString(getLang() === 'ru' ? 'ru-RU' : 'uz-UZ')} so'm</span>
           ${
@@ -196,15 +196,7 @@ const init = async () => {
               : ''
           }
         </div>
-        <div class="flex flex-wrap gap-3">
-          <button class="rounded-xl bg-white px-5 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-100" data-cart-add>${t(
-            'add_to_cart'
-          )}</button>
-          <button class="rounded-xl border border-slate-700 px-5 py-3 text-sm text-slate-200 hover:border-slate-500" data-wishlist-toggle>🤍 ${t(
-            'wishlist'
-          )}</button>
-        </div>
-        <div class="rounded-2xl bg-slate-900 p-4 text-sm text-slate-300">
+        <div class="rounded-2xl bg-white/5 p-4 text-sm text-white/70">
           <p>${t('delivery_note')}</p>
           <p>${t('warranty_note')}</p>
         </div>
@@ -216,7 +208,21 @@ const init = async () => {
   const wishlistBtn = document.querySelector('[data-wishlist-toggle]');
   wishlistBtn.textContent = isSaved ? `❤️ ${t('wishlist')}` : `🤍 ${t('wishlist')}`;
 
-  document.querySelector('[data-cart-add]').addEventListener('click', () => addToCart(product.id));
+  const actionPrice = document.querySelector('#detail-action-price');
+  const actionCart = document.querySelector('#detail-action-cart');
+  const actionBuy = document.querySelector('#detail-action-buy');
+  if (actionPrice) {
+    actionPrice.textContent = `${product.price.toLocaleString(getLang() === 'ru' ? 'ru-RU' : 'uz-UZ')} so'm`;
+  }
+  if (actionCart) {
+    actionCart.addEventListener('click', () => addToCart(product.id));
+  }
+  if (actionBuy) {
+    actionBuy.addEventListener('click', () => {
+      addToCart(product.id);
+      window.location.href = 'checkout.html';
+    });
+  }
   wishlistBtn.addEventListener('click', () => handleWishlist(product.id));
   document.querySelectorAll('[data-gallery-thumb]').forEach((button) => {
     button.addEventListener('click', () => {

@@ -61,7 +61,7 @@ const renderCart = () => {
       const product = productsMap.get(item.id);
       if (!product) return '';
       return `
-        <div class="flex flex-col gap-4 rounded-2xl border border-slate-800 bg-slate-900 p-4 shadow-sm md:flex-row md:items-center">
+        <div class="flex flex-col gap-4 rounded-2xl glass p-4 shadow-sm md:flex-row md:items-center">
           <img src="${product.img}" alt="${product.title}" class="h-24 w-24 rounded-xl object-cover" />
           <div class="flex-1">
             <h3 class="text-sm font-semibold text-white">${product.title}</h3>

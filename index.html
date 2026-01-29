@@ -5,13 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Uzum Market — Katalog</title>
     <link rel="stylesheet" href="css/output.css" />
+    <link rel="stylesheet" href="css/theme.css" />
   </head>
-  <body class="bg-slate-950 text-white">
+  <body class="anime-bg text-white">
     <!-- ====== NAVBAR ====== -->
-    <header class="fixed top-0 z-50 flex h-14 w-full items-center border-b border-slate-800 bg-slate-950/95 px-4 md:hidden">
+    <header class="fixed top-0 z-50 flex h-14 w-full items-center glass-soft px-4 md:hidden">
       <a href="index.html" class="text-lg font-semibold text-white">Uzum Market</a>
     </header>
-    <header class="sticky top-0 z-50 hidden border-b border-slate-800 bg-slate-950/90 backdrop-blur md:block">
+    <header class="sticky top-0 z-50 hidden glass-soft backdrop-blur md:block">
       <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4">
         <a href="index.html" class="text-xl font-bold text-white">Uzum Market</a>
         <nav class="flex flex-1 flex-wrap items-center gap-3">
@@ -63,88 +64,110 @@
         </div>
       </div>
 
-         </header>
+      </header>
 
-    <main class="mx-auto max-w-6xl space-y-12 px-4 pb-24 pt-14 md:pt-20">
-      <section class="rounded-3xl bg-gradient-to-r from-slate-900 via-slate-950 to-slate-900 p-8 shadow-sm">
-        <div class="max-w-xl space-y-4">
-          <p class="text-sm uppercase tracking-wide text-slate-300" data-i18n="hero_tag"></p>
-          <h1 class="text-3xl font-bold text-white" data-i18n="hero_title"></h1>
-          <p class="text-slate-300" data-i18n="hero_subtitle"></p>
-          <a
-            href="#catalog"
-            class="inline-flex rounded-xl bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-100"
-            data-i18n="hero_cta"
-          ></a>
+    <main class="bottom-safe mx-auto max-w-6xl space-y-10 px-4 pt-14 md:pt-20">
+      <section class="section">
+        <div class="carousel news-carousel">
+          <div id="promo-track" class="track news-track" data-carousel="interval" data-interval="4000">
+            <article class="promo-slide">
+              <div class="promo-card">
+                <p class="text-xs text-white/70">Weekly Promo</p>
+                <h3 class="mt-2 text-2xl font-semibold">Mecha lineup: limited glow</h3>
+                <p class="mt-2 text-sm text-white/70">Cyan chrome figures with hologram bases.</p>
+                <button class="pill-btn mt-4 text-sm">Explore drop</button>
+              </div>
+            </article>
+            <article class="promo-slide">
+              <div class="promo-card">
+                <p class="text-xs text-white/70">Collector Set</p>
+                <h3 class="mt-2 text-2xl font-semibold">Ghibli plush bundle</h3>
+                <p class="mt-2 text-sm text-white/70">Soft glow plushies with collector cards.</p>
+                <button class="pill-btn mt-4 text-sm">See bundle</button>
+              </div>
+            </article>
+            <article class="promo-slide">
+              <div class="promo-card">
+                <p class="text-xs text-white/70">New Arrival</p>
+                <h3 class="mt-2 text-2xl font-semibold">Arcade hero set</h3>
+                <p class="mt-2 text-sm text-white/70">Neon armor figures with LED aura.</p>
+                <button class="pill-btn mt-4 text-sm">Shop now</button>
+              </div>
+            </article>
+          </div>
+          <div id="promo-dots" class="dots"></div>
         </div>
       </section>
 
       <section class="space-y-4">
         <div class="flex items-center justify-between">
-          <h2 class="text-xl font-semibold text-white" data-i18n="categories_title"></h2>
-          <a href="catalog.html" class="text-sm text-slate-300 hover:text-white" data-i18n="catalog"></a>
+          <h2 class="heading-lg" data-i18n="categories_title"></h2>
+          <a href="catalog.html" class="text-sm text-white/70 hover:text-white" data-i18n="catalog"></a>
         </div>
-        <div class="flex flex-wrap gap-3">
-          <a href="catalog.html?category=Telefon" class="rounded-full border border-slate-800 px-4 py-2 text-sm text-slate-200 hover:border-slate-600" data-i18n="category_phone"></a>
-          <a href="catalog.html?category=Kino" class="rounded-full border border-slate-800 px-4 py-2 text-sm text-slate-200 hover:border-slate-600" data-i18n="category_kino"></a>
-          <a href="catalog.html?category=Noutbuk" class="rounded-full border border-slate-800 px-4 py-2 text-sm text-slate-200 hover:border-slate-600" data-i18n="category_laptop"></a>
-          <a href="catalog.html?category=Uy" class="rounded-full border border-slate-800 px-4 py-2 text-sm text-slate-200 hover:border-slate-600" data-i18n="category_home"></a>
-          <a href="catalog.html?category=Kiyim" class="rounded-full border border-slate-800 px-4 py-2 text-sm text-slate-200 hover:border-slate-600" data-i18n="category_clothes"></a>
-          <a href="catalog.html?category=Aksessuar" class="rounded-full border border-slate-800 px-4 py-2 text-sm text-slate-200 hover:border-slate-600" data-i18n="category_accessory"></a>
-          <a href="catalog.html?category=Kitob" class="rounded-full border border-slate-800 px-4 py-2 text-sm text-slate-200 hover:border-slate-600" data-i18n="category_book"></a>
+        <div class="chip-row categories-grid">
+          <a href="catalog.html?category=Telefon" class="chip">📱 <span data-i18n="category_phone"></span></a>
+          <a href="catalog.html?category=Kino" class="chip">🎬 <span data-i18n="category_kino"></span></a>
+          <a href="catalog.html?category=Noutbuk" class="chip">💻 <span data-i18n="category_laptop"></span></a>
+          <a href="catalog.html?category=Uy" class="chip">🏠 <span data-i18n="category_home"></span></a>
+          <a href="catalog.html?category=Kiyim" class="chip">👕 <span data-i18n="category_clothes"></span></a>
+          <a href="catalog.html?category=Aksessuar" class="chip">🧸 <span data-i18n="category_accessory"></span></a>
+          <a href="catalog.html?category=Kitob" class="chip">📚 <span data-i18n="category_book"></span></a>
+        </div>
+      </section>
+
+      <section class="space-y-4">
+        <div class="flex items-center justify-between">
+          <h2 class="heading-lg">✨ New Drops</h2>
+          <a href="catalog.html" class="text-sm text-white/70 hover:text-white">Barchasi →</a>
+        </div>
+        <div class="carousel">
+          <div id="new-drops-row" class="track"></div>
+          <div id="new-drops-dots" class="dots"></div>
         </div>
       </section>
 
       <section id="catalog" class="space-y-6">
         <div class="flex items-center justify-between">
-          <h2 class="text-xl font-semibold text-white" data-i18n="catalog_title"></h2>
-          <p class="text-sm text-slate-300" data-i18n="catalog_subtitle"></p>
+          <h2 class="heading-lg">🔥 Popular</h2>
+          <p class="text-sm text-white/70" data-i18n="catalog_subtitle"></p>
         </div>
         <div id="error-box" class="hidden rounded-2xl bg-rose-500/10 px-4 py-3 text-sm text-rose-200"></div>
-        <div id="product-list" class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"></div>
+        <div id="product-list" class="products-grid"></div>
         <div id="loader" class="flex justify-center">
-          <div class="h-10 w-10 animate-spin rounded-full border-4 border-slate-800 border-t-slate-200"></div>
+          <div class="h-10 w-10 animate-spin rounded-full border-4 border-white/20 border-t-white/70"></div>
         </div>
         <div id="sentinel" class="h-4"></div>
       </section>
-
-      <section class="space-y-6">
-        <div class="flex items-center justify-between">
-          <h2 class="text-xl font-semibold text-white" data-i18n="recommended_title"></h2>
-          <a href="seller.html" class="text-sm text-slate-300 hover:text-white" data-i18n="seller_panel"></a>
-        </div>
-        <div id="recommended-list" class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4"></div>
-      </section>
     </main>
 
-     <footer class="border-t border-slate-800 py-8 text-center text-sm text-slate-300">
+     <footer class="border-t border-slate-800 py-8 text-center text-sm text-white/70">
       <p data-i18n="footer_note"></p>
-      <a href="about.html" class="text-slate-300 hover:text-white" data-i18n="about"></a>
+      <a href="about.html" class="text-white/70 hover:text-white" data-i18n="about"></a>
     </footer>
 
     <!-- ====== BOTTOM NAV ====== -->
-    <nav class="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-800 bg-slate-950/95 backdrop-blur md:hidden">
-      <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-3 text-xs text-slate-300">
-        <a href="index.html" class="flex flex-col items-center gap-1 text-white">
+    <nav class="bottom-nav fixed bottom-0 left-0 right-0 z-50 border border-white/10 glass-soft md:hidden">
+      <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-3 text-xs text-white/70">
+        <a href="index.html" class="nav-item active text-white">
           <span>🏠</span>
           <span data-i18n="home"></span>
         </a>
-        <a href="catalog.html" class="flex flex-col items-center gap-1">
+        <a href="catalog.html" class="nav-item">
           <span>🛍️</span>
           <span data-i18n="catalog"></span>
         </a>
-        <a href="cart.html" class="relative flex flex-col items-center gap-1">
+        <a href="cart.html" class="nav-item relative">
           <span>🛒</span>
           <span data-i18n="cart"></span>
           <span class="absolute -right-2 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-white text-[10px] font-semibold text-slate-900" data-cart-count>0</span>
         </a>
-        <a href="account.html" class="flex flex-col items-center gap-1">
+        <a href="account.html" class="nav-item">
           <span>👤</span>
           <span data-i18n="account"></span>
         </a>
       </div>
     </nav>
 
-        <script type="module" src="js/main.js"></script>
+       <script type="module" src="js/main.js"></script>
   </body>
 </html>

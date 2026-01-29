@@ -18,48 +18,31 @@ export const renderProductCard = (product) => {
     ? Math.round(((oldPrice - product.price) / oldPrice) * 100)
     : null;
   return `
-    <article class="group rounded-2xl border border-slate-800 bg-slate-900 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
-      <div class="relative overflow-hidden rounded-t-2xl bg-slate-950">
-        <img src="${image}" alt="${product.title}" class="h-48 w-full object-cover transition duration-300 group-hover:scale-105" loading="lazy" />
-        ${
-          discountPercent
-            ? `<span class="absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-slate-900">-${discountPercent}%</span>`
-            : ''
-        }
-        <button class="wishlist-btn absolute right-3 top-3 rounded-full bg-white/90 p-2 text-lg" data-id="${
-          product.id
-        }" aria-label="Wishlist">
-          ${isSaved ? '❤️' : '🤍'}
-        </button>
-      </div>
-      <div class="flex flex-col gap-3 p-4">
-        <div>
-          <p class="text-xs text-slate-300">${product.category}</p>
-          <h3 class="line-clamp-2 text-sm font-semibold text-white">${
-            product.title
-          }</h3>
-        </div>
-        <div class="flex items-center gap-2 text-xs text-amber-500">
-          <span>★ ${rating}</span>
-          <span class="text-slate-400">(120+)</span>
-        </div>
-        <div class="flex items-center gap-2">
-          <span class="text-lg font-bold text-white">${formatPrice(
-            product.price
-          )} so'm</span>
+    <article class="product-card">
+      <a href="detail.html?id=${product.id}" class="pc-media">
+        <div class="pc-badges">
+          <span class="pc-pill">★ ${rating}</span>
           ${
-            oldPrice
-              ? `<span class="text-xs text-slate-400 line-through">${formatPrice(oldPrice)} so'm</span>`
+            discountPercent
+              ? `<span class="pc-pill">-${discountPercent}%</span>`
               : ''
           }
+          <button class="wishlist-btn pc-pill" data-id="${product.id}" aria-label="Wishlist">
+            ${isSaved ? '❤️' : '🤍'}
+          </button>
         </div>
-        <div class="flex gap-2">
-          <button class="add-cart-btn flex-1 rounded-xl bg-white px-3 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-100" data-id="${
-            product.id
-          }">${t('add_to_cart')}</button>
-          <a href="detail.html?id=${product.id}" class="rounded-xl border border-slate-700 px-3 py-2 text-sm text-slate-200 hover:border-slate-500">${t(
-            'details'
-          )}</a>
+        <img src="${image}" alt="${product.title}" loading="lazy" />
+      </a>
+      <div class="pc-body">
+        <p class="pc-cat">${product.category}</p>
+        <h3 class="pc-title">${product.title}</h3>
+        <div class="pc-priceRow">
+          <span class="pc-price">${formatPrice(product.price)} so'm</span>
+          ${oldPrice ? `<span class="pc-old">${formatPrice(oldPrice)} so'm</span>` : ''}
+        </div>
+        <div class="pc-actions">
+          <button class="add-cart-btn pc-btn primary" data-id="${product.id}">${t('add_to_cart')}</button>
+          <a href="detail.html?id=${product.id}" class="pc-btn">${t('details')}</a>
         </div>
       </div>
     </article>
@@ -71,11 +54,27 @@ export const renderSkeleton = (count = 8) =>
   Array.from({ length: count })
     .map(
       () => `
-      <div class="animate-pulse rounded-2xl border border-slate-800 bg-slate-900 p-4 shadow-sm">
-        <div class="h-40 rounded-xl bg-slate-800"></div>
-        <div class="mt-4 h-4 w-3/4 rounded bg-slate-800"></div>
-        <div class="mt-2 h-3 w-1/2 rounded bg-slate-800"></div>
-        <div class="mt-4 h-8 rounded-xl bg-slate-800"></div>
+      <div class="product-card skeleton">
+        <div class="product-media skeleton"></div>
+        <div class="mt-3 h-4 w-3/4 rounded bg-white/10"></div>
+        <div class="mt-2 h-3 w-1/2 rounded bg-white/10"></div>
+        <div class="mt-3 h-8 rounded bg-white/10"></div>
+      </div>
+    `
+    )
+    .join('');
+
+export const renderCarouselSkeleton = (count = 6) =>
+  Array.from({ length: count })
+    .map(
+      () => `
+      <div class="slide">
+        <div class="product-card skeleton">
+          <div class="product-media skeleton"></div>
+          <div class="mt-3 h-4 w-3/4 rounded bg-white/10"></div>
+          <div class="mt-2 h-3 w-1/2 rounded bg-white/10"></div>
+          <div class="mt-3 h-8 rounded bg-white/10"></div>
+        </div>
       </div>
     `
     )
@@ -104,3 +103,84 @@ export const updateCartBadge = () => {
     node.textContent = count;
   });
 };
+
+// ====== THEME HELPERS ======
+export const statusLabel = (status) => {
+  if (status === 'pending_verification' || status === 'pending')
+    return { text: "Ko'rib chiqilyapti", cls: 'status-badge badge-pending' };
+  if (status === 'approved' || status === 'accepted') return { text: 'Qabul qilindi', cls: 'status-badge badge-approved' };
+  if (status === 'rejected') return { text: 'Rad etildi', cls: 'status-badge badge-rejected' };
+  if (status === 'processing') return { text: 'Jarayonda', cls: 'status-badge badge-pending' };
+  return { text: status || "Noma'lum", cls: 'status-badge' };
+};
+
+export const productCardHTML = (p) => {
+  const badge = p.isNew ? `<span class="pc-pill">NEW</span>` : ``;
+  const rating = p.rating ? `<span class="pc-pill">⭐ ${p.rating}</span>` : `<span class="pc-pill">⭐ 4.8</span>`;
+  const image = p.images?.[0] || p.img;
+  return `
+  <article class="slide">
+    <div class="product-card">
+      <a href="detail.html?id=${p.id}" class="pc-media">
+        <div class="pc-badges">${badge}${rating}</div>
+        <img src="${image}" alt="${p.name || p.title}" loading="lazy" />
+      </a>
+      <div class="pc-body">
+        <p class="pc-cat">${p.category || 'Anime toy'}</p>
+        <h3 class="pc-title">${p.name || p.title}</h3>
+        <div class="pc-priceRow">
+          <span class="pc-price">${Number(p.price || 0).toLocaleString('ru-RU')} so'm</span>
+        </div>
+        <div class="pc-actions">
+          <button data-add-to-cart="${p.id}" class="pc-btn primary">
+            Savat
+          </button>
+          <a href="detail.html?id=${p.id}" class="pc-btn">Batafsil</a>
+        </div>
+      </div>
+    </div>
+  </article>`;
+};
+
+export const productCardSkeletonHTML = () => `
+  <div class="skeleton rounded-2xl p-3 w-[165px] sm:w-[210px]">
+    <div class="skeleton rounded-xl h-36 sm:h-44 w-full"></div>
+    <div class="mt-3 skeleton rounded-lg h-4 w-4/5"></div>
+    <div class="mt-2 skeleton rounded-lg h-3 w-2/3"></div>
+    <div class="mt-3 flex justify-between gap-2">
+      <div class="skeleton rounded-lg h-4 w-2/5"></div>
+      <div class="skeleton rounded-xl h-9 w-1/3"></div>
+    </div>
+  </div>
+`;
+
+export const offlineBlockHTML = (
+  title = "Internet yo‘q",
+  desc = 'Ulanishni tekshirib qayta urinib ko‘ring.'
+) => `
+  <div class="glass rounded-2xl p-6 text-center">
+    <div class="text-3xl">📡</div>
+    <h3 class="mt-2 text-lg font-bold">${title}</h3>
+    <p class="mt-1 text-sm text-white/70">${desc}</p>
+    <button onclick="location.reload()" class="mt-4 neon-btn rounded-xl px-4 py-2 text-sm font-bold">Qayta yuklash</button>
+  </div>
+`;
+
+export const ordersSkeletonListHTML = (count = 3) =>
+  Array.from({ length: count })
+    .map(
+      () => `
+    <div class="glass rounded-2xl p-4">
+      <div class="flex justify-between">
+        <div class="skeleton rounded-lg h-4 w-1/3"></div>
+        <div class="skeleton rounded-lg h-4 w-1/4"></div>
+      </div>
+      <div class="mt-3 skeleton rounded-lg h-8 w-1/2"></div>
+      <div class="mt-4 flex justify-between">
+        <div class="skeleton rounded-lg h-4 w-1/4"></div>
+        <div class="skeleton rounded-xl h-9 w-24"></div>
+      </div>
+    </div>
+  `
+    )
+    .join('');

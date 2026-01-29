@@ -8,7 +8,7 @@ import {
   saveProductComments,
 } from './storage.js';
 import { fetchProducts } from './api.js';
-import { showToast } from './ui.js';
+import { showToast, statusLabel } from './ui.js';
 import {
   db,
   collection,
@@ -16,10 +16,12 @@ import {
   where,
   getDocs,
   orderBy,
-  updateDoc,
-  doc,
   serverTimestamp,
 } from './firebase.js';
+import {
+  updateDoc,
+  doc,
+} from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js';
 
 // ====== INIT ======
 ensureSeedData();
@@ -45,18 +47,29 @@ const adminProductsEmpty = document.querySelector('#admin-products-empty');
 const adminProductsList = document.querySelector('#admin-products-list');
 const commentsEmpty = document.querySelector('#comments-empty');
 const adminComments = document.querySelector('#admin-comments');
+const editProductModal = document.querySelector('#edit-product-modal');
+const editProductForm = document.querySelector('#edit-product-form');
+const editProductClose = document.querySelector('#edit-product-close');
+const editProductCancel = document.querySelector('#edit-product-cancel');
+const editProductTitle = document.querySelector('#edit-product-title');
+const editProductCategory = document.querySelector('#edit-product-category');
+const editProductPrice = document.querySelector('#edit-product-price');
+const editProductOldPrice = document.querySelector('#edit-product-old-price');
+const editProductDescription = document.querySelector('#edit-product-description');
+const editProductImages = document.querySelector('#edit-product-images');
+const editImagePreview = document.querySelector('#edit-image-preview');
 
 const statusLabels = {
-  pending_verification: 'Chek tekshiruvda',
-  confirmed: "Muvaffaqiyatli to‘landi",
-  rejected: "To‘lov tasdiqlanmadi (siz to‘lamadingiz)",
-  processing: 'Jarayonda',
-  delivered: 'Yetkazildi',
-  cancelled: 'Bekor qilingan',
+  pending: 'Ko‘rib chiqilyapti',
+  pending_verification: 'Ko‘rib chiqilyapti',
+  accepted: 'Buyurtma qabul qilindi',
+  rejected: 'Buyurtma rad etildi',
 };
 
 // ====== STATE ======
 let selectedImages = [];
+let editSelectedImages = [];
+let editingProductId = null;
 let productsMap = new Map();
 
 // ====== ADMIN CHECK ======
@@ -92,10 +105,11 @@ const getItemsCount = (items = []) => items.reduce((sum, item) => sum + item.qty
 const renderOrderCard = (order, { showActions }) => {
   const buyerName = order.userName || 'Noma\'lum';
   const buyerPhone = order.userPhone || 'Telefon: N/A';
-  const receiptMarkup = order.receiptUrl
+  const receiptSrc = order.receiptBase64 || order.receiptUrl;
+  const receiptMarkup = receiptSrc
     ? `
-      <a href="${order.receiptUrl}" target="_blank" rel="noreferrer" class="receipt-open mt-3 inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-800/60 px-3 py-2 text-xs text-slate-200" data-id="${order.id}">
-        <img src="${order.receiptUrl}" alt="Receipt" class="h-16 w-16 rounded-lg object-cover" />
+      <a href="${receiptSrc}" target="_blank" rel="noreferrer" class="receipt-open mt-3 inline-flex items-center gap-2 rounded-xl glass-soft px-3 py-2 text-xs text-white/80" data-id="${order.id}">
+        <img src="${receiptSrc}" alt="Receipt" class="h-16 w-16 rounded-lg object-cover" />
         <span>View receipt</span>
       </a>
     `
@@ -105,8 +119,9 @@ const renderOrderCard = (order, { showActions }) => {
     ? `<p class="mt-2 text-xs text-rose-200">Sabab: ${order.rejectReason}</p>`
     : '';
 
+  const statusChip = statusLabel(order.status);
   return `
-    <article class="rounded-2xl border border-slate-700 bg-[#0f2f52] p-4 shadow-sm">
+    <article class="rounded-2xl glass p-4 shadow-sm">
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p class="text-xs text-slate-400">Buyurtma ID</p>
@@ -128,9 +143,7 @@ const renderOrderCard = (order, { showActions }) => {
         </div>
         <div>
           <p class="text-xs text-slate-400">Holat</p>
-          <span class="inline-flex rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-200">${
-            statusLabels[order.status] || order.status
-          }</span>
+          <span class="${statusChip.cls}">${statusChip.text || statusLabels[order.status] || order.status}</span>
           ${rejectReason}
         </div>
       </div>
@@ -139,12 +152,12 @@ const renderOrderCard = (order, { showActions }) => {
         showActions
           ? `
         <div class="mt-4 flex flex-wrap gap-3">
-          <button class="confirm-btn rounded-xl bg-blue-500 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-600" data-id="${
+          <button class="confirm-btn neon-btn rounded-xl px-4 py-2 text-xs font-semibold" data-id="${
             order.id
-          }">✅ Confirm payment</button>
-          <button class="reject-btn rounded-xl bg-slate-700 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-600" data-id="${
+          }">✅ Qabul</button>
+          <button class="reject-btn rounded-xl border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold text-white hover:border-white/40" data-id="${
             order.id
-          }">❌ Reject payment</button>
+          }">❌ Rad</button>
         </div>
       `
           : ''
@@ -157,7 +170,7 @@ const updateOrderStatus = async (orderId, status, rejectReason = null) => {
   await updateDoc(doc(db, 'orders', orderId), {
     status,
     rejectReason: rejectReason || null,
-    updatedAt: serverTimestamp(),
+    reviewedAt: serverTimestamp(),
   });
   await renderOrders();
 };
@@ -180,6 +193,12 @@ const renderAdminProducts = () => {
           <p class="font-semibold text-white">${product.title}</p>
           <p class="text-xs text-slate-400">${product.category}</p>
         </div>
+        <div class="mt-3 flex items-center justify-between gap-2">
+          <span class="text-sm font-semibold text-white">${Number(product.price || 0).toLocaleString('uz-UZ')} so'm</span>
+          <button type="button" class="edit-product-btn rounded-lg border border-slate-600 px-3 py-1 text-xs text-slate-200 hover:border-slate-400" data-id="${
+            product.id
+          }">✏️ Edit</button>
+        </div>
       </article>
     `
     )
@@ -197,6 +216,41 @@ const updateImagePreview = () => {
     `
     )
     .join('');
+};
+
+const renderEditImagePreview = (images = []) => {
+  editImagePreview.innerHTML = images
+    .map(
+      (image) => `
+      <div class="overflow-hidden rounded-xl border border-slate-700 bg-slate-800/60">
+        <img src="${image}" alt="preview" class="h-24 w-full object-cover" />
+      </div>
+    `
+    )
+    .join('');
+};
+
+const openEditModal = (product) => {
+  editingProductId = product.id;
+  editProductTitle.value = product.title || '';
+  editProductCategory.value = product.category || '';
+  editProductPrice.value = product.price ?? 0;
+  editProductOldPrice.value = product.oldPrice ?? '';
+  editProductDescription.value = product.desc || '';
+  editSelectedImages = [];
+  editProductImages.value = '';
+  renderEditImagePreview(product.images?.length ? product.images : product.img ? [product.img] : []);
+  editProductModal.classList.remove('hidden');
+  editProductModal.classList.add('flex');
+};
+
+const closeEditModal = () => {
+  editProductModal.classList.add('hidden');
+  editProductModal.classList.remove('flex');
+  editingProductId = null;
+  editSelectedImages = [];
+  editProductImages.value = '';
+  editImagePreview.innerHTML = '';
 };
 
 productImages?.addEventListener('change', (event) => {
@@ -258,6 +312,73 @@ productForm?.addEventListener('submit', (event) => {
   showToast('Mahsulot muvaffaqiyatli qo‘shildi');
 });
 
+adminProductsList?.addEventListener('click', (event) => {
+  const editBtn = event.target.closest('.edit-product-btn');
+  if (!editBtn) return;
+  const products = getAdminProducts();
+  const product = products.find((item) => String(item.id) === String(editBtn.dataset.id));
+  if (!product) return;
+  openEditModal(product);
+});
+
+editProductImages?.addEventListener('change', (event) => {
+  const files = Array.from(event.target.files || []);
+  if (!files.length) return;
+  if (files.length + editSelectedImages.length > 10) {
+    showToast('Maksimum 10 ta rasm yuklash mumkin', 'error');
+    editProductImages.value = '';
+    return;
+  }
+  files.forEach((file) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      editSelectedImages.push(reader.result);
+      renderEditImagePreview(editSelectedImages);
+    };
+    reader.readAsDataURL(file);
+  });
+  editProductImages.value = '';
+});
+
+editProductForm?.addEventListener('submit', (event) => {
+  event.preventDefault();
+  if (!editingProductId) return;
+  const products = getAdminProducts();
+  const index = products.findIndex((item) => String(item.id) === String(editingProductId));
+  if (index === -1) return;
+  const price = Number(editProductPrice.value);
+  const oldPrice = Number(editProductOldPrice.value);
+  const existingImages = products[index].images?.length
+    ? products[index].images
+    : products[index].img
+    ? [products[index].img]
+    : [];
+  const nextImages = editSelectedImages.length ? [...editSelectedImages] : existingImages;
+  const updatedProduct = {
+    ...products[index],
+    title: editProductTitle.value.trim(),
+    desc: editProductDescription.value.trim(),
+    price,
+    oldPrice: Number.isFinite(oldPrice) && oldPrice > 0 ? oldPrice : price,
+    category: editProductCategory.value,
+    images: nextImages,
+    img: nextImages[0] || products[index].img,
+  };
+  products[index] = updatedProduct;
+  saveAdminProducts(products);
+  renderAdminProducts();
+  showToast('Mahsulot yangilandi');
+  closeEditModal();
+});
+
+editProductClose?.addEventListener('click', closeEditModal);
+editProductCancel?.addEventListener('click', closeEditModal);
+editProductModal?.addEventListener('click', (event) => {
+  if (event.target === editProductModal) {
+    closeEditModal();
+  }
+});
+
 // ====== COMMENTS ======
 const renderAdminComments = () => {
   const comments = getProductComments();
@@ -296,21 +417,20 @@ const renderAdminComments = () => {
 
 const renderOrders = async () => {
   if (!isAdmin) return;
-  const pendingSnapshot = await getDocs(
-    query(collection(db, 'orders'), where('status', '==', 'pending_verification'))
-  );
-  const pendingOrders = pendingSnapshot.docs.map((docSnap) => ({
-    id: docSnap.id,
-    ...docSnap.data(),
-  }));
-
   const allSnapshot = await getDocs(
     query(collection(db, 'orders'), orderBy('createdAt', 'desc'))
   );
-  const orders = allSnapshot.docs.map((docSnap) => ({
-    id: docSnap.id,
-    ...docSnap.data(),
-  }));
+  const orders = allSnapshot.docs.map((docSnap) => {
+    const data = docSnap.data();
+    const normalizedStatus =
+      data.status === 'pending_verification' ? 'pending' : data.status;
+    return {
+      id: docSnap.id,
+      ...data,
+      status: normalizedStatus,
+    };
+  });
+  const pendingOrders = orders.filter((order) => order.status === 'pending');
 
   if (!pendingOrders.length) {
     pendingEmpty.classList.remove('hidden');
@@ -335,7 +455,7 @@ adminPanel.addEventListener('click', async (event) => {
   const rejectBtn = event.target.closest('.reject-btn');
 
   if (confirmBtn) {
-    await updateOrderStatus(confirmBtn.dataset.id, 'confirmed');
+    await updateOrderStatus(confirmBtn.dataset.id, 'accepted');
   }
 
   if (rejectBtn) {

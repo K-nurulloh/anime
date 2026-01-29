@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Uzum Market — Admin</title>
     <link rel="stylesheet" href="css/output.css" />
+    <link rel="stylesheet" href="css/theme.css" />
   </head>
-  <body class="bg-gradient-to-b from-[#0b1d3a] to-[#0e2a47] text-white">
+  <body class="theme-bg text-white">
     <!-- ====== NAVBAR ====== -->
     <header class="fixed top-0 z-50 flex h-14 w-full items-center border-b border-slate-700 bg-[#0f2f52] px-4 md:hidden">
       <a href="index.html" class="text-lg font-semibold text-white">Uzum Market</a>
@@ -31,14 +32,14 @@
       <section id="admin-panel" class="hidden space-y-10">
         <section id="products" class="space-y-4">
           <h2 class="text-xl font-semibold text-white">Yangi mahsulot qo‘shish</h2>
-          <div class="rounded-2xl border border-slate-700 bg-[#0f2f52] p-6 shadow-sm">
+          <div class="rounded-2xl glass p-6 shadow-sm">
             <form id="admin-product-form" class="space-y-4">
               <div class="grid gap-4 md:grid-cols-2">
-                <label class="space-y-2 text-sm text-slate-300">
+                <label class="space-y-2 text-sm text-white/70">
                   <span>Mahsulot nomi</span>
                   <input id="product-title" required class="w-full rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-2 text-sm text-white" />
                 </label>
-                <label class="space-y-2 text-sm text-slate-300">
+                <label class="space-y-2 text-sm text-white/70">
                   <span>Kategoriya</span>
                   <select id="product-category" class="w-full rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-2 text-sm text-white">
                     <option value="Telefon">Telefon</option>
@@ -50,20 +51,20 @@
                     <option value="Kitob">Kitob</option>
                   </select>
                 </label>
-                <label class="space-y-2 text-sm text-slate-300">
+                <label class="space-y-2 text-sm text-white/70">
                   <span>Narx</span>
                   <input id="product-price" type="number" min="0" required class="w-full rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-2 text-sm text-white" />
                 </label>
-                <label class="space-y-2 text-sm text-slate-300">
+                <label class="space-y-2 text-sm text-white/70">
                   <span>Eski narx (ixtiyoriy)</span>
                   <input id="product-old-price" type="number" min="0" class="w-full rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-2 text-sm text-white" />
                 </label>
               </div>
-              <label class="space-y-2 text-sm text-slate-300">
+              <label class="space-y-2 text-sm text-white/70">
                 <span>Tavsif</span>
                 <textarea id="product-description" required rows="4" class="w-full rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-2 text-sm text-white"></textarea>
               </label>
-              <label class="space-y-2 text-sm text-slate-300">
+              <label class="space-y-2 text-sm text-white/70">
                 <span>Rasmlar (1-10)</span>
                 <input id="product-images" type="file" accept="image/*" multiple class="w-full rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-2 text-sm text-white" />
               </label>
@@ -79,7 +80,7 @@
 
         <section id="comments" class="space-y-4">
           <h2 class="text-xl font-semibold text-white">Kommentariyalar</h2>
-          <div id="comments-empty" class="hidden rounded-2xl border border-slate-700 bg-[#0f2f52] p-6 text-sm text-slate-200">
+          <div id="comments-empty" class="hidden rounded-2xl glass p-6 text-sm text-slate-200">
             Hozircha izoh yo‘q
           </div>
           <div id="admin-comments" class="space-y-4"></div>
@@ -87,7 +88,7 @@
 
         <section id="payments" class="space-y-4">
           <h1 class="text-2xl font-semibold text-white">Tekshiruvdagi buyurtmalar</h1>
-          <div id="pending-empty" class="hidden rounded-2xl border border-slate-700 bg-[#0f2f52] p-6 text-sm text-slate-200">
+          <div id="pending-empty" class="hidden rounded-2xl glass p-6 text-sm text-slate-200">
             Tekshiruvda buyurtma yo'q.
           </div>
           <div id="pending-orders" class="grid gap-4"></div>
@@ -95,7 +96,7 @@
 
         <section class="space-y-4">
           <h2 class="text-xl font-semibold text-white">Barcha buyurtmalar</h2>
-          <div id="orders-empty" class="hidden rounded-2xl border border-slate-700 bg-[#0f2f52] p-6 text-sm text-slate-200">
+          <div id="orders-empty" class="hidden rounded-2xl glass p-6 text-sm text-slate-200">
             Hali buyurtmalar yo'q.
           </div>
           <div id="all-orders" class="grid gap-4"></div>
@@ -103,12 +104,63 @@
       </section>
     </main>
 
+    <!-- ====== EDIT PRODUCT MODAL ====== -->
+    <div id="edit-product-modal" class="fixed inset-0 hidden items-center justify-center bg-slate-900/80 p-4">
+      <div class="w-full max-w-2xl rounded-2xl glass p-6">
+        <div class="flex items-center justify-between">
+          <h3 class="text-lg font-semibold text-white">Mahsulotni tahrirlash</h3>
+          <button id="edit-product-close" class="text-white/70">✕</button>
+        </div>
+        <form id="edit-product-form" class="mt-4 space-y-4">
+          <div class="grid gap-4 md:grid-cols-2">
+            <label class="space-y-2 text-sm text-white/70">
+              <span>Mahsulot nomi</span>
+              <input id="edit-product-title" required class="w-full rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-2 text-sm text-white" />
+            </label>
+            <label class="space-y-2 text-sm text-white/70">
+              <span>Kategoriya</span>
+              <select id="edit-product-category" class="w-full rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-2 text-sm text-white">
+                <option value="Telefon">Telefon</option>
+                <option value="Kino">Kino</option>
+                <option value="Noutbuk">Noutbuk</option>
+                <option value="Uy">Uy</option>
+                <option value="Kiyim">Kiyim</option>
+                <option value="Aksessuar">Aksessuar</option>
+                <option value="Kitob">Kitob</option>
+              </select>
+            </label>
+            <label class="space-y-2 text-sm text-white/70">
+              <span>Narx</span>
+              <input id="edit-product-price" type="number" min="0" required class="w-full rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-2 text-sm text-white" />
+            </label>
+            <label class="space-y-2 text-sm text-white/70">
+              <span>Eski narx (ixtiyoriy)</span>
+              <input id="edit-product-old-price" type="number" min="0" class="w-full rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-2 text-sm text-white" />
+            </label>
+          </div>
+          <label class="space-y-2 text-sm text-white/70">
+            <span>Tavsif</span>
+            <textarea id="edit-product-description" required rows="4" class="w-full rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-2 text-sm text-white"></textarea>
+          </label>
+          <label class="space-y-2 text-sm text-white/70">
+            <span>Rasmlar (ixtiyoriy)</span>
+            <input id="edit-product-images" type="file" accept="image/*" multiple class="w-full rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-2 text-sm text-white" />
+          </label>
+          <div id="edit-image-preview" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"></div>
+          <div class="flex justify-end gap-3">
+            <button type="button" id="edit-product-cancel" class="rounded-xl border border-slate-600 px-4 py-2 text-sm text-slate-200 hover:border-slate-400">Bekor qilish</button>
+            <button class="rounded-xl bg-blue-500 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-600">Saqlash</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- ====== RECEIPT VERIFICATION ====== -->
     <div id="receipt-modal" class="fixed inset-0 hidden items-center justify-center bg-slate-900/80 p-4">
-      <div class="max-w-3xl rounded-2xl border border-slate-700 bg-[#0f2f52] p-4">
+      <div class="max-w-3xl rounded-2xl glass p-4">
         <div class="flex items-center justify-between">
           <h3 class="text-sm font-semibold text-white">Receipt preview</h3>
-          <button id="receipt-close" class="text-slate-300">✕</button>
+          <button id="receipt-close" class="text-white/70">✕</button>
         </div>
         <img id="receipt-image" src="" alt="receipt" class="mt-4 max-h-[70vh] w-full rounded-xl object-contain" />
       </div>

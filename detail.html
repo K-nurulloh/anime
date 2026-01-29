@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Uzum Market — Detail</title>
     <link rel="stylesheet" href="css/output.css" />
+    <link rel="stylesheet" href="css/theme.css" />
   </head>
-  <body class="bg-slate-950 text-white">
+  <body class="anime-bg text-white">
     <!-- ====== NAVBAR ====== -->
     <header class="fixed top-0 z-50 flex h-14 w-full items-center border-b border-slate-800 bg-slate-950/95 px-4 md:hidden">
       <a href="index.html" class="text-lg font-semibold text-white">Uzum Market</a>
@@ -33,95 +34,31 @@
       </div>
     </header>
 
-    <main class="mx-auto max-w-6xl space-y-10 px-4 pb-24 pt-14 md:pt-20">
+       <main class="bottom-safe-lg mx-auto max-w-6xl space-y-10 px-4 pt-14 md:pt-20">
       <div id="error-box" class="hidden rounded-2xl bg-rose-500/10 px-4 py-3 text-sm text-rose-200"></div>
       <section id="detail-wrapper"></section>
-
-      <section class="space-y-4">
-        <h2 class="text-lg font-semibold text-white" data-i18n="similar"></h2>
-        <div id="similar-list" class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4"></div>
-      </section>
 
        <section class="space-y-4">
-        <h2 class="text-lg font-semibold text-white" data-i18n="more"></h2>
-        <div id="more-list" class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4"></div>
-      </section>
-
-      <!DOCTYPE html>
-<html lang="uz">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Product Detail</title>
-<html lang="uz" class="scroll-smooth">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Uzum Market — Detail</title>
-    <link rel="stylesheet" href="css/output.css" />
-  </head>
-  <body class="bg-slate-950 text-white">
-    <!-- ====== NAVBAR ====== -->
-    <header class="fixed top-0 z-50 flex h-14 w-full items-center border-b border-slate-800 bg-slate-950/95 px-4 md:hidden">
-      <a href="index.html" class="text-lg font-semibold text-white">Uzum Market</a>
-    </header>
-    <header class="sticky top-0 z-50 hidden border-b border-slate-800 bg-slate-950/90 backdrop-blur md:block">
-      <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4">
-        <a href="index.html" class="text-xl font-bold text-white">Uzum Market</a>
-        <nav class="flex items-center gap-3 text-sm">
-          <a href="index.html" class="text-slate-200 hover:text-white" data-i18n="home"></a>
-          <a href="catalog.html" class="text-slate-200 hover:text-white" data-i18n="catalog"></a>
-          <a href="seller.html" class="text-slate-200 hover:text-white" data-i18n="seller_panel"></a>
-        </nav>
-        <div class="flex items-center gap-4 text-sm">
-          <a href="cart.html" class="relative">
-            🛒
-            <span class="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-white text-xs font-semibold text-slate-900" data-cart-count>0</span>
-          </a>
-          <a href="account.html" class="text-slate-200 hover:text-white" data-i18n="account"></a>
-          <select data-lang-switch class="rounded-lg border border-slate-800 bg-slate-900 px-2 py-1 text-xs text-white">
-            <option value="uz">UZ</option>
-            <option value="ru">RU</option>
-          </select>
-        </div>
-      </div>
-    </header>
-
-  <!-- Tailwind + DaisyUI -->
-  <link href="https://cdn.jsdelivr.net/npm/daisyui@2.51.5/dist/full.css" rel="stylesheet">
-  <script src="https://cdn.tailwindcss.com"></script>
-</head>
-    <main class="mx-auto max-w-6xl space-y-10 px-4 pb-24 pt-14 md:pt-20">
-      <div id="error-box" class="hidden rounded-2xl bg-rose-500/10 px-4 py-3 text-sm text-rose-200"></div>
-      <section id="detail-wrapper"></section>
-
-<body class="bg-gray-100 dark:bg-gray-900 text-black dark:text-white p-6">
-      <section class="space-y-4">
         <h2 class="text-lg font-semibold text-white" data-i18n="similar"></h2>
-        <div id="similar-list" class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4"></div>
+        <div id="similar-list" class="similar-grid"></div>
       </section>
 
-  <!-- PRODUCT DETAIL -->
-  <div id="detail" class="flex flex-col lg:flex-row gap-10 w-full"></div>
-      <section class="space-y-4">
+        <section class="space-y-4">
         <h2 class="text-lg font-semibold text-white" data-i18n="more"></h2>
-        <div id="more-list" class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4"></div>
+        <div id="more-list" class="similar-grid"></div>
       </section>
 
-  <!-- FEEDBACK -->
-  <div id="feedback-section" class="mt-8 w-full max-w-4xl mx-auto">
-    <h2 class="text-xl font-bold mb-3">Fikrlar</h2>
       <section id="comments-section" class="mt-12 space-y-4">
         <h2 class="text-lg font-semibold text-white">Izohlar / Comments</h2>
-        <div id="comments-login-note" class="hidden rounded-2xl border border-slate-800 bg-slate-900 p-6 text-center text-sm text-slate-300">
+        <div id="comments-login-note" class="hidden rounded-2xl glass p-6 text-center text-sm text-white/70">
           <p>Izoh yozish uchun login qiling</p>
           <a href="account.html" class="mt-3 inline-flex items-center justify-center rounded-xl bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-100">
             Accountga o‘tish
           </a>
         </div>
-        <form id="comment-form" class="space-y-3 rounded-2xl border border-slate-800 bg-slate-900 p-4">
+        <form id="comment-form" class="space-y-3 rounded-2xl glass p-4">
           <textarea id="comment-text" required rows="3" class="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-2 text-sm text-white" placeholder="Izoh yozing..."></textarea>
-          <div class="flex flex-wrap items-center gap-3 text-sm text-slate-300">
+          <div class="flex flex-wrap items-center gap-3 text-sm text-white/70">
             <label class="flex items-center gap-2">
               <span>Reyting</span>
               <select id="comment-rating" class="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white">
@@ -136,36 +73,50 @@
             <button class="ml-auto rounded-xl bg-white px-4 py-2 text-sm font-semibold text-slate-900">Yuborish</button>
           </div>
         </form>
-        <div id="comments-empty" class="hidden rounded-2xl border border-slate-800 bg-slate-900 p-4 text-sm text-slate-400">
+        <div id="comments-empty" class="hidden rounded-2xl glass p-4 text-sm text-slate-400">
           Hozircha izoh yo‘q
         </div>
         <div id="comments-list" class="space-y-4"></div>
       </section>
     </main>
 
-       <!-- ====== BOTTOM NAV ====== -->
-    <nav class="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-800 bg-slate-950/95 backdrop-blur md:hidden">
-      <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-3 text-xs text-slate-300">
-        <a href="index.html" class="flex flex-col items-center gap-1">
+
+    <div id="detail-action-bar" class="detail-action-bar fixed left-0 right-0 z-40 mx-auto max-w-6xl px-4">
+      <div class="section flex items-center justify-between gap-3">
+        <div>
+          <p class="text-xs text-white/60">Narx</p>
+          <p id="detail-action-price" class="text-lg font-bold text-white">0 so'm</p>
+        </div>
+        <div class="flex gap-2">
+          <button id="detail-action-buy" class="pill-btn text-sm">Sotib olish</button>
+          <button id="detail-action-cart" class="rounded-full border border-white/20 px-4 py-2 text-sm text-white/80">Savatga</button>
+        </div>
+      </div>
+    </div>
+
+     <!-- ====== BOTTOM NAV ====== -->
+    <nav class="bottom-nav fixed bottom-0 left-0 right-0 z-50 border border-white/10 glass-soft md:hidden">
+      <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-3 text-xs text-white/70">
+        <a href="index.html" class="nav-item">
           <span>🏠</span>
           <span data-i18n="home"></span>
         </a>
-        <a href="catalog.html" class="flex flex-col items-center gap-1">
+        <a href="catalog.html" class="nav-item">
           <span>🛍️</span>
           <span data-i18n="catalog"></span>
         </a>
-        <a href="cart.html" class="relative flex flex-col items-center gap-1">
+        <a href="cart.html" class="nav-item relative">
           <span>🛒</span>
           <span data-i18n="cart"></span>
           <span class="absolute -right-2 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-white text-[10px] font-semibold text-slate-900" data-cart-count>0</span>
         </a>
-        <a href="account.html" class="flex flex-col items-center gap-1">
+        <a href="account.html" class="nav-item">
           <span>👤</span>
           <span data-i18n="account"></span>
         </a>
       </div>
     </nav>
 
-    <script type="module" src="js/detail.js"></script>
+     <script type="module" src="js/detail.js"></script>
   </body>
 </html>

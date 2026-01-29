@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Uzum Market — Tovarlar</title>
     <link rel="stylesheet" href="css/output.css" />
+    <link rel="stylesheet" href="css/theme.css" />
   </head>
-  <body class="bg-slate-950 text-white">
+  <body class="anime-bg text-white">
     <!-- ====== NAVBAR ====== -->
     <header class="fixed top-0 z-50 flex h-14 w-full items-center border-b border-slate-800 bg-slate-950/95 px-4 md:hidden">
       <a href="index.html" class="text-lg font-semibold text-white">Uzum Market</a>
@@ -64,26 +65,26 @@
       </div>
     </header>
 
-    <main class="mx-auto max-w-6xl space-y-10 px-4 pb-24 pt-14 md:pt-20">
+    <main class="bottom-safe mx-auto max-w-6xl space-y-10 px-4 pt-14 md:pt-20">
       <section class="space-y-4">
         <div class="flex items-center justify-between">
           <h1 class="text-2xl font-semibold text-white" data-i18n="catalog_title"></h1>
-          <p class="text-sm text-slate-300" data-i18n="catalog_subtitle"></p>
+          <p class="text-sm text-white/70" data-i18n="catalog_subtitle"></p>
         </div>
-        <div class="flex flex-wrap gap-3">
-          <button class="category-chip rounded-full border border-slate-800 px-4 py-2 text-sm text-slate-200 hover:border-slate-600" data-category="Telefon" data-i18n="category_phone"></button>
-          <button class="category-chip rounded-full border border-slate-800 px-4 py-2 text-sm text-slate-200 hover:border-slate-600" data-category="Kino" data-i18n="category_kino"></button>
-          <button class="category-chip rounded-full border border-slate-800 px-4 py-2 text-sm text-slate-200 hover:border-slate-600" data-category="Noutbuk" data-i18n="category_laptop"></button>
-          <button class="category-chip rounded-full border border-slate-800 px-4 py-2 text-sm text-slate-200 hover:border-slate-600" data-category="Uy" data-i18n="category_home"></button>
-          <button class="category-chip rounded-full border border-slate-800 px-4 py-2 text-sm text-slate-200 hover:border-slate-600" data-category="Kiyim" data-i18n="category_clothes"></button>
-          <button class="category-chip rounded-full border border-slate-800 px-4 py-2 text-sm text-slate-200 hover:border-slate-600" data-category="Aksessuar" data-i18n="category_accessory"></button>
-          <button class="category-chip rounded-full border border-slate-800 px-4 py-2 text-sm text-slate-200 hover:border-slate-600" data-category="Kitob" data-i18n="category_book"></button>
+        <div class="chip-row catalog-chips">
+          <button class="category-chip chip" data-category="Telefon" aria-pressed="false">📱 <span data-i18n="category_phone"></span></button>
+          <button class="category-chip chip" data-category="Kino" aria-pressed="false">🎬 <span data-i18n="category_kino"></span></button>
+          <button class="category-chip chip" data-category="Noutbuk" aria-pressed="false">💻 <span data-i18n="category_laptop"></span></button>
+          <button class="category-chip chip" data-category="Uy" aria-pressed="false">🏠 <span data-i18n="category_home"></span></button>
+          <button class="category-chip chip" data-category="Kiyim" aria-pressed="false">👕 <span data-i18n="category_clothes"></span></button>
+          <button class="category-chip chip" data-category="Aksessuar" aria-pressed="false">🧸 <span data-i18n="category_accessory"></span></button>
+          <button class="category-chip chip" data-category="Kitob" aria-pressed="false">📚 <span data-i18n="category_book"></span></button>
         </div>
       </section>
 
       <section id="catalog" class="space-y-6">
         <div id="error-box" class="hidden rounded-2xl bg-rose-500/10 px-4 py-3 text-sm text-rose-200"></div>
-        <div id="product-list" class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"></div>
+        <div id="product-list" class="products-grid"></div>
         <div id="loader" class="flex justify-center">
           <div class="h-10 w-10 animate-spin rounded-full border-4 border-slate-800 border-t-slate-200"></div>
         </div>
@@ -92,28 +93,28 @@
     </main>
 
     <!-- ====== BOTTOM NAV ====== -->
-    <nav class="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-800 bg-slate-950/95 backdrop-blur md:hidden">
-      <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-3 text-xs text-slate-300">
-        <a href="index.html" class="flex flex-col items-center gap-1">
+    <nav class="bottom-nav fixed bottom-0 left-0 right-0 z-50 border border-white/10 glass-soft md:hidden">
+      <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-3 text-xs text-white/70">
+        <a href="index.html" class="nav-item">
           <span>🏠</span>
           <span data-i18n="home"></span>
         </a>
-        <a href="catalog.html" class="flex flex-col items-center gap-1 text-white">
+        <a href="catalog.html" class="nav-item active text-white">
           <span>🛍️</span>
           <span data-i18n="catalog"></span>
         </a>
-        <a href="cart.html" class="relative flex flex-col items-center gap-1">
+        <a href="cart.html" class="nav-item relative">
           <span>🛒</span>
           <span data-i18n="cart"></span>
           <span class="absolute -right-2 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-white text-[10px] font-semibold text-slate-900" data-cart-count>0</span>
         </a>
-        <a href="account.html" class="flex flex-col items-center gap-1">
+        <a href="account.html" class="nav-item">
           <span>👤</span>
           <span data-i18n="account"></span>
         </a>
       </div>
     </nav>
 
-    <script type="module" src="js/main.js"></script>
+    <script type="module" src="js/catalog.js"></script>
   </body>
 </html>

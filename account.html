@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Uzum Market — Account</title>
     <link rel="stylesheet" href="css/output.css" />
+    <link rel="stylesheet" href="css/theme.css" />
   </head>
-  <body class="bg-slate-950 text-white">
+  <body class="theme-bg text-white">
     <!-- ====== NAVBAR ====== -->
     <header class="fixed top-0 z-50 flex h-14 w-full items-center border-b border-slate-800 bg-slate-950/95 px-4 md:hidden">
       <a href="index.html" class="text-lg font-semibold text-white">Uzum Market</a>
@@ -36,7 +37,7 @@
       <!-- ====== AUTH ====== -->
       <section id="auth-section" class="flex min-h-[calc(100vh-7rem)] items-center justify-center md:min-h-[calc(100vh-5rem)]">
         <div class="grid w-full gap-6 lg:grid-cols-2">
-          <div id="login-box" class="rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-sm">
+          <div id="login-box" class="rounded-2xl glass p-6 shadow-sm">
             <h2 class="text-lg font-semibold text-white" data-i18n="login"></h2>
             <form id="login-form" class="mt-4 space-y-3">
               <input name="phone" required data-i18n-placeholder="phone" class="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-2 text-sm text-white" />
@@ -49,7 +50,7 @@
             </button>
           </div>
 
-          <div id="register-box" class="rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-sm">
+          <div id="register-box" class="rounded-2xl glass p-6 shadow-sm">
             <h2 class="text-lg font-semibold text-white" data-i18n="register"></h2>
             <form id="register-form" class="mt-4 space-y-3">
               <input name="name" required data-i18n-placeholder="name" class="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-2 text-sm text-white" />
@@ -65,15 +66,15 @@
       </section>
 
       <section id="profile-section" class="hidden space-y-8">
-        <div class="rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-sm">
+        <div class="rounded-2xl glass p-6 shadow-sm">
           <div class="flex items-center justify-between">
             <div>
               <h2 class="text-lg font-semibold text-white" data-i18n="profile"></h2>
-              <p class="text-sm text-slate-300" data-i18n="welcome"></p>
+              <p class="text-sm text-white/70" data-i18n="welcome"></p>
             </div>
             <button id="logout-btn" class="rounded-xl border border-slate-700 px-3 py-2 text-xs text-slate-200" data-i18n="logout"></button>
           </div>
-          <div class="mt-4 grid gap-3 text-sm text-slate-300">
+          <div class="mt-4 grid gap-3 text-sm text-white/70">
             <p><span data-i18n="name"></span>: <span data-profile-name class="font-semibold text-white"></span></p>
             <p><span data-i18n="phone"></span>: <span data-profile-phone class="font-semibold text-white"></span></p>
           </div>
@@ -84,7 +85,7 @@
           </div>
         </div>
 
-        <section id="admin-shortcuts" class="hidden rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-sm">
+        <section id="admin-shortcuts" class="hidden rounded-2xl glass p-6 shadow-sm">
           <h3 class="text-lg font-semibold text-white">Admin menyu</h3>
           <div class="mt-4 grid gap-3 sm:grid-cols-3">
             <a href="admin.html#payments" class="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-center text-sm text-slate-200 hover:border-slate-500">To‘lovlar</a>
@@ -97,13 +98,13 @@
           <div class="flex items-center justify-between">
             <h3 class="text-lg font-semibold text-white" data-i18n="wishlist"></h3>
           </div>
-          <div id="wishlist-empty" class="hidden rounded-2xl bg-slate-900 p-6 text-center text-sm text-slate-300 shadow-sm" data-i18n="wishlist_empty"></div>
+          <div id="wishlist-empty" class="hidden rounded-2xl bg-slate-900 p-6 text-center text-sm text-white/70 shadow-sm" data-i18n="wishlist_empty"></div>
           <div id="wishlist-list" class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"></div>
         </section>
 
-        <section id="user-settings" class="rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-sm">
+        <section id="user-settings" class="rounded-2xl glass p-6 shadow-sm">
           <h3 class="text-lg font-semibold text-white" data-i18n="settings"></h3>
-          <form id="settings-form" class="mt-4 space-y-4 text-sm text-slate-300">
+          <form id="settings-form" class="mt-4 space-y-4 text-sm text-white/70">
             <label class="block">
               <span class="text-xs text-slate-400" data-i18n="language"></span>
               <select name="language" class="mt-2 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white">
@@ -118,8 +119,8 @@
     </main>
 
     <!-- ====== BOTTOM NAV ====== -->
-    <nav class="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-800 bg-slate-950/95 backdrop-blur md:hidden">
-      <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-3 text-xs text-slate-300">
+    <nav class="fixed bottom-0 left-0 right-0 z-50 border border-white/10 glass-soft backdrop-blur md:hidden">
+      <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-3 text-xs text-white/70">
         <a href="index.html" class="flex flex-col items-center gap-1">
           <span>🏠</span>
           <span data-i18n="home"></span>

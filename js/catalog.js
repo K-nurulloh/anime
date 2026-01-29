@@ -1,8 +1,7 @@
 import { fetchProducts } from './api.js';
 import { ensureSeedData, getCart, saveCart, getWishlist, saveWishlist } from './storage.js';
-import { renderCarouselSkeleton, renderSkeleton, showToast, updateCartBadge } from './ui.js';
+import { renderSkeleton, showToast, updateCartBadge } from './ui.js';
 import { applyTranslations, initLangSwitcher, t } from './i18n.js';
-import { initAutoCarousel } from './slider.js';
 
 // ====== INIT ======
 ensureSeedData();
@@ -16,13 +15,8 @@ const sentinel = document.querySelector('#sentinel');
 const searchInput = document.querySelector('#searchInput');
 const categoryFilter = document.querySelector('#categoryFilter');
 const priceSort = document.querySelector('#priceSort');
-const recommendedList = document.querySelector('#recommended-list');
 const errorBox = document.querySelector('#error-box');
 const categoryChips = document.querySelectorAll('.category-chip');
-const newDropsRow = document.querySelector('#new-drops-row');
-const newDropsDots = document.querySelector('#new-drops-dots');
-const promoTrack = document.querySelector('#promo-track');
-const promoDots = document.querySelector('#promo-dots');
 
 let allProducts = [];
 let filteredProducts = [];
@@ -30,8 +24,6 @@ let currentIndex = 0;
 const batchSize = 12;
 
 // ====== HELPERS ======
-const shuffle = (items) => [...items].sort(() => Math.random() - 0.5);
-
 const productCardHTML = (product) => {
   const image =
     product.images?.[0] ||
@@ -69,15 +61,6 @@ const productCardHTML = (product) => {
     </article>
   `;
 };
-
-const offlineBlockHTML = (title, desc) => `
-  <div class="section text-center">
-    <div class="text-3xl">📡</div>
-    <h3 class="mt-2 text-lg font-bold">${title}</h3>
-    <p class="mt-1 text-sm text-white/70">${desc}</p>
-    <button onclick="location.reload()" class="mt-4 pill-btn text-sm">Qayta yuklash</button>
-  </div>
-`;
 
 // ====== INFINITE SCROLL ======
 const renderNextBatch = () => {
@@ -149,6 +132,15 @@ const updateQueryCategory = (category) => {
   window.history.replaceState({}, '', newUrl);
 };
 
+const setActiveChip = (category) => {
+  if (!categoryChips.length) return;
+  categoryChips.forEach((chip) => {
+    const isActive = chip.dataset.category === category;
+    chip.classList.toggle('is-active', isActive);
+    chip.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+  });
+};
+
 const initCategoryChips = () => {
   if (!categoryChips.length) return;
   categoryChips.forEach((chip) => {
@@ -158,6 +150,7 @@ const initCategoryChips = () => {
         categoryFilter.value = category;
       }
       updateQueryCategory(category);
+      setActiveChip(category);
       applyFilters();
     });
   });
@@ -219,58 +212,33 @@ const initInfiniteScroll = () => {
   observer.observe(sentinel);
 };
 
-// ====== RECOMMENDED ======
-const renderRecommended = () => {
-  if (!recommendedList) return;
-  const items = shuffle(allProducts).slice(0, 8);
-  recommendedList.innerHTML = items.map(productCardHTML).join('');
-  initListActions(recommendedList);
-};
-
-const renderNewDropsRow = (items) => {
-  if (!newDropsRow) return;
-  newDropsRow.innerHTML = items.map((item) => `<div class="slide">${productCardHTML(item)}</div>`).join('');
-  initListActions(newDropsRow);
-  if (newDropsDots) initAutoCarousel(newDropsRow, newDropsDots, 14);
-};
-
 // ====== DATA BOOTSTRAP ======
 const init = async () => {
   if (!productList) return;
   productList.innerHTML = renderSkeleton(4);
-  if (newDropsRow) {
-    newDropsRow.innerHTML = renderCarouselSkeleton(4);
-  }
   const { products, error } = await fetchProducts();
   if (error) {
     errorBox.textContent = error;
     errorBox.classList.remove('hidden');
     productList.innerHTML = '';
-    if (newDropsRow) {
-      newDropsRow.innerHTML = offlineBlockHTML('Internet yo‘q', 'Yangi mahsulotlar yuklanmadi.');
-    }
     return;
   }
   allProducts = products;
   filteredProducts = [...products];
   productList.innerHTML = '';
   syncCategoryFromQuery();
+  if (categoryFilter) {
+    setActiveChip(categoryFilter.value === 'all' ? null : categoryFilter.value);
+  }
   applyFilters();
   initFilters();
   initCategoryChips();
   initListActions(productList);
   initInfiniteScroll();
-  renderRecommended();
-  renderNewDropsRow(shuffle(allProducts).slice(0, 8));
-  if (promoTrack && promoDots) {
-    initAutoCarousel(promoTrack, promoDots, 16);
-  }
 };
 
 init();
 
 window.addEventListener('langChanged', () => {
   applyFilters();
-  renderRecommended();
-  renderNewDropsRow(shuffle(allProducts).slice(0, 8));
 });

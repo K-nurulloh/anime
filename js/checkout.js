@@ -11,13 +11,7 @@ import { fetchProducts } from './api.js';
 import { formatPrice, showToast, updateCartBadge } from './ui.js';
 import { applyTranslations, initLangSwitcher, t } from './i18n.js';
 import { STORE_PAYMENT } from './config.js';
-import {
-  db,
-  uploadImageToStorage,
-  serverTimestamp,
-  collection,
-  addDoc,
-} from './firebase.js';
+import { db, nowTs, collection, addDoc } from './firebase.js';
 
 // ====== INIT ======
 ensureSeedData();
@@ -29,18 +23,46 @@ const form = document.querySelector('#checkout-form');
 const summaryBox = document.querySelector('#checkout-summary');
 const paymentDoneBtn = document.querySelector('#payment-done');
 const receiptStep = document.querySelector('#receipt-step');
-const receiptInput = document.querySelector('#receipt-input');
+const receiptInput =
+  document.querySelector('#receipt-input') || document.querySelector('input[type="file"]');
 const receiptPreview = document.querySelector('#receipt-preview');
-const receiptSubmit = document.querySelector('#receipt-submit');
+const receiptFilename = document.querySelector('#receipt-filename');
+const receiptSubmit =
+  document.querySelector('#receipt-submit') ||
+  Array.from(document.querySelectorAll('button')).find(
+    (button) => button.textContent.trim() === 'Chekni yuborish'
+  );
 const copyButtons = document.querySelectorAll('.copy-btn');
 
 // ====== STATE ======
 let productsMap = new Map();
-let receiptData = null;
 let receiptFile = null;
+let receiptPreviewUrl = null;
 
 // ====== HELPERS ======
 const normalizePhone = (value) => (value || '').toString().replace(/\D/g, '');
+const isValidPhone = (value) =>
+  value.length === 9 || (value.length === 12 && value.startsWith('998'));
+const readFileAsDataUrl = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error || new Error('File read error'));
+    reader.readAsDataURL(file);
+  });
+const getValidatedPhone = () => {
+  const formData = new FormData(form);
+  const phone = normalizePhone(formData.get('phone'));
+  if (!phone) {
+    showToast('Telefon raqamingizni kiriting', 'error');
+    return null;
+  }
+  if (!isValidPhone(phone)) {
+    showToast('Telefon raqami noto‘g‘ri', 'error');
+    return null;
+  }
+  return phone;
+};
 
 // ====== SUMMARY ======
 const calculateSummary = () => {
@@ -66,7 +88,7 @@ const calculateSummary = () => {
 };
 
 // ====== ORDER CREATION ======
-const createOrder = ({ status, paymentMethod, receipt }) => {
+const createOrder = ({ status, paymentMethod, receipt, contactPhone }) => {
   const cart = getCart();
   if (!cart.length) {
     showToast(t('cart_empty'), 'error');
@@ -89,11 +111,13 @@ const createOrder = ({ status, paymentMethod, receipt }) => {
     receipt: receipt || null,
     contact: {
       name: formData.get('name'),
-      phone: normalizePhone(formData.get('phone')),
+      phone: contactPhone,
       city: formData.get('city'),
       district: formData.get('district'),
       address: formData.get('address'),
     },
+    contactPhone,
+    userPhone: contactPhone,
     userId: getCurrentUser()?.id || null,
   };
 
@@ -140,63 +164,90 @@ form.addEventListener('submit', (event) => {
   event.preventDefault();
   const formData = new FormData(form);
   const payment = formData.get('payment');
-  if (payment === 'card_transfer') {
-    showReceiptStep();
-    showToast(t('receipt_required'), 'error');
+  const contactPhone = getValidatedPhone();
+  if (!contactPhone) {
     return;
   }
-  createOrder({ status: 'processing', paymentMethod: 'cash' });
+  if (payment === 'card_transfer') {
+    showReceiptStep();
+    showToast('Chek rasmini yuklang', 'error');
+    return;
+  }
+  createOrder({ status: 'processing', paymentMethod: 'cash', contactPhone });
 });
 
 paymentDoneBtn.addEventListener('click', () => {
   showReceiptStep();
 });
 
-receiptInput.addEventListener('change', () => {
+receiptInput?.addEventListener('change', () => {
   const file = receiptInput.files?.[0];
-  if (!file) return;
+  if (!file) {
+    receiptFile = null;
+    if (receiptPreviewUrl) {
+      URL.revokeObjectURL(receiptPreviewUrl);
+      receiptPreviewUrl = null;
+    }
+    if (receiptFilename) {
+      receiptFilename.textContent = 'Fayl tanlanmagan';
+    }
+    receiptPreview.innerHTML = '';
+    receiptPreview.dataset.i18n = 'receipt_preview';
+    applyTranslations();
+    return;
+  }
   receiptFile = file;
-  const reader = new FileReader();
-  reader.onload = () => {
-    receiptData = {
-      name: file.name,
-      type: file.type,
-      size: file.size,
-      dataUrl: reader.result,
-    };
-    receiptPreview.innerHTML = `<img src="${reader.result}" alt="receipt" class="h-full w-full rounded-xl object-cover" />`;
-  };
-  reader.readAsDataURL(file);
+  if (receiptFilename) {
+    receiptFilename.textContent = file.name;
+  }
+  if (receiptPreviewUrl) {
+    URL.revokeObjectURL(receiptPreviewUrl);
+  }
+  receiptPreviewUrl = URL.createObjectURL(file);
+  receiptPreview.innerHTML = `<img src="${receiptPreviewUrl}" alt="receipt" class="h-full w-full rounded-xl object-cover" />`;
 });
 
-receiptSubmit.addEventListener('click', async () => {
-  if (!receiptData || !receiptFile) {
-    showToast(t('receipt_required'), 'error');
+if (receiptSubmit) {
+  receiptSubmit.type = 'button';
+}
+
+receiptSubmit?.addEventListener('click', async (event) => {
+  event.preventDefault();
+  event.stopPropagation();
+  if (!receiptFile) {
+    showToast('Chek rasmini tanlang', 'error');
+    return;
+  }
+  const contactPhone = getValidatedPhone();
+  if (!contactPhone) {
     return;
   }
   const currentUser = getCurrentUser();
   if (!currentUser) {
-    showToast(t('login_error'), 'error');
+    alert('Avval accountga kiring');
+    window.location.href = 'account.html';
     return;
   }
+  if (receiptSubmit) {
+    receiptSubmit.disabled = true;
+    receiptSubmit.textContent = 'Yuborilmoqda...';
+  }
   try {
-    const receiptUrl = await uploadImageToStorage(
-      receiptFile,
-      `receipts/${currentUser.id}`
-    );
+    const receiptBase64 = await readFileAsDataUrl(receiptFile);
     const cart = getCart();
     const { total } = calculateSummary();
     const formData = new FormData(form);
     await addDoc(collection(db, 'orders'), {
       userId: currentUser.id,
       userName: formData.get('name'),
-      userPhone: normalizePhone(formData.get('phone')),
+      userPhone: contactPhone,
+      contactPhone,
       items: cart,
       total,
       status: 'pending_verification',
-      receiptUrl,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
+      receiptBase64,
+      createdAt: nowTs(),
+      updatedAt: nowTs(),
     });
     saveCart([]);
     showToast(t('order_created'));
@@ -205,7 +256,14 @@ receiptSubmit.addEventListener('click', async () => {
     }, 800);
   } catch (error) {
     console.error('Order create error', error);
-    showToast(t('fetch_error'), 'error');
+    alert(
+      `Xatolik: ${error.message}\nFirebase ruxsat bermayapti (rules). Firestore/Storage ni Console’da yoqing (test mode).`
+    );
+  } finally {
+    if (receiptSubmit) {
+      receiptSubmit.disabled = false;
+      receiptSubmit.textContent = 'Chekni yuborish';
+    }
   }
 });
 
