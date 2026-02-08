@@ -25,6 +25,7 @@ export const ensureSeedData = () => {
         wishlist: [],
         orders: [],
         role: 'user',
+        email: 'nurullohkomilov163@gmail.com',
       },
       {
         id: 's-2001',
@@ -35,6 +36,7 @@ export const ensureSeedData = () => {
         wishlist: [],
         orders: [],
         role: 'seller',
+        email: 'seller@example.com',
       },
       {
         id: 'a-3001',
@@ -45,6 +47,7 @@ export const ensureSeedData = () => {
         wishlist: [],
         orders: [],
         role: 'user',
+        email: 'nurullohkomilov163@gmail.com',
       },
     ]);
   }
@@ -66,7 +69,13 @@ export const ensureSeedData = () => {
   }
 };
 
-export const getUsers = () => readStorage('users', []);
+export const getUsers = () => {
+  const users = readStorage('users', []);
+  return users.map((user) => ({
+    ...user,
+    email: user.email || (user.id === 'a-3001' ? 'nurullohkomilov163@gmail.com' : ''),
+  }));
+};
 export const saveUsers = (users) => writeStorage('users', users);
 
 export const getCurrentUserId = () => readStorage('currentUserId', null);
@@ -127,3 +136,18 @@ export const saveAdminProducts = (products) => writeStorage('adminProducts', pro
 
 export const getProductComments = () => readStorage('productComments', {});
 export const saveProductComments = (comments) => writeStorage('productComments', comments);
+
+const PRODUCTS_CACHE_KEY = 'firestoreProductsCache';
+const PRODUCTS_CACHE_TTL_MS = 5 * 60 * 1000;
+
+export const getCachedProducts = () => {
+  const payload = readStorage(PRODUCTS_CACHE_KEY, null);
+  if (!payload || !Array.isArray(payload.items) || !payload.ts) return null;
+  if (Date.now() - payload.ts > PRODUCTS_CACHE_TTL_MS) return null;
+  return payload.items;
+};
+
+export const setCachedProducts = (products) => {
+  if (!Array.isArray(products)) return;
+  writeStorage(PRODUCTS_CACHE_KEY, { ts: Date.now(), items: products });
+};

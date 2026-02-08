@@ -34,7 +34,7 @@ const userWishlist = document.querySelector('#user-wishlist');
 const userSettings = document.querySelector('#user-settings');
 
 // ====== ADMIN CHECK ======
-const ADMIN_PHONE = '908557475';
+const ADMIN_EMAIL = 'nurullohkomilov163@gmail.com';
 const ADMIN_PASSWORD = 'nur123mm';
 
 // ====== HELPERS ======
@@ -63,8 +63,9 @@ const renderProfile = () => {
   authSection.classList.add('hidden');
   profileSection.classList.remove('hidden');
   profileSection.querySelector('[data-profile-name]').textContent = user.name;
-  profileSection.querySelector('[data-profile-phone]').textContent = user.phone;
-  if (user.role === 'admin') {
+  profileSection.querySelector('[data-profile-email]').textContent = user.email || '—';
+  profileSection.querySelector('[data-profile-phone]').textContent = user.phone || '—';
+  if (user?.isAdmin === true) {
     adminShortcuts?.classList.remove('hidden');
     userWishlist?.classList.add('hidden');
     userSettings?.classList.add('hidden');
@@ -93,48 +94,52 @@ const renderWishlist = async () => {
 loginForm.addEventListener('submit', (event) => {
   event.preventDefault();
   const formData = new FormData(loginForm);
-  const phone = normalizePhone(formData.get('phone'));
+  const email = formData.get('email')?.toString().trim().toLowerCase() || '';
   const password = formData.get('password')?.toString().trim() || '';
   const users = getUsers();
-  if (phone === ADMIN_PHONE && password === ADMIN_PASSWORD) {
-    const existingAdmin = users.find((item) => item.id === 'admin');
-    const adminUser = existingAdmin || {
-      id: 'admin',
-      name: 'Site Owner',
-      phone: ADMIN_PHONE,
-      password: ADMIN_PASSWORD,
-      cart: [],
-      wishlist: [],
-      orders: [],
-      role: 'admin',
-    };
-    const nextUsers = existingAdmin ? users : [adminUser, ...users];
+
+  const adminCredentialsMatch = email === ADMIN_EMAIL && password === ADMIN_PASSWORD;
+
+  if (adminCredentialsMatch) {
+    const existingAdmin = users.find((item) => (item.email || '').toLowerCase() === ADMIN_EMAIL);
+    const adminUser = existingAdmin
+      ? { ...existingAdmin, password: ADMIN_PASSWORD, role: 'admin', isAdmin: true }
+      : {
+          id: 'admin-fixed',
+          name: 'Admin',
+          phone: '',
+          email: ADMIN_EMAIL,
+          password: ADMIN_PASSWORD,
+          cart: [],
+          wishlist: [],
+          orders: [],
+          role: 'admin',
+          isAdmin: true,
+        };
+    const nextUsers = existingAdmin
+      ? users.map((item) => ((item.email || '').toLowerCase() === ADMIN_EMAIL ? adminUser : item))
+      : [adminUser, ...users];
     saveUsers(nextUsers);
-    setCurrentUserId('admin');
+    setCurrentUserId(adminUser.id);
     persistCurrentUser(adminUser);
+    localStorage.setItem('isAdmin', 'true');
+    showToast(t('welcome'));
     window.location.href = 'admin.html';
     return;
   }
-  const user = users.find(
-    (item) => normalizePhone(item.phone) === phone && item.password === password
-  );
+
+  const user = users.find((item) => (item.email || '').toLowerCase() === email && item.password === password);
   if (!user) {
     showToast(t('login_error'), 'error');
     return;
   }
-  if (phone === ADMIN_PHONE && password === ADMIN_PASSWORD) {
-    user.role = 'admin';
-  }
-  saveUsers(
-    users.map((item) => (item.id === user.id ? { ...item, role: user.role } : item))
-  );
-  setCurrentUserId(user.id);
-  persistCurrentUser(user);
+
+  const updatedUser = { ...user, role: 'user', isAdmin: false };
+  saveUsers(users.map((item) => (item.id === user.id ? updatedUser : item)));
+  setCurrentUserId(updatedUser.id);
+  persistCurrentUser(updatedUser);
+  localStorage.setItem('isAdmin', 'false');
   showToast(t('welcome'));
-  if (user.role === 'admin') {
-    window.location.href = 'admin.html';
-    return;
-  }
   window.location.href = 'index.html';
 });
 
@@ -142,17 +147,22 @@ registerForm.addEventListener('submit', (event) => {
   event.preventDefault();
   const formData = new FormData(registerForm);
   const name = formData.get('name');
-  const phone = normalizePhone(formData.get('phone'));
+  const email = formData.get('email')?.toString().trim().toLowerCase() || '';
   const password = formData.get('password');
   const users = getUsers();
-  if (users.some((user) => normalizePhone(user.phone) === phone)) {
-    showToast(t('phone_exists'), 'error');
+  if (!email) {
+    showToast('Email kiriting', 'error');
+    return;
+  }
+  if (users.some((user) => (user.email || '').toLowerCase() === email)) {
+    showToast('Bu email allaqachon mavjud', 'error');
     return;
   }
   const newUser = {
     id: `u-${Date.now()}`,
     name,
-    phone,
+    phone: '',
+    email,
     password,
     cart: [],
     wishlist: [],
@@ -163,6 +173,7 @@ registerForm.addEventListener('submit', (event) => {
   saveUsers(users);
   setCurrentUserId(newUser.id);
   persistCurrentUser(newUser);
+  localStorage.setItem('isAdmin', 'false');
   showToast(t('profile_created'));
   window.location.href = 'index.html';
 });
@@ -170,6 +181,7 @@ registerForm.addEventListener('submit', (event) => {
 logoutBtn.addEventListener('click', () => {
   setCurrentUserId(null);
   localStorage.removeItem('currentUser');
+  localStorage.setItem('isAdmin', 'false');
   showToast(t('logout_done'));
   renderProfile();
 });

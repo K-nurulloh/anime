@@ -1,4 +1,4 @@
-import { fetchProducts } from './api.js';
+import { db, collection, getDocs, query, orderBy, doc, getDoc } from './firebase.js';
 import {
   ensureSeedData,
   getCart,
@@ -8,8 +8,10 @@ import {
   getCurrentUser,
   getProductComments,
   saveProductComments,
+  getCachedProducts,
+  setCachedProducts,
 } from './storage.js';
-import { renderProductCard, showToast, updateCartBadge } from './ui.js';
+import { isAdminUser, renderProductCard, showToast, updateCartBadge, syncAdminState } from './ui.js';
 import { applyTranslations, initLangSwitcher, t, getLang } from './i18n.js';
 
 // ====== INIT ======
@@ -31,6 +33,63 @@ const commentsLoginNote = document.querySelector('#comments-login-note');
 
 const params = new URLSearchParams(window.location.search);
 const productId = params.get('id');
+
+
+const fetchProductsFromFirestore = async () => {
+  const cached = getCachedProducts();
+  if (cached?.length) {
+    return { products: cached, error: null };
+  }
+
+  try {
+    let snapshot;
+    try {
+      snapshot = await getDocs(query(collection(db, 'products'), orderBy('createdAt', 'desc')));
+      if (!snapshot.docs.length) {
+        snapshot = await getDocs(collection(db, 'products'));
+      }
+    } catch (orderError) {
+      snapshot = await getDocs(collection(db, 'products'));
+    }
+    const products = snapshot.docs.map((docSnap) => {
+      const data = docSnap.data() || {};
+      const images = Array.isArray(data.images)
+        ? data.images.slice(0, 10)
+        : data.img
+          ? [data.img]
+          : [];
+      return {
+        docId: docSnap.id,
+        id: docSnap.id,
+        ...data,
+        images,
+        img: data.img || images[0] || '',
+      };
+    });
+    setCachedProducts(products);
+    return { products, error: null };
+  } catch (error) {
+    console.error('Failed to load Firestore products:', error);
+    return {
+      products: [],
+      error: 'Mahsulotlarni yuklashda xatolik yuz berdi. Keyinroq qayta urinib ko‘ring.',
+    };
+  }
+};
+
+
+const detailSkeletonHTML = `
+  <div class="grid gap-6 lg:grid-cols-[1.1fr_1fr]">
+    <div class="detail-skeleton shimmer h-72 rounded-2xl"></div>
+    <div class="section space-y-3">
+      <div class="detail-skeleton shimmer h-5 w-1/3 rounded"></div>
+      <div class="detail-skeleton shimmer h-8 w-4/5 rounded"></div>
+      <div class="detail-skeleton shimmer h-4 w-1/2 rounded"></div>
+      <div class="detail-skeleton shimmer h-20 w-full rounded"></div>
+      <div class="detail-skeleton shimmer h-10 w-2/3 rounded"></div>
+    </div>
+  </div>
+`;
 
 // ====== GALLERY ======
 const renderGallery = (images, title) => {
@@ -91,13 +150,23 @@ const addToCart = (productId) => {
 // ====== CARD ACTIONS ======
 const initCardActions = (container) => {
   container.addEventListener('click', (event) => {
+    const editBtn = event.target.closest('.edit-btn');
     const cartBtn = event.target.closest('.add-cart-btn');
     const wishlistBtn = event.target.closest('.wishlist-btn');
+    if (editBtn) {
+      event.preventDefault();
+      event.stopPropagation();
+      const productId = editBtn.dataset.editId;
+      if (productId) {
+        window.location.href = `admin.html?editId=${productId}`;
+      }
+      return;
+    }
     if (cartBtn) {
-      addToCart(Number(cartBtn.dataset.id));
+      addToCart(cartBtn.dataset.id);
     }
     if (wishlistBtn) {
-      handleWishlist(Number(wishlistBtn.dataset.id));
+      handleWishlist(wishlistBtn.dataset.id);
     }
   });
 };
@@ -157,44 +226,80 @@ const renderComments = () => {
 
 // ====== DATA BOOTSTRAP ======
 const init = async () => {
-  const { products, error } = await fetchProducts();
-  if (error) {
-    errorBox.textContent = error;
-    errorBox.classList.remove('hidden');
-    return;
-  }
-  const product = products.find((item) => String(item.id) === String(productId));
-  if (!product) {
+  detailWrapper.innerHTML = detailSkeletonHTML;
+
+  if (!productId) {
     errorBox.textContent = t('not_found');
     errorBox.classList.remove('hidden');
+    detailWrapper.innerHTML = `<div class="section text-center"><p>${t('not_found')}</p></div>`;
     return;
   }
 
-  const images = product.images?.length ? product.images : product.img ? [product.img] : [];
-  const oldPrice = product.oldPrice && product.oldPrice > product.price ? product.oldPrice : product.price;
+  let product = null;
+  try {
+    const snap = await getDoc(doc(db, 'products', productId));
+    if (snap.exists()) {
+      const data = snap.data() || {};
+      const imgs = Array.isArray(data.images)
+        ? data.images.slice(0, 10)
+        : data.img
+          ? [data.img]
+          : [];
+      product = {
+        id: snap.id,
+        docId: snap.id,
+        ...data,
+        images: imgs,
+        img: data.img || imgs[0] || '',
+      };
+    }
+  } catch (error) {
+    console.error('Failed to load detail product:', error);
+  }
+
+  if (!product) {
+    errorBox.textContent = t('not_found');
+    errorBox.classList.remove('hidden');
+    detailWrapper.innerHTML = `<div class="section text-center"><h3 class="text-lg font-semibold">${t('not_found')}</h3><p class="mt-2 text-sm text-white/70">Mahsulot topilmadi yoki o‘chirib yuborilgan.</p></div>`;
+    return;
+  }
+
+  const { products } = await fetchProductsFromFirestore();
+  const images = product.images?.length ? product.images.slice(0, 10) : [product.img].filter(Boolean);
+  const oldPrice = Number(product.oldPrice);
+  const hasOldPrice = Number.isFinite(oldPrice) && oldPrice > Number(product.price);
+  const discount = Number(product.discount ?? product.discountPercent);
+  const hasDiscount = Number.isFinite(discount) && discount > 0;
+  const description = product.desc || product.description || '';
+  const descriptionMarkup = description
+    ? `<p id="dDesc" class="text-white/70">${description}</p>`
+    : `<p id="dDesc" class="hidden"></p>`;
+  const currentUser = syncAdminState(getCurrentUser()) || getCurrentUser();
+  const isAdmin = isAdminUser(currentUser);
+  const adminEditMarkup = isAdmin
+    ? `<button id="detail-edit" class="rounded-full border border-white/20 px-3 py-1 text-xs text-white/80">✏️ Edit</button>`
+    : '';
 
   detailWrapper.innerHTML = `
     <div class="grid gap-6 lg:grid-cols-[1.1fr_1fr]">
       ${renderGallery(images, product.title)}
       <div class="section flex flex-col gap-4">
-        <div>
-          <p class="text-sm text-white/70">${product.category}</p>
-          <h1 class="text-3xl font-bold text-white">${product.title}</h1>
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p class="text-sm text-white/70">${product.category}</p>
+            <h1 class="text-3xl font-bold text-white">${product.title}</h1>
+          </div>
+          ${adminEditMarkup}
         </div>
         <div class="flex items-center gap-2 text-amber-300">
           <span>★ ${product.rating ?? 4.8}</span>
-          <span class="text-white/60">(stock: ${Math.floor(5 + Math.random() * 30)})</span>
+          <span class="text-white/60">(stock: ${product.stock ?? '—'})</span>
         </div>
-        <p class="text-white/70">${product.desc}</p>
+        ${descriptionMarkup}
         <div class="flex items-center gap-3">
-          <span class="text-2xl font-bold text-white">${product.price.toLocaleString(getLang() === 'ru' ? 'ru-RU' : 'uz-UZ')} so'm</span>
-          ${
-            oldPrice > product.price
-              ? `<span class="text-sm text-slate-400 line-through">${oldPrice.toLocaleString(
-                  getLang() === 'ru' ? 'ru-RU' : 'uz-UZ'
-                )} so'm</span>`
-              : ''
-          }
+          <span class="text-2xl font-bold text-white">${Number(product.price || 0).toLocaleString(getLang() === 'ru' ? 'ru-RU' : 'uz-UZ')} so'm</span>
+          ${hasOldPrice ? `<span class="text-sm text-slate-400 line-through">${oldPrice.toLocaleString(getLang() === 'ru' ? 'ru-RU' : 'uz-UZ')} so'm</span>` : ''}
+          ${hasDiscount ? `<span class="rounded-full bg-emerald-500/20 px-2 py-1 text-xs text-emerald-200">-${discount}%</span>` : ''}
         </div>
         <div class="rounded-2xl bg-white/5 p-4 text-sm text-white/70">
           <p>${t('delivery_note')}</p>
@@ -206,24 +311,24 @@ const init = async () => {
 
   const isSaved = getWishlist().some((item) => item.id === product.id);
   const wishlistBtn = document.querySelector('[data-wishlist-toggle]');
-  wishlistBtn.textContent = isSaved ? `❤️ ${t('wishlist')}` : `🤍 ${t('wishlist')}`;
+  if (wishlistBtn) {
+    wishlistBtn.textContent = isSaved ? `❤️ ${t('wishlist')}` : `🤍 ${t('wishlist')}`;
+  }
 
   const actionPrice = document.querySelector('#detail-action-price');
   const actionCart = document.querySelector('#detail-action-cart');
   const actionBuy = document.querySelector('#detail-action-buy');
   if (actionPrice) {
-    actionPrice.textContent = `${product.price.toLocaleString(getLang() === 'ru' ? 'ru-RU' : 'uz-UZ')} so'm`;
+    actionPrice.textContent = `${Number(product.price || 0).toLocaleString(getLang() === 'ru' ? 'ru-RU' : 'uz-UZ')} so'm`;
   }
-  if (actionCart) {
-    actionCart.addEventListener('click', () => addToCart(product.id));
-  }
+  if (actionCart) actionCart.addEventListener('click', () => addToCart(product.id));
   if (actionBuy) {
     actionBuy.addEventListener('click', () => {
       addToCart(product.id);
       window.location.href = 'checkout.html';
     });
   }
-  wishlistBtn.addEventListener('click', () => handleWishlist(product.id));
+  if (wishlistBtn) wishlistBtn.addEventListener('click', () => handleWishlist(product.id));
   document.querySelectorAll('[data-gallery-thumb]').forEach((button) => {
     button.addEventListener('click', () => {
       const mainImage = document.querySelector('#main-image');
@@ -235,6 +340,7 @@ const init = async () => {
   const similar = products.filter((item) => item.category === product.category && item.id !== product.id);
   similarList.innerHTML = similar.slice(0, 8).map(renderProductCard).join('');
   moreList.innerHTML = products
+    .filter((item) => item.id !== product.id)
     .sort(() => Math.random() - 0.5)
     .slice(0, 8)
     .map(renderProductCard)
@@ -243,13 +349,19 @@ const init = async () => {
   initCardActions(similarList);
   initCardActions(moreList);
   renderComments();
-  const currentUser = getCurrentUser();
   if (!currentUser) {
     commentForm.classList.add('hidden');
     commentsLoginNote.classList.remove('hidden');
   } else {
     commentForm.classList.remove('hidden');
     commentsLoginNote.classList.add('hidden');
+  }
+
+  const detailEdit = document.querySelector('#detail-edit');
+  if (detailEdit) {
+    detailEdit.addEventListener('click', () => {
+      window.location.href = `admin.html?editId=${product.id}`;
+    });
   }
 };
 

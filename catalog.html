@@ -71,20 +71,41 @@
           <h1 class="text-2xl font-semibold text-white" data-i18n="catalog_title"></h1>
           <p class="text-sm text-white/70" data-i18n="catalog_subtitle"></p>
         </div>
-        <div class="chip-row catalog-chips">
-          <button class="category-chip chip" data-category="Telefon" aria-pressed="false">📱 <span data-i18n="category_phone"></span></button>
-          <button class="category-chip chip" data-category="Kino" aria-pressed="false">🎬 <span data-i18n="category_kino"></span></button>
-          <button class="category-chip chip" data-category="Noutbuk" aria-pressed="false">💻 <span data-i18n="category_laptop"></span></button>
-          <button class="category-chip chip" data-category="Uy" aria-pressed="false">🏠 <span data-i18n="category_home"></span></button>
-          <button class="category-chip chip" data-category="Kiyim" aria-pressed="false">👕 <span data-i18n="category_clothes"></span></button>
-          <button class="category-chip chip" data-category="Aksessuar" aria-pressed="false">🧸 <span data-i18n="category_accessory"></span></button>
-          <button class="category-chip chip" data-category="Kitob" aria-pressed="false">📚 <span data-i18n="category_book"></span></button>
+        <div class="cat-grid">
+          <button class="category-chip cat-pill" data-category="Telefon" aria-pressed="false">
+            <span class="cat-ico">📱</span>
+            <span class="cat-label" data-i18n="category_phone"></span>
+          </button>
+          <button class="category-chip cat-pill" data-category="Kino" aria-pressed="false">
+            <span class="cat-ico">🎬</span>
+            <span class="cat-label" data-i18n="category_kino"></span>
+          </button>
+          <button class="category-chip cat-pill" data-category="Noutbuk" aria-pressed="false">
+            <span class="cat-ico">💻</span>
+            <span class="cat-label" data-i18n="category_laptop"></span>
+          </button>
+          <button class="category-chip cat-pill" data-category="Uy" aria-pressed="false">
+            <span class="cat-ico">🏠</span>
+            <span class="cat-label" data-i18n="category_home"></span>
+          </button>
+          <button class="category-chip cat-pill" data-category="Kiyim" aria-pressed="false">
+            <span class="cat-ico">👕</span>
+            <span class="cat-label" data-i18n="category_clothes"></span>
+          </button>
+          <button class="category-chip cat-pill" data-category="Aksessuar" aria-pressed="false">
+            <span class="cat-ico">🧸</span>
+            <span class="cat-label" data-i18n="category_accessory"></span>
+          </button>
+          <button class="category-chip cat-pill" data-category="Kitob" aria-pressed="false">
+            <span class="cat-ico">📚</span>
+            <span class="cat-label" data-i18n="category_book"></span>
+          </button>
         </div>
       </section>
 
       <section id="catalog" class="space-y-6">
         <div id="error-box" class="hidden rounded-2xl bg-rose-500/10 px-4 py-3 text-sm text-rose-200"></div>
-        <div id="product-list" class="products-grid"></div>
+        <div id="product-list" class="products-grid grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4"></div>
         <div id="loader" class="flex justify-center">
           <div class="h-10 w-10 animate-spin rounded-full border-4 border-slate-800 border-t-slate-200"></div>
         </div>

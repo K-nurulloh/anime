@@ -1,5 +1,5 @@
 import { ensureSeedData, getCurrentUser, readStorage, writeStorage, getOrders, saveOrders } from './storage.js';
-import { formatPrice, updateCartBadge, showToast } from './ui.js';
+import { formatPrice, updateCartBadge, showToast, isAdminUser, syncAdminState } from './ui.js';
 import { applyTranslations, initLangSwitcher, t, getLang } from './i18n.js';
 
 // ====== INIT ======
@@ -103,8 +103,8 @@ const renderPendingPayments = () => {
 
 // ====== ACCESS ======
 const init = () => {
-  const currentUser = getCurrentUser();
-  if (!currentUser || currentUser.role !== 'seller') {
+  const currentUser = syncAdminState(getCurrentUser()) || getCurrentUser();
+  if (!currentUser || !isAdminUser(currentUser)) {
     accessDenied.classList.remove('hidden');
     sellerPanel.classList.add('hidden');
     return;

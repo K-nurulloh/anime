@@ -40,7 +40,7 @@
           <div id="login-box" class="rounded-2xl glass p-6 shadow-sm">
             <h2 class="text-lg font-semibold text-white" data-i18n="login"></h2>
             <form id="login-form" class="mt-4 space-y-3">
-              <input name="phone" required data-i18n-placeholder="phone" class="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-2 text-sm text-white" />
+              <input name="email" type="email" required placeholder="Email" class="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-2 text-sm text-white" />
               <input type="password" name="password" required data-i18n-placeholder="password" class="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-2 text-sm text-white" />
               <button class="w-full rounded-xl bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-100" data-i18n="login_btn"></button>
             </form>
@@ -54,7 +54,7 @@
             <h2 class="text-lg font-semibold text-white" data-i18n="register"></h2>
             <form id="register-form" class="mt-4 space-y-3">
               <input name="name" required data-i18n-placeholder="name" class="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-2 text-sm text-white" />
-              <input name="phone" required data-i18n-placeholder="phone" class="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-2 text-sm text-white" />
+              <input name="email" type="email" required placeholder="Email" class="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-2 text-sm text-white" />
               <input type="password" name="password" required data-i18n-placeholder="password" class="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-2 text-sm text-white" />
               <button class="w-full rounded-xl bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-100" data-i18n="register_btn"></button>
             </form>
@@ -76,6 +76,7 @@
           </div>
           <div class="mt-4 grid gap-3 text-sm text-white/70">
             <p><span data-i18n="name"></span>: <span data-profile-name class="font-semibold text-white"></span></p>
+            <p><span>Email</span>: <span data-profile-email class="font-semibold text-white"></span></p>
             <p><span data-i18n="phone"></span>: <span data-profile-phone class="font-semibold text-white"></span></p>
           </div>
           <div class="mt-4 flex flex-wrap gap-2">

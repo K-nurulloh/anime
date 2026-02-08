@@ -1,9 +1,5 @@
 import {
   ensureSeedData,
-  getUsers,
-  saveUsers,
-  getAdminProducts,
-  saveAdminProducts,
   getProductComments,
   saveProductComments,
 } from './storage.js';
@@ -11,17 +7,24 @@ import { fetchProducts } from './api.js';
 import { showToast, statusLabel } from './ui.js';
 import {
   db,
+  storage,
   collection,
+  addDoc,
   query,
   where,
   getDocs,
+  getDoc,
   orderBy,
   serverTimestamp,
-} from './firebase.js';
-import {
-  updateDoc,
   doc,
-} from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js';
+  setDoc,
+  ref,
+  uploadBytes,
+  getDownloadURL,
+  updateDoc,
+  deleteDoc,
+  deleteObject,
+} from './firebase.js';
 
 // ====== INIT ======
 ensureSeedData();
@@ -30,8 +33,6 @@ const accessDenied = document.querySelector('#access-denied');
 const adminPanel = document.querySelector('#admin-panel');
 const pendingOrdersList = document.querySelector('#pending-orders');
 const pendingEmpty = document.querySelector('#pending-empty');
-const allOrdersList = document.querySelector('#all-orders');
-const ordersEmpty = document.querySelector('#orders-empty');
 const receiptModal = document.querySelector('#receipt-modal');
 const receiptImage = document.querySelector('#receipt-image');
 const receiptClose = document.querySelector('#receipt-close');
@@ -39,38 +40,33 @@ const productForm = document.querySelector('#admin-product-form');
 const productTitle = document.querySelector('#product-title');
 const productCategory = document.querySelector('#product-category');
 const productPrice = document.querySelector('#product-price');
+const productStock = document.querySelector('#product-stock');
 const productOldPrice = document.querySelector('#product-old-price');
-const productDescription = document.querySelector('#product-description');
-const productImages = document.querySelector('#product-images');
+const productDiscount = document.querySelector('#product-discount');
+const productDescription = document.querySelector('#pDesc');
+const productRating = document.querySelector('#product-rating');
+const productImages = document.querySelector('#pImages');
+const imageLimitError = document.querySelector('#image-limit-error');
 const imagePreview = document.querySelector('#image-preview');
 const adminProductsEmpty = document.querySelector('#admin-products-empty');
-const adminProductsList = document.querySelector('#admin-products-list');
+const adminProductsList = document.querySelector('#adminProducts');
+const saveButton = document.querySelector('#btnSave');
 const commentsEmpty = document.querySelector('#comments-empty');
 const adminComments = document.querySelector('#admin-comments');
-const editProductModal = document.querySelector('#edit-product-modal');
-const editProductForm = document.querySelector('#edit-product-form');
-const editProductClose = document.querySelector('#edit-product-close');
-const editProductCancel = document.querySelector('#edit-product-cancel');
-const editProductTitle = document.querySelector('#edit-product-title');
-const editProductCategory = document.querySelector('#edit-product-category');
-const editProductPrice = document.querySelector('#edit-product-price');
-const editProductOldPrice = document.querySelector('#edit-product-old-price');
-const editProductDescription = document.querySelector('#edit-product-description');
-const editProductImages = document.querySelector('#edit-product-images');
-const editImagePreview = document.querySelector('#edit-image-preview');
 
 const statusLabels = {
   pending: 'Ko‘rib chiqilyapti',
   pending_verification: 'Ko‘rib chiqilyapti',
-  accepted: 'Buyurtma qabul qilindi',
+  approved: 'Buyurtma qabul qilindi',
   rejected: 'Buyurtma rad etildi',
 };
 
 // ====== STATE ======
-let selectedImages = [];
-let editSelectedImages = [];
-let editingProductId = null;
+let selectedFiles = [];
+let selectedPreviews = [];
 let productsMap = new Map();
+let adminProducts = [];
+let editingId = null;
 
 // ====== ADMIN CHECK ======
 const readCurrentUser = () => {
@@ -84,14 +80,13 @@ const readCurrentUser = () => {
 };
 
 const currentUser = readCurrentUser();
-const isAdmin = currentUser && currentUser.role === 'admin';
+const isAdmin = currentUser?.isAdmin === true;
 
 if (!isAdmin) {
   accessDenied.classList.remove('hidden');
-  setTimeout(() => {
-    window.location.href = 'index.html';
-  }, 800);
+  adminPanel.classList.add('hidden');
 } else {
+  accessDenied.classList.add('hidden');
   adminPanel.classList.remove('hidden');
 }
 
@@ -177,14 +172,13 @@ const updateOrderStatus = async (orderId, status, rejectReason = null) => {
 
 // ====== PRODUCTS ======
 const renderAdminProducts = () => {
-  const products = getAdminProducts();
-  if (!products.length) {
+  if (!adminProducts.length) {
     adminProductsEmpty.classList.remove('hidden');
     adminProductsList.innerHTML = '';
     return;
   }
   adminProductsEmpty.classList.add('hidden');
-  adminProductsList.innerHTML = products
+  adminProductsList.innerHTML = adminProducts
     .map(
       (product) => `
       <article class="rounded-2xl border border-slate-700 bg-slate-800/60 p-4 text-sm text-slate-200">
@@ -193,11 +187,17 @@ const renderAdminProducts = () => {
           <p class="font-semibold text-white">${product.title}</p>
           <p class="text-xs text-slate-400">${product.category}</p>
         </div>
-        <div class="mt-3 flex items-center justify-between gap-2">
+        <div class="mt-3 flex flex-wrap items-center justify-between gap-2">
           <span class="text-sm font-semibold text-white">${Number(product.price || 0).toLocaleString('uz-UZ')} so'm</span>
-          <button type="button" class="edit-product-btn rounded-lg border border-slate-600 px-3 py-1 text-xs text-slate-200 hover:border-slate-400" data-id="${
-            product.id
-          }">✏️ Edit</button>
+          ${
+            (product.discount ?? product.discountPercent)
+              ? `<span class="text-xs font-semibold text-emerald-200">-${product.discount ?? product.discountPercent}%</span>`
+              : ''
+          }
+        </div>
+        <div class="mt-3 flex justify-end gap-2">
+          <button type="button" class="edit-product-btn rounded-lg border border-slate-600 px-3 py-1 text-xs text-slate-200 hover:border-slate-400" data-id="${product.id}">✏️ Edit</button>
+          <button type="button" class="delete-product-btn rounded-lg border border-rose-500/60 px-3 py-1 text-xs text-rose-200 hover:border-rose-400" data-id="${product.id}">🗑 Delete</button>
         </div>
       </article>
     `
@@ -205,8 +205,46 @@ const renderAdminProducts = () => {
     .join('');
 };
 
+const loadAdminProducts = async () => {
+  const snapshot = await getDocs(query(collection(db, 'products'), orderBy('createdAt', 'desc')));
+  adminProducts = snapshot.docs.map((docSnap) => ({
+    id: docSnap.id,
+    ...docSnap.data(),
+  }));
+  renderAdminProducts();
+};
+
+const getEditIdFromQuery = () => {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('editId');
+};
+
+const loadProductForEdit = async (editId) => {
+  if (!editId) return;
+  const docSnap = await getDoc(doc(db, 'products', editId));
+  if (!docSnap.exists()) {
+    showToast('Mahsulot topilmadi', 'error');
+    return;
+  }
+  const product = docSnap.data();
+  editingId = editId;
+  productTitle.value = product.title || '';
+  productCategory.value = product.category || 'Telefon';
+  productPrice.value = product.price ?? '';
+  productStock.value = product.stock ?? '';
+  productOldPrice.value = product.oldPrice ?? '';
+  productDiscount.value = product.discount ?? product.discountPercent ?? '';
+  if (productRating) productRating.value = product.rating ?? '';
+  if (productDescription) productDescription.value = product.desc || product.description || '';
+  selectedFiles = [];
+  selectedPreviews = product.images?.length ? [...product.images] : [];
+  updateImagePreview();
+  if (saveButton) saveButton.textContent = 'Yangilash';
+  productForm?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+
 const updateImagePreview = () => {
-  imagePreview.innerHTML = selectedImages
+  imagePreview.innerHTML = selectedPreviews
     .map(
       (image, index) => `
       <div class="relative overflow-hidden rounded-xl border border-slate-700 bg-slate-800/60">
@@ -218,57 +256,29 @@ const updateImagePreview = () => {
     .join('');
 };
 
-const renderEditImagePreview = (images = []) => {
-  editImagePreview.innerHTML = images
-    .map(
-      (image) => `
-      <div class="overflow-hidden rounded-xl border border-slate-700 bg-slate-800/60">
-        <img src="${image}" alt="preview" class="h-24 w-full object-cover" />
-      </div>
-    `
-    )
-    .join('');
-};
-
-const openEditModal = (product) => {
-  editingProductId = product.id;
-  editProductTitle.value = product.title || '';
-  editProductCategory.value = product.category || '';
-  editProductPrice.value = product.price ?? 0;
-  editProductOldPrice.value = product.oldPrice ?? '';
-  editProductDescription.value = product.desc || '';
-  editSelectedImages = [];
-  editProductImages.value = '';
-  renderEditImagePreview(product.images?.length ? product.images : product.img ? [product.img] : []);
-  editProductModal.classList.remove('hidden');
-  editProductModal.classList.add('flex');
-};
-
-const closeEditModal = () => {
-  editProductModal.classList.add('hidden');
-  editProductModal.classList.remove('flex');
-  editingProductId = null;
-  editSelectedImages = [];
-  editProductImages.value = '';
-  editImagePreview.innerHTML = '';
-};
-
 productImages?.addEventListener('change', (event) => {
   const files = Array.from(event.target.files || []);
   if (!files.length) return;
-  if (files.length + selectedImages.length > 10) {
+  if (files.length + selectedFiles.length > 10) {
     showToast('Maksimum 10 ta rasm yuklash mumkin', 'error');
+    imageLimitError?.classList.remove('hidden');
     productImages.value = '';
     return;
   }
+  if (editingId && selectedFiles.length === 0) {
+    selectedPreviews.forEach((preview) => {
+      if (preview.startsWith('blob:')) {
+        URL.revokeObjectURL(preview);
+      }
+    });
+    selectedPreviews = [];
+  }
+  imageLimitError?.classList.add('hidden');
   files.forEach((file) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      selectedImages.push(reader.result);
-      updateImagePreview();
-    };
-    reader.readAsDataURL(file);
+    selectedFiles.push(file);
+    selectedPreviews.push(URL.createObjectURL(file));
   });
+  updateImagePreview();
   productImages.value = '';
 });
 
@@ -276,108 +286,150 @@ imagePreview?.addEventListener('click', (event) => {
   const removeBtn = event.target.closest('.remove-image');
   if (!removeBtn) return;
   const index = Number(removeBtn.dataset.index);
-  selectedImages.splice(index, 1);
+  const [removed] = selectedPreviews.splice(index, 1);
+  if (removed && removed.startsWith('blob:')) URL.revokeObjectURL(removed);
+  selectedFiles.splice(index, 1);
   updateImagePreview();
 });
 
-productForm?.addEventListener('submit', (event) => {
+const resetProductForm = () => {
+  selectedFiles.forEach((file, index) => {
+    const preview = selectedPreviews[index];
+    if (preview && preview.startsWith('blob:')) URL.revokeObjectURL(preview);
+  });
+  selectedFiles = [];
+  selectedPreviews = [];
+  updateImagePreview();
+  imageLimitError?.classList.add('hidden');
+  editingId = null;
+  if (saveButton) saveButton.textContent = 'Saqlash';
+  productForm.reset();
+};
+
+productForm?.addEventListener('submit', async (event) => {
   event.preventDefault();
-  if (!selectedImages.length) {
+  if (!selectedFiles.length && !selectedPreviews.length) {
     showToast('Kamida 1 ta rasm yuklang', 'error');
     return;
   }
-  if (selectedImages.length > 10) {
+  if (selectedFiles.length > 10) {
     showToast('Maksimum 10 ta rasm yuklash mumkin', 'error');
+    imageLimitError?.classList.remove('hidden');
     return;
   }
+  const title = productTitle.value.trim();
   const price = Number(productPrice.value);
+  const stock = Number(productStock?.value);
   const oldPrice = Number(productOldPrice.value);
-  const newProduct = {
-    id: `a-${Date.now()}`,
-    title: productTitle.value.trim(),
-    desc: productDescription.value.trim(),
-    price,
-    oldPrice: Number.isFinite(oldPrice) && oldPrice > 0 ? oldPrice : price,
-    category: productCategory.value,
-    images: [...selectedImages],
-    img: selectedImages[0],
-    rating: 4.9,
-  };
-  const products = getAdminProducts();
-  saveAdminProducts([newProduct, ...products]);
-  selectedImages = [];
-  updateImagePreview();
-  productForm.reset();
-  renderAdminProducts();
-  showToast('Mahsulot muvaffaqiyatli qo‘shildi');
-});
-
-adminProductsList?.addEventListener('click', (event) => {
-  const editBtn = event.target.closest('.edit-product-btn');
-  if (!editBtn) return;
-  const products = getAdminProducts();
-  const product = products.find((item) => String(item.id) === String(editBtn.dataset.id));
-  if (!product) return;
-  openEditModal(product);
-});
-
-editProductImages?.addEventListener('change', (event) => {
-  const files = Array.from(event.target.files || []);
-  if (!files.length) return;
-  if (files.length + editSelectedImages.length > 10) {
-    showToast('Maksimum 10 ta rasm yuklash mumkin', 'error');
-    editProductImages.value = '';
+  const discount = Number(productDiscount.value);
+  const rating = Number(productRating?.value);
+  const description = productDescription?.value.trim();
+  if (!title) {
+    showToast('Mahsulot nomini kiriting', 'error');
     return;
   }
-  files.forEach((file) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      editSelectedImages.push(reader.result);
-      renderEditImagePreview(editSelectedImages);
+  try {
+    const payload = {
+      title,
+      category: productCategory.value,
+      price: Number.isFinite(price) ? price : 0,
+      stock: Number.isFinite(stock) && stock >= 0 ? stock : null,
+      oldPrice: Number.isFinite(oldPrice) && oldPrice > 0 ? oldPrice : null,
+      discount: Number.isFinite(discount) && discount > 0 ? discount : null,
+      rating: Number.isFinite(rating) && rating >= 0 ? rating : null,
+      desc: description || null,
+      updatedAt: serverTimestamp(),
+      active: true,
     };
-    reader.readAsDataURL(file);
-  });
-  editProductImages.value = '';
-});
-
-editProductForm?.addEventListener('submit', (event) => {
-  event.preventDefault();
-  if (!editingProductId) return;
-  const products = getAdminProducts();
-  const index = products.findIndex((item) => String(item.id) === String(editingProductId));
-  if (index === -1) return;
-  const price = Number(editProductPrice.value);
-  const oldPrice = Number(editProductOldPrice.value);
-  const existingImages = products[index].images?.length
-    ? products[index].images
-    : products[index].img
-    ? [products[index].img]
-    : [];
-  const nextImages = editSelectedImages.length ? [...editSelectedImages] : existingImages;
-  const updatedProduct = {
-    ...products[index],
-    title: editProductTitle.value.trim(),
-    desc: editProductDescription.value.trim(),
-    price,
-    oldPrice: Number.isFinite(oldPrice) && oldPrice > 0 ? oldPrice : price,
-    category: editProductCategory.value,
-    images: nextImages,
-    img: nextImages[0] || products[index].img,
-  };
-  products[index] = updatedProduct;
-  saveAdminProducts(products);
-  renderAdminProducts();
-  showToast('Mahsulot yangilandi');
-  closeEditModal();
-});
-
-editProductClose?.addEventListener('click', closeEditModal);
-editProductCancel?.addEventListener('click', closeEditModal);
-editProductModal?.addEventListener('click', (event) => {
-  if (event.target === editProductModal) {
-    closeEditModal();
+    if (editingId) {
+      const imageUrls = selectedFiles.length
+        ? await Promise.all(
+            selectedFiles.map(async (file, index) => {
+              const fileRef = ref(storage, `products/${editingId}/${Date.now()}-${index}-${file.name}`);
+              await uploadBytes(fileRef, file);
+              return getDownloadURL(fileRef);
+            })
+          )
+        : [...selectedPreviews];
+      await updateDoc(doc(db, 'products', editingId), {
+        ...payload,
+        images: imageUrls,
+      });
+      showToast('Mahsulot yangilandi');
+    } else {
+      const docRef = await addDoc(collection(db, 'products'), {
+        ...payload,
+        images: [],
+        createdAt: serverTimestamp(),
+      });
+      const imageUrls = await Promise.all(
+        selectedFiles.map(async (file, index) => {
+          const fileRef = ref(storage, `products/${docRef.id}/${Date.now()}-${index}-${file.name}`);
+          await uploadBytes(fileRef, file);
+          return getDownloadURL(fileRef);
+        })
+      );
+      await updateDoc(doc(db, 'products', docRef.id), {
+        images: imageUrls,
+        updatedAt: serverTimestamp(),
+      });
+      showToast('Mahsulot muvaffaqiyatli qo‘shildi');
+    }
+    resetProductForm();
+    await loadAdminProducts();
+  } catch (error) {
+    showToast('Mahsulotni saqlashda xatolik yuz berdi', 'error');
   }
 });
+
+adminProductsList?.addEventListener('click', async (event) => {
+  const editBtn = event.target.closest('.edit-product-btn');
+  const deleteBtn = event.target.closest('.delete-product-btn');
+  if (deleteBtn) {
+    const id = deleteBtn.dataset.id;
+    if (!id) return;
+    if (!window.confirm('Mahsulotni o‘chirishni tasdiqlaysizmi?')) return;
+    const target = adminProducts.find((item) => String(item.id) === String(id));
+    try {
+      await deleteDoc(doc(db, 'products', id));
+      const urls = target?.images || [];
+      await Promise.all(urls.map(async (url) => {
+        try {
+          await deleteObject(ref(storage, url));
+        } catch (error) {
+          // storage delete optional
+        }
+      }));
+      showToast('Mahsulot o‘chirildi');
+      await loadAdminProducts();
+    } catch (error) {
+      showToast('O‘chirishda xatolik yuz berdi', 'error');
+    }
+    return;
+  }
+  if (!editBtn) return;
+  const product = adminProducts.find((item) => String(item.id) === String(editBtn.dataset.id));
+  if (!product) return;
+  editingId = product.id;
+  productTitle.value = product.title || '';
+  productCategory.value = product.category || 'Telefon';
+  productPrice.value = product.price ?? '';
+  productStock.value = product.stock ?? '';
+  productOldPrice.value = product.oldPrice ?? '';
+  productDiscount.value = product.discount ?? product.discountPercent ?? '';
+  if (productRating) productRating.value = product.rating ?? '';
+  if (productDescription) productDescription.value = product.desc || product.description || '';
+  selectedFiles = [];
+  selectedPreviews.forEach((preview) => {
+    if (preview.startsWith('blob:')) {
+      URL.revokeObjectURL(preview);
+    }
+  });
+  selectedPreviews = product.images?.length ? [...product.images] : [];
+  updateImagePreview();
+  if (saveButton) saveButton.textContent = 'Yangilash';
+});
+
 
 // ====== COMMENTS ======
 const renderAdminComments = () => {
@@ -417,10 +469,14 @@ const renderAdminComments = () => {
 
 const renderOrders = async () => {
   if (!isAdmin) return;
-  const allSnapshot = await getDocs(
-    query(collection(db, 'orders'), orderBy('createdAt', 'desc'))
+  const pendingSnapshot = await getDocs(
+    query(
+      collection(db, 'orders'),
+      where('status', 'in', ['pending', 'pending_verification']),
+      orderBy('createdAt', 'desc')
+    )
   );
-  const orders = allSnapshot.docs.map((docSnap) => {
+  const pendingOrders = pendingSnapshot.docs.map((docSnap) => {
     const data = docSnap.data();
     const normalizedStatus =
       data.status === 'pending_verification' ? 'pending' : data.status;
@@ -430,23 +486,17 @@ const renderOrders = async () => {
       status: normalizedStatus,
     };
   });
-  const pendingOrders = orders.filter((order) => order.status === 'pending');
 
   if (!pendingOrders.length) {
     pendingEmpty.classList.remove('hidden');
     pendingOrdersList.innerHTML = '';
-  } else {
-    pendingEmpty.classList.add('hidden');
-    pendingOrdersList.innerHTML = pendingOrders.map((order) => renderOrderCard(order, { showActions: true })).join('');
-  }
-
-  if (!orders.length) {
-    ordersEmpty.classList.remove('hidden');
-    allOrdersList.innerHTML = '';
     return;
   }
-  ordersEmpty.classList.add('hidden');
-  allOrdersList.innerHTML = orders.map((order) => renderOrderCard(order, { showActions: false })).join('');
+
+  pendingEmpty.classList.add('hidden');
+  pendingOrdersList.innerHTML = pendingOrders
+    .map((order) => renderOrderCard(order, { showActions: true }))
+    .join('');
 };
 
 // ====== RECEIPT VERIFICATION ======
@@ -455,12 +505,16 @@ adminPanel.addEventListener('click', async (event) => {
   const rejectBtn = event.target.closest('.reject-btn');
 
   if (confirmBtn) {
-    await updateOrderStatus(confirmBtn.dataset.id, 'accepted');
+    await updateOrderStatus(confirmBtn.dataset.id, 'approved');
   }
 
   if (rejectBtn) {
-    const reason = window.prompt('Sababni kiriting (ixtiyoriy):');
-    await updateOrderStatus(rejectBtn.dataset.id, 'rejected', reason && reason.trim() ? reason.trim() : null);
+    const reason = window.prompt('Rad etish sababini kiriting:');
+    if (!reason || !reason.trim()) {
+      showToast('Rad etish sababini kiriting', 'error');
+      return;
+    }
+    await updateOrderStatus(rejectBtn.dataset.id, 'rejected', reason.trim());
   }
 });
 
@@ -510,9 +564,14 @@ adminComments?.addEventListener('submit', (event) => {
 
 const init = async () => {
   const { products } = await fetchProducts();
-  productsMap = new Map(products.map((product) => [String(product.id), product]));
+  await loadAdminProducts();
+  const editId = getEditIdFromQuery();
+  if (editId) {
+    await loadProductForEdit(editId);
+  }
+  const combinedProducts = [...products, ...adminProducts];
+  productsMap = new Map(combinedProducts.map((product) => [String(product.id), product]));
   await renderOrders();
-  renderAdminProducts();
   renderAdminComments();
   if (window.location.hash) {
     const target = document.querySelector(window.location.hash);

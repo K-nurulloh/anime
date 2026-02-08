@@ -1,6 +1,43 @@
 import { getCart, getWishlist } from './storage.js';
 import { t, getLang } from './i18n.js';
 
+const ADMIN_EMAIL = 'nurullohkomilov163@gmail.com';
+
+const parseCurrentUser = () => {
+  const raw = localStorage.getItem('currentUser');
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch (error) {
+    return null;
+  }
+};
+
+export const syncAdminState = (user = null) => {
+  const currentUser = user || parseCurrentUser();
+  const email = (currentUser?.email || '').trim().toLowerCase();
+  const isAdmin = email === ADMIN_EMAIL;
+  localStorage.setItem('isAdmin', isAdmin ? 'true' : 'false');
+
+  if (currentUser) {
+    const nextUser = { ...currentUser, isAdmin, role: isAdmin ? 'admin' : currentUser.role || 'user' };
+    localStorage.setItem('currentUser', JSON.stringify(nextUser));
+    return nextUser;
+  }
+  return null;
+};
+
+export const isAdminUser = (user = null) => {
+  const currentUser = user || parseCurrentUser();
+  const email = (currentUser?.email || '').trim().toLowerCase();
+  if (email) {
+    const isAdmin = email === ADMIN_EMAIL;
+    localStorage.setItem('isAdmin', isAdmin ? 'true' : 'false');
+    return isAdmin;
+  }
+  return localStorage.getItem('isAdmin') === 'true';
+};
+
 // ====== FORMATTERS ======
 export const formatPrice = (value) => {
   const number = Number(value) || 0;
@@ -17,6 +54,10 @@ export const renderProductCard = (product) => {
   const discountPercent = oldPrice
     ? Math.round(((oldPrice - product.price) / oldPrice) * 100)
     : null;
+  const adminMode = isAdminUser();
+  const actionButton = adminMode
+    ? `<button type="button" class="pc-btn edit-btn" data-edit-id="${product.id}">✏️ Edit</button>`
+    : `<a href="detail.html?id=${product.id}" class="pc-btn">${t('details')}</a>`;
   return `
     <article class="product-card">
       <a href="detail.html?id=${product.id}" class="pc-media">
@@ -42,7 +83,7 @@ export const renderProductCard = (product) => {
         </div>
         <div class="pc-actions">
           <button class="add-cart-btn pc-btn primary" data-id="${product.id}">${t('add_to_cart')}</button>
-          <a href="detail.html?id=${product.id}" class="pc-btn">${t('details')}</a>
+          ${actionButton}
         </div>
       </div>
     </article>
@@ -118,6 +159,10 @@ export const productCardHTML = (p) => {
   const badge = p.isNew ? `<span class="pc-pill">NEW</span>` : ``;
   const rating = p.rating ? `<span class="pc-pill">⭐ ${p.rating}</span>` : `<span class="pc-pill">⭐ 4.8</span>`;
   const image = p.images?.[0] || p.img;
+  const adminMode = isAdminUser();
+  const actionButton = adminMode
+    ? `<button type="button" class="pc-btn edit-btn" data-edit-id="${p.id}">✏️ Edit</button>`
+    : `<a href="detail.html?id=${p.id}" class="pc-btn">Batafsil</a>`;
   return `
   <article class="slide">
     <div class="product-card">
@@ -135,7 +180,7 @@ export const productCardHTML = (p) => {
           <button data-add-to-cart="${p.id}" class="pc-btn primary">
             Savat
           </button>
-          <a href="detail.html?id=${p.id}" class="pc-btn">Batafsil</a>
+          ${actionButton}
         </div>
       </div>
     </div>
@@ -184,3 +229,17 @@ export const ordersSkeletonListHTML = (count = 3) =>
   `
     )
     .join('');
+
+export const initAdminEditDelegation = (root = document) => {
+  root.addEventListener('click', (event) => {
+    const editBtn = event.target.closest('.edit-btn');
+    if (!editBtn) return;
+    if (!isAdminUser()) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const editId = editBtn.dataset.editId;
+    if (editId) {
+      window.location.href = `admin.html?editId=${editId}`;
+    }
+  });
+};
