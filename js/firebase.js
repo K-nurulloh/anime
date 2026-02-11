@@ -15,13 +15,6 @@ import {
   orderBy,
   limit,
 } from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js';
-import {
-  getStorage,
-  ref,
-  uploadBytes,
-  getDownloadURL,
-  deleteObject,
-} from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-storage.js';
 // Firestore must be enabled in Firebase Console (test mode is fine for now).
 const firebaseConfig = {
   apiKey: 'AIzaSyB8Bdb48shjwEuu8r5bi4FIhZZhxM8abpk',
@@ -34,7 +27,6 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
-export const storage = getStorage(app);
 export const nowTs = serverTimestamp;
 
 export {
@@ -51,8 +43,4 @@ export {
   orderBy,
   limit,
   serverTimestamp,
-  ref,
-  uploadBytes,
-  getDownloadURL,
-  deleteObject,
 };

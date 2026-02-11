@@ -5,9 +5,10 @@ import {
 } from './storage.js';
 import { fetchProducts } from './api.js';
 import { showToast, statusLabel } from './ui.js';
+import { IMGBB_API_KEY } from './config.js';
+import { imgbbUpload } from './imgbb.js';
 import {
   db,
-  storage,
   collection,
   addDoc,
   query,
@@ -18,12 +19,8 @@ import {
   serverTimestamp,
   doc,
   setDoc,
-  ref,
-  uploadBytes,
-  getDownloadURL,
   updateDoc,
   deleteDoc,
-  deleteObject,
 } from './firebase.js';
 
 // ====== INIT ======
@@ -100,7 +97,7 @@ const getItemsCount = (items = []) => items.reduce((sum, item) => sum + item.qty
 const renderOrderCard = (order, { showActions }) => {
   const buyerName = order.userName || 'Noma\'lum';
   const buyerPhone = order.userPhone || 'Telefon: N/A';
-  const receiptSrc = order.receiptBase64 || order.receiptUrl;
+  const receiptSrc = order.receiptUrl || null;
   const receiptMarkup = receiptSrc
     ? `
       <a href="${receiptSrc}" target="_blank" rel="noreferrer" class="receipt-open mt-3 inline-flex items-center gap-2 rounded-xl glass-soft px-3 py-2 text-xs text-white/80" data-id="${order.id}">
@@ -341,39 +338,23 @@ productForm?.addEventListener('submit', async (event) => {
       updatedAt: serverTimestamp(),
       active: true,
     };
+    const imageUrls = selectedFiles.length
+      ? await Promise.all(selectedFiles.map((file) => imgbbUpload(file, IMGBB_API_KEY)))
+      : [...selectedPreviews];
+
     if (editingId) {
-      const imageUrls = selectedFiles.length
-        ? await Promise.all(
-            selectedFiles.map(async (file, index) => {
-              const fileRef = ref(storage, `products/${editingId}/${Date.now()}-${index}-${file.name}`);
-              await uploadBytes(fileRef, file);
-              return getDownloadURL(fileRef);
-            })
-          )
-        : [...selectedPreviews];
       await updateDoc(doc(db, 'products', editingId), {
         ...payload,
         images: imageUrls,
       });
-      showToast('Mahsulot yangilandi');
+      showToast("Mahsulot muvaffaqiyatli qo‘shildi");
     } else {
-      const docRef = await addDoc(collection(db, 'products'), {
+      await addDoc(collection(db, 'products'), {
         ...payload,
-        images: [],
+        images: imageUrls,
         createdAt: serverTimestamp(),
       });
-      const imageUrls = await Promise.all(
-        selectedFiles.map(async (file, index) => {
-          const fileRef = ref(storage, `products/${docRef.id}/${Date.now()}-${index}-${file.name}`);
-          await uploadBytes(fileRef, file);
-          return getDownloadURL(fileRef);
-        })
-      );
-      await updateDoc(doc(db, 'products', docRef.id), {
-        images: imageUrls,
-        updatedAt: serverTimestamp(),
-      });
-      showToast('Mahsulot muvaffaqiyatli qo‘shildi');
+      showToast("Mahsulot muvaffaqiyatli qo‘shildi");
     }
     resetProductForm();
     await loadAdminProducts();
@@ -389,17 +370,8 @@ adminProductsList?.addEventListener('click', async (event) => {
     const id = deleteBtn.dataset.id;
     if (!id) return;
     if (!window.confirm('Mahsulotni o‘chirishni tasdiqlaysizmi?')) return;
-    const target = adminProducts.find((item) => String(item.id) === String(id));
     try {
       await deleteDoc(doc(db, 'products', id));
-      const urls = target?.images || [];
-      await Promise.all(urls.map(async (url) => {
-        try {
-          await deleteObject(ref(storage, url));
-        } catch (error) {
-          // storage delete optional
-        }
-      }));
       showToast('Mahsulot o‘chirildi');
       await loadAdminProducts();
     } catch (error) {
@@ -503,6 +475,22 @@ const renderOrders = async () => {
 adminPanel.addEventListener('click', async (event) => {
   const confirmBtn = event.target.closest('.confirm-btn');
   const rejectBtn = event.target.closest('.reject-btn');
+  const receiptOpen = event.target.closest('.receipt-open');
+
+  if (receiptOpen) {
+    event.preventDefault();
+    const href = receiptOpen.getAttribute('href');
+    if (!href) return;
+    const isImage = /\.(png|jpe?g|webp|gif|bmp|svg)(\?|$)/i.test(href) || href.includes('imgbb.com');
+    if (isImage && receiptImage && receiptModal) {
+      receiptImage.src = href;
+      receiptModal.classList.remove('hidden');
+      receiptModal.classList.add('flex');
+    } else {
+      window.open(href, '_blank', 'noopener');
+    }
+    return;
+  }
 
   if (confirmBtn) {
     await updateOrderStatus(confirmBtn.dataset.id, 'approved');

@@ -67,6 +67,10 @@ export const ensureSeedData = () => {
   if (!localStorage.getItem('orders')) {
     writeStorage('orders', []);
   }
+
+  if (!localStorage.getItem('cart')) {
+    writeStorage('cart', []);
+  }
 };
 
 export const getUsers = () => {
@@ -98,19 +102,29 @@ export const updateCurrentUser = (updater) => {
   return updatedUser;
 };
 
-export const getCart = () => {
-  const currentUser = getCurrentUser();
-  if (currentUser) return currentUser.cart || [];
-  return readStorage('guestCart', []);
-};
+export const getCart = () => readStorage('cart', []);
 
 export const saveCart = (cart) => {
-  const currentUser = getCurrentUser();
-  if (currentUser) {
-    updateCurrentUser((user) => ({ ...user, cart }));
+  const normalized = Array.isArray(cart)
+    ? cart
+        .filter((item) => item && item.id != null)
+        .map((item) => ({ id: String(item.id), qty: Math.max(1, Number(item.qty) || 1) }))
+    : [];
+  writeStorage('cart', normalized);
+};
+
+export const addToCart = (productId, qty = 1) => {
+  const id = String(productId);
+  const amount = Math.max(1, Number(qty) || 1);
+  const cart = getCart();
+  const existing = cart.find((item) => String(item.id) === id);
+  if (existing) {
+    existing.qty += amount;
   } else {
-    writeStorage('guestCart', cart);
+    cart.push({ id, qty: amount });
   }
+  saveCart(cart);
+  return cart;
 };
 
 export const getWishlist = () => {

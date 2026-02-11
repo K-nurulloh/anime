@@ -21,9 +21,11 @@ let productsMap = new Map();
 
 // ====== HELPERS ======
 const CACHE_KEY = 'orders_cache_v1';
+const LS_FALLBACK_KEY = 'orders';
+
 const formatStatus = (status) => {
-  if (status === 'pending_verification') return 'Ko‘rib chiqilyapti';
-  if (status === 'approved' || status === 'accepted') return 'Qabul qilindi';
+  if (status === 'pending' || status === 'pending_verification') return "Ko'rib chiqilyapti";
+  if (status === 'approved' || status === 'accepted') return 'Buyurtma qabul qilindi';
   if (status === 'rejected') return 'Rad etildi';
   return statusLabel(status).text;
 };
@@ -66,6 +68,14 @@ const renderSkeleton = (count = 6) => {
   ordersList.innerHTML = ordersSkeletonListHTML(count);
 };
 
+const renderReceiptThumb = (order, size = 'h-8 w-8') =>
+  order.receiptUrl
+    ? `<a href="${order.receiptUrl}" target="_blank" rel="noreferrer" class="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/5 px-2 py-1 text-xs text-white/85">
+         <img src="${order.receiptUrl}" alt="Chek" class="${size} rounded object-cover" />
+         <span>View receipt</span>
+       </a>`
+    : '';
+
 // ====== ORDERS ======
 const renderOrders = () => {
   const data = window.__orders || [];
@@ -102,6 +112,7 @@ const renderOrders = () => {
             <p class="text-xs text-slate-400">${t('total')}</p>
             <p class="font-semibold text-white">${formatPrice(order.total)} so'm</p>
           </div>
+          ${renderReceiptThumb(order)}
           <button class="order-detail-btn neon-btn rounded-lg px-3 py-1 text-xs font-semibold" data-id="${
             order.id
           }">${t('details')}</button>
@@ -119,10 +130,11 @@ const openModal = (orderId) => {
   modalContent.innerHTML = `
     <h3 class="text-lg font-semibold text-white">${order.id}</h3>
     <p class="text-sm text-slate-400">${new Date(order.createdAt?.toDate ? order.createdAt.toDate() : order.createdAt).toLocaleString(getLang() === 'ru' ? 'ru-RU' : 'uz-UZ')}</p>
+    ${renderReceiptThumb(order, 'h-10 w-10')}
     <div class="mt-4 space-y-2">
       ${order.items
         .map((item) => {
-          const product = productsMap.get(item.id);
+          const product = productsMap.get(String(item.id));
           return `
           <div class="flex items-center justify-between text-sm text-slate-300">
             <span>${product ? product.title : `Product #${item.id}`}</span>
@@ -149,46 +161,70 @@ modal.addEventListener('click', (event) => {
   }
 });
 
+const fetchOrdersFromFirestore = async (currentUser) => {
+  if (!currentUser) return [];
+
+  let items = [];
+  if (currentUser.id) {
+    const byUserId = await getDocs(
+      query(collection(db, 'orders'), where('userId', '==', currentUser.id), orderBy('createdAt', 'desc'), limit(50))
+    );
+    items = byUserId.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+  }
+
+  if (!items.length && currentUser.phone) {
+    const byPhone = await getDocs(
+      query(collection(db, 'orders'), where('userPhone', '==', currentUser.phone), orderBy('createdAt', 'desc'), limit(50))
+    );
+    items = byPhone.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+  }
+
+  return items;
+};
+
 // ====== DATA BOOTSTRAP ======
 const init = async () => {
   const { products } = await fetchProducts();
-  productsMap = new Map(products.map((product) => [product.id, product]));
+  productsMap = new Map(products.map((product) => [String(product.id), product]));
   renderSkeleton();
+
   const cached = getCache();
   if (cached?.items?.length) {
     window.__orders = cached.items;
     renderOrders();
   }
+
   const currentUser = getCurrentUser();
   if (!currentUser) {
     emptyState.classList.remove('hidden');
     ordersList.innerHTML = '';
     return;
   }
-  const isOnline = navigator.onLine;
-  if (!isOnline && offlineNotice) {
+
+  if (!navigator.onLine && offlineNotice) {
     offlineNotice.classList.remove('hidden');
   }
+
   try {
-    const userFilter = currentUser.id
-      ? where('userId', '==', currentUser.id)
-      : where('userPhone', '==', currentUser.phone || currentUser.userPhone);
-    const snapshot = await getDocs(
-      query(
-        collection(db, 'orders'),
-        userFilter,
-        orderBy('createdAt', 'desc'),
-        limit(20)
-      )
-    );
-    window.__orders = snapshot.docs.map((docSnap) => ({
-      id: docSnap.id,
-      ...docSnap.data(),
-    }));
+    const firebaseOrders = await fetchOrdersFromFirestore(currentUser);
+    window.__orders = firebaseOrders;
     renderOrders();
-    saveCache(window.__orders);
+    saveCache(firebaseOrders);
   } catch (error) {
-    if (!cached?.items?.length) {
+    console.error('Firestore orders load failed:', error);
+    const localFallback = JSON.parse(localStorage.getItem(LS_FALLBACK_KEY) || '[]');
+    const fallbackOrders = localFallback
+      .filter(
+        (order) =>
+          (currentUser.id && order.userId === currentUser.id) ||
+          (currentUser.phone && order.userPhone === currentUser.phone)
+      )
+      .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
+    if (fallbackOrders.length) {
+      window.__orders = fallbackOrders;
+      renderOrders();
+    } else if (!cached?.items?.length) {
       emptyState.classList.remove('hidden');
       ordersList.innerHTML = offlineBlockHTML(
         'Buyurtmalar yuklanmadi',
