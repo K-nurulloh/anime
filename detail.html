@@ -34,24 +34,17 @@
       </div>
     </header>
 
-
-     <main class="bottom-safe-lg mx-auto max-w-6xl space-y-10 px-4 pt-14 md:pt-20">
+    <main class="bottom-safe-lg mx-auto max-w-6xl space-y-10 px-4 pb-24 pt-14 md:pt-20">
       <div id="error-box" class="hidden rounded-2xl bg-rose-500/10 px-4 py-3 text-sm text-rose-200"></div>
       <section id="detail-wrapper">
         <p id="dDesc" class="hidden"></p>
       </section>
-
-       <section class="space-y-4">
-        <h2 class="text-lg font-semibold text-white" data-i18n="similar"></h2>
-        <div id="similar-list" class="similar-grid"></div>
+      <section id="variant-block" class="hidden section -mt-4">
+        <label for="variantSelect" class="mb-2 block text-sm text-white/70">Variant / Size</label>
+        <select id="variantSelect" class="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-2 text-sm text-white"></select>
       </section>
 
-      <section class="space-y-4">
-        <h2 class="text-lg font-semibold text-white" data-i18n="more"></h2>
-        <div id="more-list" class="similar-grid"></div>
-      </section>
-
-          <section id="comments-section" class="mt-12 space-y-4">
+       <section id="comments-section" class="space-y-4">
         <h2 class="text-lg font-semibold text-white">Izohlar / Comments</h2>
         <div id="comments-login-note" class="hidden rounded-2xl glass p-6 text-center text-sm text-white/70">
           <p>Izoh yozish uchun login qiling</p>
@@ -81,9 +74,19 @@
         </div>
         <div id="comments-list" class="space-y-4"></div>
       </section>
+
+       <section class="space-y-4">
+        <h2 class="text-lg font-semibold text-white" data-i18n="similar"></h2>
+        <div id="similar-list" class="similar-grid"></div>
+      </section>
+
+         <section class="space-y-4">
+        <h2 class="text-lg font-semibold text-white" data-i18n="more"></h2>
+        <div id="more-list" class="similar-grid"></div>
+      </section>
     </main>
 
-      <div id="detail-action-bar" class="detail-action-bar fixed left-0 right-0 z-40 mx-auto max-w-6xl px-4">
+    <div id="detail-action-bar" class="detail-action-bar fixed left-0 right-0 z-40 mx-auto max-w-6xl px-4">
       <div class="section flex items-center justify-between gap-3">
         <div>
           <p class="text-xs text-white/60">Narx</p>
@@ -96,7 +99,7 @@
       </div>
     </div>
 
-    <!-- ====== BOTTOM NAV ====== -->
+     <!-- ====== BOTTOM NAV ====== -->
     <nav class="bottom-nav fixed bottom-0 left-0 right-0 z-50 border border-white/10 glass-soft md:hidden">
       <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-3 text-xs text-white/70">
         <a href="index.html" class="nav-item">
@@ -119,6 +122,6 @@
       </div>
     </nav>
 
-       <script type="module" src="js/detail.js"></script>
+      <script type="module" src="js/detail.js"></script>
   </body>
 </html>

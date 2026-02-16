@@ -108,20 +108,35 @@ export const saveCart = (cart) => {
   const normalized = Array.isArray(cart)
     ? cart
         .filter((item) => item && item.id != null)
-        .map((item) => ({ id: String(item.id), qty: Math.max(1, Number(item.qty) || 1) }))
+        .map((item) => {
+          const normalizedItem = {
+            id: String(item.id),
+            qty: Math.max(1, Number(item.qty) || 1),
+          };
+          if (item.variantName) normalizedItem.variantName = String(item.variantName);
+          if (Number.isFinite(Number(item.variantPrice))) normalizedItem.variantPrice = Number(item.variantPrice);
+          return normalizedItem;
+        })
     : [];
   writeStorage('cart', normalized);
 };
 
-export const addToCart = (productId, qty = 1) => {
+export const addToCart = (productId, qty = 1, options = {}) => {
   const id = String(productId);
   const amount = Math.max(1, Number(qty) || 1);
+  const variantName = options?.variantName ? String(options.variantName) : '';
+  const variantPrice = Number.isFinite(Number(options?.variantPrice)) ? Number(options.variantPrice) : null;
   const cart = getCart();
-  const existing = cart.find((item) => String(item.id) === id);
+  const existing = cart.find(
+    (item) => String(item.id) === id && String(item.variantName || '') === variantName
+  );
   if (existing) {
     existing.qty += amount;
   } else {
-    cart.push({ id, qty: amount });
+    const payload = { id, qty: amount };
+    if (variantName) payload.variantName = variantName;
+    if (variantPrice != null) payload.variantPrice = variantPrice;
+    cart.push(payload);
   }
   saveCart(cart);
   return cart;

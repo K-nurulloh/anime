@@ -8,11 +8,10 @@ import {
 } from './storage.js';
 import { formatPrice, showToast, updateCartBadge } from './ui.js';
 import { applyTranslations, initLangSwitcher, t } from './i18n.js';
-import { STORE_PAYMENT, IMGBB_API_KEY } from './config.js';
-import { imgbbUpload } from './imgbb.js';
+import { STORE_PAYMENT } from './config.js';
+import { uploadToImgBB } from './imgbb.js';
 import { db, nowTs, collection, addDoc, getDocs, query, orderBy } from './firebase.js';
 
-// ====== INIT ======
 ensureSeedData();
 applyTranslations();
 initLangSwitcher();
@@ -22,24 +21,51 @@ const form = document.querySelector('#checkout-form');
 const summaryBox = document.querySelector('#checkout-summary');
 const paymentDoneBtn = document.querySelector('#payment-done');
 const receiptStep = document.querySelector('#receipt-step');
-const receiptInput =
-  document.querySelector('#receipt-input') || document.querySelector('input[type="file"]');
+const receiptInput = document.querySelector('#receipt-input');
 const receiptPreview = document.querySelector('#receipt-preview');
 const receiptFilename = document.querySelector('#receipt-filename');
-const receiptSubmit =
-  document.querySelector('#receipt-submit') ||
-  Array.from(document.querySelectorAll('button')).find(
-    (button) => button.textContent.trim() === 'Chekni yuborish'
-  );
+const receiptSubmit = document.querySelector('#receipt-submit');
 const copyButtons = document.querySelectorAll('.copy-btn');
+const citySelect = document.querySelector('#citySelect');
+const districtSelect = document.querySelector('#districtSelect');
+
+const REGIONS = {
+  Toshkent: ["Mirzo Ulug‘bek", 'Yunusobod', 'Chilonzor', 'Olmazor'],
+  Andijon: ['Andijon tumani', 'Asaka', 'Baliqchi'],
+  "Farg‘ona": ["Farg‘ona tumani", 'Quva', 'Marg‘ilon'],
+  Namangan: ['Namangan tumani', 'Chortoq', 'Pop'],
+  Samarqand: ['Samarqand tumani', 'Urgut', 'Jomboy'],
+  Buxoro: ['Buxoro tumani', 'G‘ijduvon', 'Kogon'],
+  Xorazm: ['Urganch', 'Xiva', 'Hazorasp'],
+  Qashqadaryo: ['Qarshi', 'Shahrisabz', 'Kitob'],
+  Surxondaryo: ['Termiz', 'Denov', 'Sherobod'],
+  Jizzax: ['Jizzax tumani', 'Zomin', 'G‘allaorol'],
+  Navoiy: ['Navoiy tumani', 'Zarafshon', 'Karmana'],
+  Sirdaryo: ['Guliston', 'Yangiyer', 'Boyovut'],
+};
+
+const DELIVERY_OPTIONS = {
+  standard: {
+    label: 'Standart (14–18 kun)',
+    perKgUsd: 5,
+    weightKg: 1,
+    price: Math.round(5 * 13000),
+  },
+  fast: {
+    label: 'Tezkor (7–10 kun)',
+    perKgUsd: 9,
+    weightKg: 1,
+    price: Math.round(9 * 13000),
+  },
+};
 
 let productsMap = new Map();
 let receiptFile = null;
 let receiptPreviewUrl = null;
+let selectedDelivery = 'standard';
 
 const normalizePhone = (value) => (value || '').toString().replace(/\D/g, '');
-const isValidPhone = (value) =>
-  value.length === 9 || (value.length === 12 && value.startsWith('998'));
+const isValidPhone = (value) => value.length === 9 || (value.length === 12 && value.startsWith('998'));
 
 const getValidatedPhone = () => {
   const formData = new FormData(form);
@@ -75,19 +101,16 @@ const fetchProductsFromFirestore = async () => {
     try {
       snapshot = await getDocs(query(collection(db, 'products'), orderBy('createdAt', 'desc')));
       if (!snapshot.docs.length) snapshot = await getDocs(collection(db, 'products'));
-    } catch (error) {
+    } catch {
       snapshot = await getDocs(collection(db, 'products'));
     }
+
     const products = snapshot.docs.map((docSnap) => {
       const data = docSnap.data() || {};
       const images = Array.isArray(data.images) ? data.images : data.img ? [data.img] : [];
-      return {
-        id: docSnap.id,
-        ...data,
-        images,
-        img: data.img || images[0] || '',
-      };
+      return { id: docSnap.id, ...data, images, img: data.img || images[0] || '' };
     });
+
     setCachedProducts(products);
     return products;
   } catch (error) {
@@ -96,27 +119,43 @@ const fetchProductsFromFirestore = async () => {
   }
 };
 
-
 const calculateSummary = () => {
   const cart = getCart();
   const subtotal = cart.reduce((sum, item) => {
     const product = productsMap.get(String(item.id));
     if (!product) return sum;
-    return sum + Number(product.price || 0) * item.qty;
+    return sum + Number(product.price || 0) * (Number(item.qty) || 1);
   }, 0);
-  const delivery = subtotal > 0 ? 25000 : 0;
-  const total = subtotal + delivery;
+
+  const deliveryMeta = DELIVERY_OPTIONS[selectedDelivery];
+  const total = subtotal;
 
   summaryBox.innerHTML = `
     <div class="space-y-2 text-sm text-slate-300">
       <div class="flex justify-between"><span>${t('subtotal')}</span><span>${formatPrice(subtotal)} so'm</span></div>
-      <div class="flex justify-between"><span>${t('delivery')}</span><span>${formatPrice(delivery)} so'm</span></div>
+      <div class="flex justify-between"><span>Yetkazish</span><span>${deliveryMeta.label}</span></div>
     </div>
     <div class="mt-4 flex justify-between text-lg font-bold text-white">
       <span>${t('total')}</span><span>${formatPrice(total)} so'm</span>
     </div>
   `;
-  return { total };
+
+  return { total, deliveryMeta };
+};
+
+const setDeliveryType = (type) => {
+  selectedDelivery = type;
+  form.querySelectorAll('input[name="shipping"]').forEach((radio) => {
+    radio.checked = radio.value === type;
+    const card = radio.closest('label');
+    if (card) {
+      card.classList.toggle('border-emerald-400/60', radio.checked);
+      card.classList.toggle('bg-emerald-500/10', radio.checked);
+      card.classList.toggle('shadow-lg', radio.checked);
+      card.classList.toggle('shadow-emerald-500/20', radio.checked);
+    }
+  });
+  calculateSummary();
 };
 
 const createOrder = async ({ paymentMethod, receiptUrl = null, contactPhone }) => {
@@ -127,14 +166,8 @@ const createOrder = async ({ paymentMethod, receiptUrl = null, contactPhone }) =
   }
 
   const formData = new FormData(form);
-  const { total } = calculateSummary();
-
+  const { total, deliveryMeta } = calculateSummary();
   const currentUser = getCurrentUser();
-  const shipping =
-    formData.get('shipping') ||
-    formData.get('deliveryType') ||
-    formData.get('delivery') ||
-    'standard';
 
   const payload = {
     userId: currentUser?.id || null,
@@ -143,9 +176,20 @@ const createOrder = async ({ paymentMethod, receiptUrl = null, contactPhone }) =
     items: cart.map((item) => ({ id: String(item.id), qty: Number(item.qty) || 1 })),
     total,
     payment: paymentMethod,
-    shipping,
     status: 'pending_verification',
     receiptUrl: receiptUrl || null,
+    delivery: {
+      type: selectedDelivery,
+      label: deliveryMeta.label,
+      price: deliveryMeta.price,
+      perKgUsd: deliveryMeta.perKgUsd,
+      weightKg: deliveryMeta.weightKg,
+    },
+    address: {
+      region: formData.get('city') || '',
+      district: formData.get('district') || '',
+      homeAddress: formData.get('address') || '',
+    },
     createdAt: nowTs(),
     updatedAt: nowTs(),
   };
@@ -153,10 +197,72 @@ const createOrder = async ({ paymentMethod, receiptUrl = null, contactPhone }) =
   await addDoc(collection(db, 'orders'), payload);
   saveCart([]);
   updateCartBadge();
-  showToast('Buyurtma yuborildi');
+  showToast('Buyurtma yuborildi!');
+
+  receiptInput.value = '';
+  receiptFile = null;
+  if (receiptPreviewUrl) URL.revokeObjectURL(receiptPreviewUrl);
+  receiptPreviewUrl = null;
+  receiptPreview.innerHTML = t('receipt_preview');
+  receiptFilename.textContent = 'Fayl tanlanmagan';
+
   setTimeout(() => {
     window.location.href = 'orders.html';
-  }, 800);
+  }, 700);
+};
+
+const fillDistricts = (region) => {
+  if (!districtSelect) return;
+  const districts = REGIONS[region] || [];
+  districtSelect.innerHTML =
+    '<option value="">Tumanni tanlang</option>' +
+    districts.map((item) => `<option value="${item}">${item}</option>`).join('');
+  districtSelect.disabled = districts.length === 0;
+};
+
+const initAddressSelectors = () => {
+  if (!citySelect || !districtSelect) return;
+  citySelect.innerHTML =
+    '<option value="">Hududni tanlang</option>' +
+    Object.keys(REGIONS).map((region) => `<option value="${region}">${region}</option>`).join('');
+  fillDistricts('');
+
+  citySelect.addEventListener('change', () => {
+    fillDistricts(citySelect.value);
+  });
+};
+
+
+const ensureImgBBApiKey = () => {
+  const windowKey = typeof window !== 'undefined' ? window.IMGBB_API_KEY : '';
+  let localKey = '';
+  try {
+    localKey = localStorage.getItem('IMGBB_API_KEY') || '';
+  } catch {
+    localKey = '';
+  }
+
+  const existingKey = String(windowKey || localKey || '').trim();
+  if (existingKey) return existingKey;
+
+  const entered = prompt('ImgBB API key kiriting:');
+  const key = String(entered || '').trim();
+  if (!key) {
+    showToast('ImgBB API key kiritilmadi', 'error');
+    return null;
+  }
+
+  try {
+    localStorage.setItem('IMGBB_API_KEY', key);
+  } catch {
+    // ignore storage write failures
+  }
+
+  if (typeof window !== 'undefined') {
+    window.IMGBB_API_KEY = key;
+  }
+
+  return key;
 };
 
 const showReceiptStep = () => {
@@ -167,8 +273,8 @@ const showReceiptStep = () => {
 const init = async () => {
   const products = await fetchProductsFromFirestore();
   productsMap = new Map(products.map((product) => [String(product.id), product]));
-  const cart = getCart();
-  if (!cart.length) {
+
+  if (!getCart().length) {
     summaryBox.innerHTML = `<p class="text-sm text-slate-300">${t('cart_empty')}</p>`;
   } else {
     calculateSummary();
@@ -180,33 +286,36 @@ const init = async () => {
   if (owner) owner.textContent = STORE_PAYMENT.ownerFullName;
   if (card) card.textContent = STORE_PAYMENT.cardNumber;
   if (bank) bank.textContent = STORE_PAYMENT.bank;
+
+  initAddressSelectors();
+  setDeliveryType('standard');
+
+  form?.querySelectorAll('input[name="shipping"]').forEach((radio) => {
+    radio.addEventListener('change', () => setDeliveryType(radio.value));
+  });
 };
 
 form?.addEventListener('submit', async (event) => {
   event.preventDefault();
-  const formData = new FormData(form);
-  const payment = formData.get('payment');
-  const contactPhone = getValidatedPhone();
-  if (!contactPhone) return;
+  const phone = getValidatedPhone();
+  if (!phone) return;
 
+  const payment = form.querySelector('input[name="payment"]:checked')?.value || 'card_transfer';
   if (payment === 'card_transfer') {
     showReceiptStep();
-    showToast('Chek rasmini yuklang', 'error');
     return;
   }
 
   try {
-    setButtonLoading(form.querySelector('button[type="submit"]'), 'Yuborilmoqda...', true);
-    await createOrder({ paymentMethod: 'cash', contactPhone });
-  } catch (error) {
-    console.error('Order create error:', error);
-    showToast('Buyurtma yuborishda xatolik', 'error');
-  } finally {
-    setButtonLoading(form.querySelector('button[type="submit"]'), '', false);
+    await createOrder({ paymentMethod: payment, contactPhone: phone });
+  } catch {
+    showToast('Buyurtma yaratishda xatolik', 'error');
   }
 });
 
 paymentDoneBtn?.addEventListener('click', () => {
+  const phone = getValidatedPhone();
+  if (!phone) return;
   showReceiptStep();
 });
 
@@ -214,37 +323,38 @@ receiptInput?.addEventListener('change', () => {
   const file = receiptInput.files?.[0];
   if (!file) {
     receiptFile = null;
-    if (receiptPreviewUrl) {
-      URL.revokeObjectURL(receiptPreviewUrl);
-      receiptPreviewUrl = null;
-    }
-    if (receiptPreview) receiptPreview.src = '';
-    if (receiptFilename) receiptFilename.textContent = t('receipt_not_selected');
+    if (receiptPreviewUrl) URL.revokeObjectURL(receiptPreviewUrl);
+    receiptPreviewUrl = null;
+    receiptPreview.innerHTML = t('receipt_preview');
+    receiptFilename.textContent = 'Fayl tanlanmagan';
     return;
   }
 
   receiptFile = file;
   if (receiptPreviewUrl) URL.revokeObjectURL(receiptPreviewUrl);
   receiptPreviewUrl = URL.createObjectURL(file);
-  if (receiptPreview) receiptPreview.src = receiptPreviewUrl;
-  if (receiptFilename) receiptFilename.textContent = file.name;
+  receiptPreview.innerHTML = `<img src="${receiptPreviewUrl}" alt="Chek" class="h-full w-full rounded-2xl object-cover" />`;
+  receiptFilename.textContent = file.name;
 });
 
 receiptSubmit?.addEventListener('click', async () => {
-  const contactPhone = getValidatedPhone();
-  if (!contactPhone) return;
+  const phone = getValidatedPhone();
+  if (!phone) return;
   if (!receiptFile) {
     showToast(t('receipt_required'), 'error');
     return;
   }
 
+  const apiKey = ensureImgBBApiKey();
+  if (!apiKey) return;
+
   try {
     setButtonLoading(receiptSubmit, 'Yuborilmoqda...', true);
-    const receiptUrl = await imgbbUpload(receiptFile, IMGBB_API_KEY);
-    await createOrder({ paymentMethod: 'card_transfer', receiptUrl, contactPhone });
+    const { url: receiptUrl } = await uploadToImgBB(receiptFile);
+    await createOrder({ paymentMethod: 'card_transfer', receiptUrl, contactPhone: phone });
   } catch (error) {
-    console.error('Receipt/order error:', error);
-    showToast(error.message || 'Chekni yuborishda xatolik', 'error');
+    console.error(error);
+    showToast('Chekni yuborishda xatolik', 'error');
   } finally {
     setButtonLoading(receiptSubmit, '', false);
   }
@@ -252,19 +362,16 @@ receiptSubmit?.addEventListener('click', async () => {
 
 copyButtons.forEach((button) => {
   button.addEventListener('click', async () => {
-    const text = button.dataset.copy || '';
-    if (!text) return;
+    const id = button.dataset.copyTarget;
+    const target = document.getElementById(id);
+    if (!target) return;
     try {
-      await navigator.clipboard.writeText(text);
-      showToast('Nusxa olindi');
-    } catch (error) {
-      showToast('Nusxa olib bo‘lmadi', 'error');
+      await navigator.clipboard.writeText(target.textContent.trim());
+      showToast(t('copied'));
+    } catch {
+      showToast('Nusxalab bo‘lmadi', 'error');
     }
   });
 });
 
 init();
-
-window.addEventListener('langChanged', () => {
-  calculateSummary();
-});

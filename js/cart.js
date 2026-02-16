@@ -56,10 +56,10 @@ const fetchProductsFromFirestore = async () => {
 };
 
 const calculateTotals = () => {
-  const cart = JSON.parse(localStorage.getItem('cart')) || [];
+  const cart = getCart();
   const subtotal = cart.reduce((sum, item) => {
     const product = productsMap.get(String(item.id));
-    const unitPrice = Number(product?.price ?? item.price ?? 0);
+    const unitPrice = Number(item.variantPrice ?? product?.price ?? item.price ?? 0);
     return sum + unitPrice * (Number(item.qty) || 1);
   }, 0);
   const discount = (subtotal * discountPercent) / 100;
@@ -82,7 +82,7 @@ const calculateTotals = () => {
 };
 
 const renderCart = () => {
-  const cart = JSON.parse(localStorage.getItem('cart')) || [];
+  const cart = getCart();
   if (!cart.length) {
     emptyState?.classList.remove('hidden');
     if (cartList) cartList.innerHTML = '<p class="text-sm text-slate-300">Savat bo‘sh</p>';
@@ -96,7 +96,7 @@ const renderCart = () => {
       const product = productsMap.get(String(item.id));
       const title = product?.title || item.title || 'Mahsulot';
       const category = product?.category || item.category || '';
-      const price = Number(product?.price ?? item.price ?? 0);
+      const price = Number(item.variantPrice ?? product?.price ?? item.price ?? 0);
       const image = product?.images?.[0] || product?.img || item.image || item.img || '';
       if (!product && item.id == null) return '';
       return `
@@ -105,14 +105,15 @@ const renderCart = () => {
           <div class="flex-1">
             <h3 class="text-sm font-semibold text-white">${title}</h3>
             <p class="text-xs text-slate-300">${category}</p>
+            ${item.variantName ? `<p class="mt-1 text-xs text-white/60">Variant: ${item.variantName}</p>` : ''}
           </div>
           <div class="text-sm font-semibold text-white">${formatPrice(price)} so'm</div>
           <div class="flex items-center gap-2">
-            <button class="qty-btn h-8 w-8 rounded-lg border border-slate-700 text-slate-200" data-action="dec" data-id="${item.id}">-</button>
+            <button class="qty-btn h-8 w-8 rounded-lg border border-slate-700 text-slate-200" data-action="dec" data-id="${item.id}" data-variant="${item.variantName || ''}">-</button>
             <span class="min-w-[24px] text-center">${item.qty || 1}</span>
-            <button class="qty-btn h-8 w-8 rounded-lg border border-slate-700 text-slate-200" data-action="inc" data-id="${item.id}">+</button>
+            <button class="qty-btn h-8 w-8 rounded-lg border border-slate-700 text-slate-200" data-action="inc" data-id="${item.id}" data-variant="${item.variantName || ''}">+</button>
           </div>
-          <button class="remove-btn text-sm text-rose-400" data-id="${item.id}">${t('delete')}</button>
+          <button class="remove-btn text-sm text-rose-400" data-id="${item.id}" data-variant="${item.variantName || ''}">${t('delete')}</button>
         </div>
       `;
     })
@@ -121,12 +122,14 @@ const renderCart = () => {
   calculateTotals();
 };
 
-const updateQuantity = (id, action) => {
+const updateQuantity = (id, variantName, action) => {
   if (action === 'inc') {
-    addToCart(id, 1);
+    const cart = getCart();
+    const line = cart.find((entry) => String(entry.id) === String(id) && String(entry.variantName || '') === String(variantName || ''));
+    addToCart(id, 1, { variantName, variantPrice: line?.variantPrice });
   } else {
     const cart = getCart();
-    const item = cart.find((entry) => String(entry.id) === String(id));
+    const item = cart.find((entry) => String(entry.id) === String(id) && String(entry.variantName || '') === String(variantName || ''));
     if (!item) return;
     item.qty = Math.max(1, item.qty - 1);
     saveCart(cart);
@@ -135,8 +138,8 @@ const updateQuantity = (id, action) => {
   updateCartBadge();
 };
 
-const removeItem = (id) => {
-  const cart = getCart().filter((item) => String(item.id) !== String(id));
+const removeItem = (id, variantName) => {
+  const cart = getCart().filter((item) => !(String(item.id) === String(id) && String(item.variantName || '') === String(variantName || '')));
   saveCart(cart);
   renderCart();
   updateCartBadge();
@@ -153,10 +156,10 @@ cartList?.addEventListener('click', (event) => {
   const qtyBtn = event.target.closest('.qty-btn');
   const removeBtn = event.target.closest('.remove-btn');
   if (qtyBtn) {
-    updateQuantity(qtyBtn.dataset.id, qtyBtn.dataset.action);
+    updateQuantity(qtyBtn.dataset.id, qtyBtn.dataset.variant, qtyBtn.dataset.action);
   }
   if (removeBtn) {
-    removeItem(removeBtn.dataset.id);
+    removeItem(removeBtn.dataset.id, removeBtn.dataset.variant);
   }
 });
 

@@ -13,6 +13,7 @@ import {
 } from './storage.js';
 import { isAdminUser, renderProductCard, showToast, updateCartBadge, syncAdminState } from './ui.js';
 import { applyTranslations, initLangSwitcher, t, getLang } from './i18n.js';
+import { fetchProducts } from './api.js';
 
 // ====== INIT ======
 ensureSeedData();
@@ -30,9 +31,33 @@ const commentRating = document.querySelector('#comment-rating');
 const commentsList = document.querySelector('#comments-list');
 const commentsEmpty = document.querySelector('#comments-empty');
 const commentsLoginNote = document.querySelector('#comments-login-note');
+const variantBlock = document.querySelector('#variant-block');
+const variantSelect = document.querySelector('#variantSelect');
 
 const params = new URLSearchParams(window.location.search);
 const productId = params.get('id');
+
+
+let selectedVariant = null;
+
+const formatLocalPrice = (value) => `${Number(value || 0).toLocaleString(getLang() === 'ru' ? 'ru-RU' : 'uz-UZ')} so'm`;
+
+const getProductVariants = (product) => {
+  if (!Array.isArray(product?.variants)) return [];
+  return product.variants
+    .map((variant) => ({
+      name: String(variant?.name || '').trim(),
+      price: Number(variant?.price),
+    }))
+    .filter((variant) => variant.name && Number.isFinite(variant.price) && variant.price > 0);
+};
+
+const getActiveUnitPrice = (product) => {
+  if (selectedVariant && Number.isFinite(Number(selectedVariant.price))) {
+    return Number(selectedVariant.price);
+  }
+  return Number(product?.price || 0);
+};
 
 
 const fetchProductsFromFirestore = async () => {
@@ -134,13 +159,28 @@ const handleWishlist = (productId) => {
 };
 
 // ====== CART ACTIONS ======
-const addToCart = (productId) => {
+const addToCart = (product) => {
   const cart = getCart();
-  const existing = cart.find((item) => item.id === productId);
+  const baseItem = {
+    id: String(product.id),
+    qty: 1,
+  };
+  const itemPayload = selectedVariant
+    ? {
+        ...baseItem,
+        variantName: selectedVariant.name,
+        variantPrice: Number(selectedVariant.price),
+      }
+    : baseItem;
+  const existing = cart.find(
+    (item) =>
+      String(item.id) === String(itemPayload.id) &&
+      String(item.variantName || '') === String(itemPayload.variantName || '')
+  );
   if (existing) {
     existing.qty += 1;
   } else {
-    cart.push({ id: productId, qty: 1 });
+    cart.push(itemPayload);
   }
   saveCart(cart);
   updateCartBadge();
@@ -163,7 +203,7 @@ const initCardActions = (container) => {
       return;
     }
     if (cartBtn) {
-      addToCart(cartBtn.dataset.id);
+      addToCart({ id: cartBtn.dataset.id, price: 0 });
     }
     if (wishlistBtn) {
       handleWishlist(wishlistBtn.dataset.id);
@@ -257,6 +297,27 @@ const init = async () => {
     console.error('Failed to load detail product:', error);
   }
 
+  const { products: firestoreProducts } = await fetchProductsFromFirestore();
+  if (!product) {
+    const firestoreMatch = firestoreProducts.find(
+      (item) => String(item.id) === String(productId) || String(item.docId || '') === String(productId)
+    );
+    if (firestoreMatch) {
+      product = firestoreMatch;
+    }
+  }
+  if (!product) {
+    const { products: jsonProducts = [] } = await fetchProducts();
+    const jsonMatch = jsonProducts.find((item) => String(item.id) === String(productId));
+    if (jsonMatch) {
+      product = {
+        ...jsonMatch,
+        id: String(jsonMatch.id),
+        images: Array.isArray(jsonMatch.images) ? jsonMatch.images : jsonMatch.img ? [jsonMatch.img] : [],
+      };
+    }
+  }
+
   if (!product) {
     errorBox.textContent = t('not_found');
     errorBox.classList.remove('hidden');
@@ -264,7 +325,7 @@ const init = async () => {
     return;
   }
 
-  const { products } = await fetchProductsFromFirestore();
+  const products = firestoreProducts;
   const images = product.images?.length ? product.images.slice(0, 10) : [product.img].filter(Boolean);
   const oldPrice = Number(product.oldPrice);
   const hasOldPrice = Number.isFinite(oldPrice) && oldPrice > Number(product.price);
@@ -297,7 +358,7 @@ const init = async () => {
         </div>
         ${descriptionMarkup}
         <div class="flex items-center gap-3">
-          <span class="text-2xl font-bold text-white">${Number(product.price || 0).toLocaleString(getLang() === 'ru' ? 'ru-RU' : 'uz-UZ')} so'm</span>
+          <span id="detail-main-price" class="text-2xl font-bold text-white">${formatLocalPrice(product.price || 0)}</span>
           ${hasOldPrice ? `<span class="text-sm text-slate-400 line-through">${oldPrice.toLocaleString(getLang() === 'ru' ? 'ru-RU' : 'uz-UZ')} so'm</span>` : ''}
           ${hasDiscount ? `<span class="rounded-full bg-emerald-500/20 px-2 py-1 text-xs text-emerald-200">-${discount}%</span>` : ''}
         </div>
@@ -318,13 +379,38 @@ const init = async () => {
   const actionPrice = document.querySelector('#detail-action-price');
   const actionCart = document.querySelector('#detail-action-cart');
   const actionBuy = document.querySelector('#detail-action-buy');
-  if (actionPrice) {
-    actionPrice.textContent = `${Number(product.price || 0).toLocaleString(getLang() === 'ru' ? 'ru-RU' : 'uz-UZ')} so'm`;
+  const mainPrice = document.querySelector('#detail-main-price');
+  const variants = getProductVariants(product);
+  selectedVariant = variants.length ? variants[0] : null;
+
+  const syncDisplayedPrice = () => {
+    const unitPrice = getActiveUnitPrice(product);
+    if (mainPrice) mainPrice.textContent = formatLocalPrice(unitPrice);
+    if (actionPrice) actionPrice.textContent = formatLocalPrice(unitPrice);
+  };
+
+  if (variantBlock && variantSelect) {
+    if (variants.length) {
+      variantBlock.classList.remove('hidden');
+      variantSelect.innerHTML = variants
+        .map((variant, index) => `<option value="${index}">${variant.name} — ${formatLocalPrice(variant.price)}</option>`)
+        .join('');
+      variantSelect.value = '0';
+      variantSelect.onchange = (event) => {
+        const selectedIndex = Number(event.target.value);
+        selectedVariant = variants[selectedIndex] || variants[0] || null;
+        syncDisplayedPrice();
+      };
+    } else {
+      variantBlock.classList.add('hidden');
+      variantSelect.innerHTML = '';
+    }
   }
-  if (actionCart) actionCart.addEventListener('click', () => addToCart(product.id));
+  syncDisplayedPrice();
+  if (actionCart) actionCart.addEventListener('click', () => addToCart(product));
   if (actionBuy) {
     actionBuy.addEventListener('click', () => {
-      addToCart(product.id);
+      addToCart(product);
       window.location.href = 'checkout.html';
     });
   }
@@ -337,10 +423,10 @@ const init = async () => {
     });
   });
 
-  const similar = products.filter((item) => item.category === product.category && item.id !== product.id);
+  const similar = products.filter((item) => item.category === product.category && String(item.id) !== String(product.id));
   similarList.innerHTML = similar.slice(0, 8).map(renderProductCard).join('');
   moreList.innerHTML = products
-    .filter((item) => item.id !== product.id)
+    .filter((item) => String(item.id) !== String(product.id))
     .sort(() => Math.random() - 0.5)
     .slice(0, 8)
     .map(renderProductCard)

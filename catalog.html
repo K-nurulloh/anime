@@ -21,32 +21,6 @@
           <a href="seller.html" class="text-sm text-slate-200 hover:text-white" data-i18n="seller_panel"></a>
           <a href="about.html" class="text-sm text-slate-200 hover:text-white" data-i18n="about"></a>
         </nav>
-        <div class="flex flex-1 flex-wrap items-center gap-3">
-          <input
-            id="searchInputCatalog"
-            type="search"
-            data-i18n-placeholder="search_placeholder"
-            class="w-full rounded-xl border border-slate-800 bg-slate-900 px-4 py-2 text-sm text-white focus:border-slate-500 focus:outline-none"
-          />
-          <select
-            id="categoryFilter"
-            class="rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-white"
-          >
-            <option value="all" data-i18n="category_all"></option>
-            <option value="Telefon" data-i18n="category_phone"></option>
-            <option value="Kino" data-i18n="category_kino"></option>
-            <option value="Noutbuk" data-i18n="category_laptop"></option>
-            <option value="Uy" data-i18n="category_home"></option>
-            <option value="Kiyim" data-i18n="category_clothes"></option>
-            <option value="Aksessuar" data-i18n="category_accessory"></option>
-            <option value="Kitob" data-i18n="category_book"></option>
-          </select>
-          <select id="priceSort" class="rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-white">
-            <option value="default" data-i18n="sort_default"></option>
-            <option value="asc" data-i18n="sort_asc"></option>
-            <option value="desc" data-i18n="sort_desc"></option>
-          </select>
-        </div>
         <div class="flex items-center gap-4 text-sm">
           <a href="cart.html" class="relative">
             🛒
@@ -65,40 +39,50 @@
       </div>
     </header>
 
-    <main class="bottom-safe mx-auto max-w-6xl space-y-10 px-4 pt-14 md:pt-20">
+    <main class="bottom-safe mx-auto max-w-6xl space-y-8 px-4 pb-24 pt-14 md:pt-20">
       <section class="space-y-4">
         <div class="flex items-center justify-between">
           <h1 class="text-2xl font-semibold text-white" data-i18n="catalog_title"></h1>
           <p class="text-sm text-white/70" data-i18n="catalog_subtitle"></p>
         </div>
-        <div class="cat-grid">
+
+        <div class="mt-2 flex items-center gap-2">
+          <input
+            id="searchInputCatalog"
+            type="search"
+            placeholder="Mahsulot qidirish..."
+            class="w-full rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-2 text-sm text-white placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
+          />
+          <button
+            id="searchClearCatalog"
+            type="button"
+            class="rounded-xl border border-slate-700 bg-slate-800/60 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-slate-500"
+          >
+            Tozalash
+          </button>
+        </div>
+
+        <div class="cat-grid hidden">
           <button class="category-chip cat-pill" data-category="Telefon" aria-pressed="false">
-            <span class="cat-ico">📱</span>
-            <span class="cat-label" data-i18n="category_phone"></span>
+            <span class="cat-label">Telefon</span>
           </button>
           <button class="category-chip cat-pill" data-category="Kino" aria-pressed="false">
-            <span class="cat-ico">🎬</span>
-            <span class="cat-label" data-i18n="category_kino"></span>
+            <span class="cat-label">Kino</span>
           </button>
           <button class="category-chip cat-pill" data-category="Noutbuk" aria-pressed="false">
-            <span class="cat-ico">💻</span>
-            <span class="cat-label" data-i18n="category_laptop"></span>
+            <span class="cat-label">Noutbuk</span>
           </button>
           <button class="category-chip cat-pill" data-category="Uy" aria-pressed="false">
-            <span class="cat-ico">🏠</span>
-            <span class="cat-label" data-i18n="category_home"></span>
+            <span class="cat-label">Uy</span>
           </button>
           <button class="category-chip cat-pill" data-category="Kiyim" aria-pressed="false">
-            <span class="cat-ico">👕</span>
-            <span class="cat-label" data-i18n="category_clothes"></span>
+            <span class="cat-label">Kiyim</span>
           </button>
           <button class="category-chip cat-pill" data-category="Aksessuar" aria-pressed="false">
-            <span class="cat-ico">🧸</span>
-            <span class="cat-label" data-i18n="category_accessory"></span>
+            <span class="cat-label">Aksessuar</span>
           </button>
           <button class="category-chip cat-pill" data-category="Kitob" aria-pressed="false">
-            <span class="cat-ico">📚</span>
-            <span class="cat-label" data-i18n="category_book"></span>
+            <span class="cat-label">Kitob</span>
           </button>
         </div>
       </section>

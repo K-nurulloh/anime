@@ -13,7 +13,7 @@ updateCartBadge();
 const productList = document.querySelector('#product-list');
 const loader = document.querySelector('#loader');
 const sentinel = document.querySelector('#sentinel');
-const searchInput = document.querySelector('#searchInput');
+const searchInput = document.querySelector('#searchInputIndex') || document.querySelector('#searchInput');
 const categoryFilter = document.querySelector('#categoryFilter');
 const priceSort = document.querySelector('#priceSort');
 const recommendedList = document.querySelector('#recommended-list');

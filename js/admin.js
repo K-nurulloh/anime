@@ -42,6 +42,10 @@ const productOldPrice = document.querySelector('#product-old-price');
 const productDiscount = document.querySelector('#product-discount');
 const productDescription = document.querySelector('#pDesc');
 const productRating = document.querySelector('#product-rating');
+const productVariantName = document.querySelector('#variant-name');
+const productVariantPrice = document.querySelector('#variant-price');
+const addVariantBtn = document.querySelector('#add-variant-btn');
+const variantList = document.querySelector('#variant-list');
 const productImages = document.querySelector('#pImages');
 const imageLimitError = document.querySelector('#image-limit-error');
 const imagePreview = document.querySelector('#image-preview');
@@ -64,6 +68,7 @@ let selectedPreviews = [];
 let productsMap = new Map();
 let adminProducts = [];
 let editingId = null;
+let productVariants = [];
 
 // ====== ADMIN CHECK ======
 const readCurrentUser = () => {
@@ -216,6 +221,40 @@ const getEditIdFromQuery = () => {
   return params.get('editId');
 };
 
+const renderVariants = () => {
+  if (!variantList) return;
+  if (!productVariants.length) {
+    variantList.innerHTML = '<p class="text-xs text-white/50">Variantlar qoshilmagan Narx uchun asosiy price ishlatiladi. </p>';
+    return;
+  }
+  variantList.innerHTML = productVariants
+    .map(
+      (variant, index) => `
+      <div class="flex items-center justify-between rounded-xl border border-slate-700 bg-slate-900/40 px-3 py-2 text-sm">
+        <div>
+          <p class="font-medium text-white">${variant.name}</p>
+          <p class="text-xs text-white/60">${Number(variant.price).toLocaleString('uz-UZ')} so'm</p>
+        </div>
+        <button type="button" class="remove-variant rounded-lg border border-rose-400/50 px-2 py-1 text-xs text-rose-200" data-index="${index}">❌</button>
+      </div>
+    `
+    )
+    .join('');
+};
+
+const setVariantsForEdit = (variants) => {
+  productVariants = Array.isArray(variants)
+    ? variants
+        .map((variant) => ({
+          name: String(variant?.name || '').trim(),
+          price: Number(variant?.price),
+        }))
+        .filter((variant) => variant.name && Number.isFinite(variant.price) && variant.price > 0)
+    : [];
+  renderVariants();
+};
+
+
 const loadProductForEdit = async (editId) => {
   if (!editId) return;
   const docSnap = await getDoc(doc(db, 'products', editId));
@@ -235,6 +274,7 @@ const loadProductForEdit = async (editId) => {
   if (productDescription) productDescription.value = product.desc || product.description || '';
   selectedFiles = [];
   selectedPreviews = product.images?.length ? [...product.images] : [];
+  setVariantsForEdit(product.variants);
   updateImagePreview();
   if (saveButton) saveButton.textContent = 'Yangilash';
   productForm?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -299,6 +339,10 @@ const resetProductForm = () => {
   updateImagePreview();
   imageLimitError?.classList.add('hidden');
   editingId = null;
+  productVariants = [];
+  renderVariants();
+  if (productVariantName) productVariantName.value = '';
+  if (productVariantPrice) productVariantPrice.value = '';
   if (saveButton) saveButton.textContent = 'Saqlash';
   productForm.reset();
 };
@@ -337,6 +381,7 @@ productForm?.addEventListener('submit', async (event) => {
       desc: description || null,
       updatedAt: serverTimestamp(),
       active: true,
+      variants: productVariants,
     };
     const imageUrls = selectedFiles.length
       ? await Promise.all(selectedFiles.map((file) => imgbbUpload(file, IMGBB_API_KEY)))
@@ -347,7 +392,7 @@ productForm?.addEventListener('submit', async (event) => {
         ...payload,
         images: imageUrls,
       });
-      showToast("Mahsulot muvaffaqiyatli qo‘shildi");
+      showToast("Mahsulot yangilandi");
     } else {
       await addDoc(collection(db, 'products'), {
         ...payload,
@@ -398,8 +443,35 @@ adminProductsList?.addEventListener('click', async (event) => {
     }
   });
   selectedPreviews = product.images?.length ? [...product.images] : [];
+  setVariantsForEdit(product.variants);
   updateImagePreview();
   if (saveButton) saveButton.textContent = 'Yangilash';
+});
+
+
+addVariantBtn?.addEventListener('click', () => {
+  const name = productVariantName?.value.trim();
+  const price = Number(productVariantPrice?.value);
+  if (!name) {
+    showToast('Variant nomini kiriting', 'error');
+    return;
+  }
+  if (!Number.isFinite(price) || price <= 0) {
+    showToast('Variant narxi musbat bo‘lishi kerak', 'error');
+    return;
+  }
+  productVariants.push({ name, price });
+  renderVariants();
+  if (productVariantName) productVariantName.value = '';
+  if (productVariantPrice) productVariantPrice.value = '';
+});
+
+variantList?.addEventListener('click', (event) => {
+  const removeBtn = event.target.closest('.remove-variant');
+  if (!removeBtn) return;
+  const index = Number(removeBtn.dataset.index);
+  productVariants = productVariants.filter((_, idx) => idx !== index);
+  renderVariants();
 });
 
 
@@ -561,6 +633,7 @@ const init = async () => {
   productsMap = new Map(combinedProducts.map((product) => [String(product.id), product]));
   await renderOrders();
   renderAdminComments();
+  renderVariants();
   if (window.location.hash) {
     const target = document.querySelector(window.location.hash);
     if (target) {

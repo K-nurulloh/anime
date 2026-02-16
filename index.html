@@ -3,18 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Uzum Market — Katalog</title>
+    <title>Anime Shop — Katalog</title>
     <link rel="stylesheet" href="css/output.css" />
     <link rel="stylesheet" href="css/theme.css" />
   </head>
   <body class="anime-bg text-white">
     <!-- ====== NAVBAR ====== -->
     <header class="fixed top-0 z-50 flex h-14 w-full items-center glass-soft px-4 md:hidden">
-      <a href="index.html" class="text-lg font-semibold text-white">Uzum Market</a>
+      <a href="index.html" class="text-lg font-semibold text-white">Anime Shop</a>
     </header>
     <header class="sticky top-0 z-50 hidden glass-soft backdrop-blur md:block">
       <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4">
-        <a href="index.html" class="text-xl font-bold text-white">Uzum Market</a>
+        <a href="index.html" class="text-xl font-bold text-white">Anime Shop</a>
         <nav class="flex flex-1 flex-wrap items-center gap-3">
           <a href="index.html" class="text-sm text-slate-200 hover:text-white" data-i18n="home"></a>
           <a href="catalog.html" class="text-sm text-slate-200 hover:text-white" data-i18n="catalog"></a>
@@ -67,34 +67,41 @@
       </header>
 
     <main class="bottom-safe mx-auto max-w-6xl space-y-10 px-4 pt-14 md:pt-20">
-      <section class="section">
-        <div class="carousel news-carousel promo-shell">
-          <div id="promo-track" class="track news-track" data-carousel="interval" data-interval="4000">
-            <article class="promo-slide promo-peek">
-              <div class="promo-card text-center">
-                <h3 class="mt-2 text-lg font-semibold leading-snug clamp-2">Mecha lineup: limited glow</h3>
-                <p class="mt-2 text-xs text-white/70 clamp-2">Cyan chrome figures with hologram bases.</p>
-                <button class="pill-btn mx-auto mt-3 text-xs">Explore drop</button>
+      <section class="space-y-4">
+        <div class="mt-2 flex items-center gap-2">
+          <input
+            id="searchInputHome"
+            type="search"
+            placeholder="Mahsulot qidirish..."
+            class="w-full rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-2 text-sm text-white placeholder:text-slate-400 focus:border-slate-500 focus:outline-none"
+          />
+          <button
+            id="searchClearHome"
+            type="button"
+            class="rounded-xl border border-slate-700 bg-slate-800/60 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-slate-500"
+          >
+            Tozalash
+          </button>
+        </div>
+
+        <div class="space-y-3">
+          <div class="overflow-x-auto snap-x snap-mandatory rounded-2xl border border-white/10 bg-slate-900/60 p-2 shadow-sm">
+            <div id="promo-track" class="track flex gap-3">
+              <div class="slide min-w-full snap-center overflow-hidden rounded-xl">
+                <img src="./assets/slide-1.jpg" alt="Bosh banner 1" class="h-44 w-full object-cover md:h-56" />
               </div>
-            </article>
-            <article class="promo-slide promo-peek">
-              <div class="promo-card text-center">
-                <h3 class="mt-2 text-lg font-semibold leading-snug clamp-2">Ghibli plush bundle</h3>
-                <p class="mt-2 text-xs text-white/70 clamp-2">Soft glow plushies with collector cards.</p>
-                <button class="pill-btn mx-auto mt-3 text-xs">See bundle</button>
+              <div class="slide min-w-full snap-center overflow-hidden rounded-xl">
+                <img src="./assets/slide-2.jpg" alt="Bosh banner 2" class="h-44 w-full object-cover md:h-56" />
               </div>
-            </article>
-            <article class="promo-slide promo-peek">
-              <div class="promo-card text-center">
-                <h3 class="mt-2 text-lg font-semibold leading-snug clamp-2">Arcade hero set</h3>
-                <p class="mt-2 text-xs text-white/70 clamp-2">Neon armor figures with LED aura.</p>
-                <button class="pill-btn mx-auto mt-3 text-xs">Shop now</button>
+              <div class="slide min-w-full snap-center overflow-hidden rounded-xl">
+                <img src="./assets/slide-3.jpg" alt="Bosh banner 3" class="h-44 w-full object-cover md:h-56" />
               </div>
-            </article>
+            </div>
           </div>
           <div id="promo-dots" class="dots"></div>
         </div>
       </section>
+
 
       <section class="space-y-4">
         <div class="flex items-center justify-between">
@@ -103,31 +110,24 @@
         </div>
         <div class="cat-grid">
           <a href="catalog.html?category=Telefon" class="cat-pill">
-            <span class="cat-ico">📱</span>
             <span class="cat-label" data-i18n="category_phone"></span>
           </a>
           <a href="catalog.html?category=Kino" class="cat-pill">
-            <span class="cat-ico">🎬</span>
             <span class="cat-label" data-i18n="category_kino"></span>
           </a>
           <a href="catalog.html?category=Noutbuk" class="cat-pill">
-            <span class="cat-ico">💻</span>
             <span class="cat-label" data-i18n="category_laptop"></span>
           </a>
           <a href="catalog.html?category=Uy" class="cat-pill">
-            <span class="cat-ico">🏠</span>
             <span class="cat-label" data-i18n="category_home"></span>
           </a>
           <a href="catalog.html?category=Kiyim" class="cat-pill">
-            <span class="cat-ico">👕</span>
             <span class="cat-label" data-i18n="category_clothes"></span>
           </a>
           <a href="catalog.html?category=Aksessuar" class="cat-pill">
-            <span class="cat-ico">🧸</span>
             <span class="cat-label" data-i18n="category_accessory"></span>
           </a>
           <a href="catalog.html?category=Kitob" class="cat-pill">
-            <span class="cat-ico">📚</span>
             <span class="cat-label" data-i18n="category_book"></span>
           </a>
         </div>
@@ -135,7 +135,7 @@
 
       <section class="space-y-4">
         <div class="flex items-center justify-between">
-          <h2 class="heading-lg">✨ New Drops</h2>
+          <h2 class="heading-lg">✨ Yangi mahsulotlar</h2>
           <a href="catalog.html" class="text-sm text-white/70 hover:text-white">Barchasi →</a>
         </div>
         <div class="carousel">
@@ -146,7 +146,7 @@
 
       <section id="catalog" class="space-y-6">
         <div class="flex items-center justify-between">
-          <h2 class="heading-lg">🔥 Popular</h2>
+          <h2 class="heading-lg">🔥 Ommabop</h2>
           <p class="text-sm text-white/70" data-i18n="catalog_subtitle"></p>
         </div>
         <div id="error-box" class="hidden rounded-2xl bg-rose-500/10 px-4 py-3 text-sm text-rose-200"></div>
@@ -158,7 +158,8 @@
       </section>
     </main>
 
-    <footer class="border-t border-slate-800 py-8 text-center text-sm text-white/70">
+
+     <footer class="border-t border-slate-800 py-8 text-center text-sm text-white/70">
       <p data-i18n="footer_note"></p>
       <a href="about.html" class="text-white/70 hover:text-white" data-i18n="about"></a>
     </footer>
