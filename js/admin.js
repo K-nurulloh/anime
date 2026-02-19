@@ -62,6 +62,25 @@ const statusLabels = {
   rejected: 'Buyurtma rad etildi',
 };
 
+const PENDING_ORDERS_KEY = 'PENDING_ORDERS';
+const APPROVED_ORDERS_KEY = 'APPROVED_ORDERS';
+const REJECTED_ORDERS_KEY = 'REJECTED_ORDERS';
+
+const readJSON = (key, fallback) => {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw);
+    return parsed ?? fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+const writeJSON = (key, value) => {
+  localStorage.setItem(key, JSON.stringify(value));
+};
+
 // ====== STATE ======
 let selectedFiles = [];
 let selectedPreviews = [];
@@ -102,12 +121,12 @@ const getItemsCount = (items = []) => items.reduce((sum, item) => sum + item.qty
 const renderOrderCard = (order, { showActions }) => {
   const buyerName = order.userName || 'Noma\'lum';
   const buyerPhone = order.userPhone || 'Telefon: N/A';
-  const receiptSrc = order.receiptUrl || null;
+  const receiptSrc = order.receiptUrl || order.receiptBase64 || null;
   const receiptMarkup = receiptSrc
     ? `
       <a href="${receiptSrc}" target="_blank" rel="noreferrer" class="receipt-open mt-3 inline-flex items-center gap-2 rounded-xl glass-soft px-3 py-2 text-xs text-white/80" data-id="${order.id}">
         <img src="${receiptSrc}" alt="Receipt" class="h-16 w-16 rounded-lg object-cover" />
-        <span>View receipt</span>
+        <span>Chekni ko‘rish</span>
       </a>
     `
     : '<p class="mt-3 text-xs text-slate-500">Receipt mavjud emas.</p>';
@@ -224,7 +243,7 @@ const getEditIdFromQuery = () => {
 const renderVariants = () => {
   if (!variantList) return;
   if (!productVariants.length) {
-    variantList.innerHTML = '<p class="text-xs text-white/50">Variantlar qoshilmagan Narx uchun asosiy price ishlatiladi. </p>';
+    variantList.innerHTML = '<p class="text-xs text-white/50">Variantlar qoshilmagan. Narx uchun asosiy price ishlatiladi.</p>';
     return;
   }
   variantList.innerHTML = productVariants
@@ -513,23 +532,7 @@ const renderAdminComments = () => {
 
 const renderOrders = async () => {
   if (!isAdmin) return;
-  const pendingSnapshot = await getDocs(
-    query(
-      collection(db, 'orders'),
-      where('status', 'in', ['pending', 'pending_verification']),
-      orderBy('createdAt', 'desc')
-    )
-  );
-  const pendingOrders = pendingSnapshot.docs.map((docSnap) => {
-    const data = docSnap.data();
-    const normalizedStatus =
-      data.status === 'pending_verification' ? 'pending' : data.status;
-    return {
-      id: docSnap.id,
-      ...data,
-      status: normalizedStatus,
-    };
-  });
+  const pendingOrders = readJSON(PENDING_ORDERS_KEY, []);
 
   if (!pendingOrders.length) {
     pendingEmpty.classList.remove('hidden');
@@ -539,7 +542,39 @@ const renderOrders = async () => {
 
   pendingEmpty.classList.add('hidden');
   pendingOrdersList.innerHTML = pendingOrders
-    .map((order) => renderOrderCard(order, { showActions: true }))
+    .map(
+      (order) => `
+      <article class="rounded-2xl glass p-4 shadow-sm">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p class="text-xs text-slate-400">Buyurtma ID</p>
+            <p class="text-sm font-semibold text-white">${order.id}</p>
+            <p class="mt-2 text-xs text-slate-400">Foydalanuvchi</p>
+            <p class="text-sm text-slate-200">${order.user?.name || '—'} (${order.user?.phone || '—'})</p>
+          </div>
+          <div>
+            <p class="text-xs text-slate-400">Jami (subtotal)</p>
+            <p class="text-sm font-semibold text-white">${Number(order.subtotal || 0).toLocaleString('uz-UZ')} so'm</p>
+            <p class="mt-2 text-xs text-slate-400">Yetkazish</p>
+            <p class="text-sm text-slate-200">${order.deliveryType || '—'}</p>
+          </div>
+          <div>
+            <p class="text-xs text-slate-400">Manzil</p>
+            <p class="text-sm text-slate-200">${order.region || '—'}, ${order.district || '—'}</p>
+            <p class="text-sm text-slate-200">${order.address || '—'}</p>
+          </div>
+        </div>
+        <a href="${order.receipt?.url || '#'}" target="_blank" rel="noreferrer" class="receipt-open mt-3 inline-flex items-center gap-2 rounded-xl glass-soft px-3 py-2 text-xs text-white/80" data-id="${order.id}">
+          <img src="${order.receipt?.url || ''}" alt="Receipt" class="h-16 w-16 rounded-lg object-cover" />
+          <span>${order.receipt?.fileName || 'Chekni ko‘rish'}</span>
+        </a>
+        <div class="mt-4 flex flex-wrap gap-3">
+          <button class="confirm-btn neon-btn rounded-xl px-4 py-2 text-xs font-semibold" data-id="${order.id}">Tasdiqlash</button>
+          <button class="reject-btn rounded-xl border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold text-white hover:border-white/40" data-id="${order.id}">Rad etish</button>
+        </div>
+      </article>
+    `
+    )
     .join('');
 };
 
@@ -565,16 +600,31 @@ adminPanel.addEventListener('click', async (event) => {
   }
 
   if (confirmBtn) {
-    await updateOrderStatus(confirmBtn.dataset.id, 'approved');
+    const id = confirmBtn.dataset.id;
+    const pending = readJSON(PENDING_ORDERS_KEY, []);
+    const order = pending.find((item) => item.id === id);
+    if (!order) return;
+    const rest = pending.filter((item) => item.id !== id);
+    const approved = readJSON(APPROVED_ORDERS_KEY, []);
+    approved.unshift({ ...order, status: 'approved' });
+    writeJSON(PENDING_ORDERS_KEY, rest);
+    writeJSON(APPROVED_ORDERS_KEY, approved);
+    await renderOrders();
+    return;
   }
 
   if (rejectBtn) {
-    const reason = window.prompt('Rad etish sababini kiriting:');
-    if (!reason || !reason.trim()) {
-      showToast('Rad etish sababini kiriting', 'error');
-      return;
-    }
-    await updateOrderStatus(rejectBtn.dataset.id, 'rejected', reason.trim());
+    const id = rejectBtn.dataset.id;
+    const pending = readJSON(PENDING_ORDERS_KEY, []);
+    const order = pending.find((item) => item.id === id);
+    if (!order) return;
+    const rest = pending.filter((item) => item.id !== id);
+    const rejected = readJSON(REJECTED_ORDERS_KEY, []);
+    rejected.unshift({ ...order, status: 'rejected' });
+    writeJSON(PENDING_ORDERS_KEY, rest);
+    writeJSON(REJECTED_ORDERS_KEY, rejected);
+    await renderOrders();
+    return;
   }
 });
 

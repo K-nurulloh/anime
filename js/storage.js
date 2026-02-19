@@ -86,10 +86,23 @@ export const getCurrentUserId = () => readStorage('currentUserId', null);
 export const setCurrentUserId = (id) => writeStorage('currentUserId', id);
 
 export const getCurrentUser = () => {
-  const users = getUsers();
-  const currentId = getCurrentUserId();
-  return users.find((user) => user.id === currentId) || null;
+  const rawCurrentUser = localStorage.getItem('currentUser');
+  if (!rawCurrentUser) return null;
+
+  try {
+    const parsedUser = JSON.parse(rawCurrentUser);
+    if (!parsedUser || typeof parsedUser !== 'object') return null;
+
+    const hasIdentityField = Boolean(parsedUser.id || parsedUser.uid || parsedUser.phone || parsedUser.email);
+    if (!hasIdentityField) return null;
+
+    return parsedUser;
+  } catch {
+    return null;
+  }
 };
+
+export const isLoggedIn = () => Boolean(getCurrentUser());
 
 export const updateCurrentUser = (updater) => {
   const users = getUsers();
@@ -102,11 +115,27 @@ export const updateCurrentUser = (updater) => {
   return updatedUser;
 };
 
-export const getCart = () => readStorage('cart', []);
+export const getUserCartKey = (user) => {
+  const keyPart = user?.id || user?.phone || user?.uid;
+  return keyPart ? `CART_${keyPart}` : null;
+};
 
-export const saveCart = (cart) => {
-  const normalized = Array.isArray(cart)
-    ? cart
+export const getCart = () => {
+  const currentUser = getCurrentUser();
+  if (!currentUser) return [];
+  const cartKey = getUserCartKey(currentUser);
+  if (!cartKey) return [];
+  return readStorage(cartKey, []);
+};
+
+export const setCart = (items) => {
+  const currentUser = getCurrentUser();
+  if (!currentUser) return [];
+  const cartKey = getUserCartKey(currentUser);
+  if (!cartKey) return [];
+
+  const normalized = Array.isArray(items)
+    ? items
         .filter((item) => item && item.id != null)
         .map((item) => {
           const normalizedItem = {
@@ -118,7 +147,18 @@ export const saveCart = (cart) => {
           return normalizedItem;
         })
     : [];
-  writeStorage('cart', normalized);
+
+  writeStorage(cartKey, normalized);
+  return normalized;
+};
+
+export const saveCart = (cart) => setCart(cart);
+
+export const clearCart = () => {
+  const currentUser = getCurrentUser();
+  const cartKey = getUserCartKey(currentUser);
+  if (!cartKey) return;
+  localStorage.removeItem(cartKey);
 };
 
 export const addToCart = (productId, qty = 1, options = {}) => {

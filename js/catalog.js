@@ -1,5 +1,5 @@
 import { fetchProducts } from './api.js';
-import { ensureSeedData, getCart, saveCart, getWishlist, saveWishlist } from './storage.js';
+import { ensureSeedData, getWishlist, saveWishlist } from './storage.js';
 import { initAdminEditDelegation, isAdminUser, renderSkeleton, showToast, updateCartBadge } from './ui.js';
 import { applyTranslations, initLangSwitcher, t } from './i18n.js';
 
@@ -16,6 +16,61 @@ const searchInput = document.querySelector('#searchInputCatalog');
 const searchClearBtn = document.querySelector('#searchClearCatalog');
 const errorBox = document.querySelector('#error-box');
 const categoryChips = document.querySelectorAll('.category-chip');
+
+
+function getCurrentUserStrict() {
+  const keys = ['currentUser', 'CURRENT_USER', 'user', 'USER', 'authUser', 'AUTH_USER'];
+  for (const k of keys) {
+    const raw = localStorage.getItem(k);
+    if (!raw) continue;
+    try {
+      const u = JSON.parse(raw);
+      if (u && typeof u === 'object' && (u.id || u.uid || u.phone || u.email)) {
+        if (k !== 'currentUser') {
+          localStorage.setItem('currentUser', JSON.stringify(u));
+        }
+        return u;
+      }
+    } catch (_) {}
+  }
+  return null;
+}
+
+function getUserId(u) {
+  return String(u?.id || u?.uid || u?.phone || u?.email || '');
+}
+
+function getCartKey() {
+  const u = getCurrentUserStrict();
+  if (!u) return null;
+  return `CART_${getUserId(u)}`;
+}
+
+function readUserCart() {
+  const key = getCartKey();
+  if (!key) return [];
+  try {
+    return JSON.parse(localStorage.getItem(key) || '[]');
+  } catch (_) {
+    return [];
+  }
+}
+
+function writeUserCart(items) {
+  const key = getCartKey();
+  if (!key) return;
+  localStorage.setItem(key, JSON.stringify(items || []));
+}
+
+function requireAuthOrRedirect() {
+  const u = getCurrentUserStrict();
+  if (!u) {
+    alert('Avval accountga kiring');
+    window.location.href = 'account.html';
+    return null;
+  }
+  return u;
+}
 
 let ALL_PRODUCTS = [];
 let filteredProducts = [];
@@ -131,16 +186,26 @@ const initCategoryChips = () => {
 };
 
 const handleAddToCart = (productId) => {
-  const cart = getCart();
+  const user = requireAuthOrRedirect();
+  if (!user) return;
+
+  const cart = readUserCart();
   const existing = cart.find((item) => String(item.id) === String(productId));
   if (existing) {
     existing.qty += 1;
   } else {
-    cart.push({ id: String(productId), qty: 1 });
+    const source = ALL_PRODUCTS.find((item) => String(item.id) === String(productId)) || {};
+    cart.push({
+      id: String(productId),
+      title: source.title || '',
+      price: Number(source.price || 0),
+      img: source.images?.[0] || source.img || '',
+      qty: 1,
+    });
   }
-  saveCart(cart);
+  writeUserCart(cart);
   updateCartBadge();
-  showToast(t('cart_added'));
+  showToast('Savatga qo‘shildi');
 };
 
 const handleWishlist = (productId) => {

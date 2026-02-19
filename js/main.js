@@ -1,5 +1,5 @@
 import { db, collection, getDocs, query, orderBy, limit } from './firebase.js';
-import { ensureSeedData, getCart, saveCart, getWishlist, saveWishlist, getCachedProducts, setCachedProducts } from './storage.js';
+import { ensureSeedData, getWishlist, saveWishlist, getCachedProducts, setCachedProducts } from './storage.js';
 import { initAdminEditDelegation, isAdminUser, renderCarouselSkeleton, renderSkeleton, showToast, updateCartBadge } from './ui.js';
 import { applyTranslations, initLangSwitcher, t } from './i18n.js';
 import { initAutoCarousel } from './slider.js';
@@ -21,13 +21,128 @@ const errorBox = document.querySelector('#error-box');
 const categoryChips = document.querySelectorAll('.category-chip');
 const newDropsRow = document.querySelector('#new-drops-row');
 const newDropsDots = document.querySelector('#new-drops-dots');
-const promoTrack = document.querySelector('#promo-track');
-const promoDots = document.querySelector('#promo-dots');
+const homeSliderTrack = document.querySelector('#homeSliderTrack');
+const homeSliderDots = document.querySelector('#homeSliderDots');
+
+
+
+function getCurrentUserStrict() {
+  const keys = ['currentUser', 'CURRENT_USER', 'user', 'USER', 'authUser', 'AUTH_USER'];
+  for (const k of keys) {
+    const raw = localStorage.getItem(k);
+    if (!raw) continue;
+    try {
+      const u = JSON.parse(raw);
+      if (u && typeof u === 'object' && (u.id || u.uid || u.phone || u.email)) {
+        if (k !== 'currentUser') {
+          localStorage.setItem('currentUser', JSON.stringify(u));
+        }
+        return u;
+      }
+    } catch (_) {}
+  }
+  return null;
+}
+
+function getUserId(u) {
+  return String(u?.id || u?.uid || u?.phone || u?.email || '');
+}
+
+function getCartKey() {
+  const u = getCurrentUserStrict();
+  if (!u) return null;
+  return `CART_${getUserId(u)}`;
+}
+
+function readUserCart() {
+  const key = getCartKey();
+  if (!key) return [];
+  try {
+    return JSON.parse(localStorage.getItem(key) || '[]');
+  } catch (_) {
+    return [];
+  }
+}
+
+function writeUserCart(items) {
+  const key = getCartKey();
+  if (!key) return;
+  localStorage.setItem(key, JSON.stringify(items || []));
+}
+
+function requireAuthOrRedirect() {
+  const u = getCurrentUserStrict();
+  if (!u) {
+    alert('Avval accountga kiring');
+    window.location.href = 'account.html';
+    return null;
+  }
+  return u;
+}
 
 let allProducts = [];
 let filteredProducts = [];
 let currentIndex = 0;
 const batchSize = 12;
+
+
+const HOME_SLIDES = [
+  { img: 'assets/slide1.jpg', href: 'catalog.html?filter=discount', title: 'Yangi chegirma' },
+  { img: 'assets/slide2.jpg', href: 'catalog.html?filter=top', title: 'Top to‘plamlar' },
+  { img: 'assets/slide3.jpg', href: 'catalog.html?filter=limited', title: 'Cheklangan taklif' },
+];
+
+const initHomeSlider = () => {
+  if (!homeSliderTrack || !homeSliderDots) return;
+
+  homeSliderTrack.innerHTML = HOME_SLIDES.map((slide) => `
+    <a href="${slide.href}" class="min-w-full">
+      <img src="${slide.img}" alt="${slide.title}" class="h-44 w-full rounded-xl object-cover md:h-56" loading="lazy" />
+    </a>
+  `).join('');
+
+  homeSliderDots.innerHTML = HOME_SLIDES.map((_, idx) => `<button type="button" class="dot h-2 w-2 rounded-full ${idx===0?'bg-white':'bg-white/30'}" data-dot="${idx}"></button>`).join('');
+
+  let current = 0;
+  let timer = null;
+  let startX = 0;
+
+  const setSlide = (index) => {
+    current = (index + HOME_SLIDES.length) % HOME_SLIDES.length;
+    homeSliderTrack.style.transform = `translateX(-${current * 100}%)`;
+    homeSliderDots.querySelectorAll('[data-dot]').forEach((dot, i) => {
+      dot.classList.toggle('bg-white', i === current);
+      dot.classList.toggle('bg-white/30', i !== current);
+    });
+  };
+
+  const startAuto = () => {
+    clearInterval(timer);
+    timer = setInterval(() => setSlide(current + 1), 4000);
+  };
+
+  homeSliderDots.addEventListener('click', (event) => {
+    const dot = event.target.closest('[data-dot]');
+    if (!dot) return;
+    setSlide(Number(dot.dataset.dot));
+    startAuto();
+  });
+
+  homeSliderTrack.addEventListener('touchstart', (event) => {
+    startX = event.touches[0].clientX;
+  }, { passive: true });
+
+  homeSliderTrack.addEventListener('touchend', (event) => {
+    const diff = event.changedTouches[0].clientX - startX;
+    if (Math.abs(diff) > 40) {
+      setSlide(current + (diff < 0 ? 1 : -1));
+      startAuto();
+    }
+  });
+
+  setSlide(0);
+  startAuto();
+};
 
 // ====== HELPERS ======
 const shuffle = (items) => [...items].sort(() => Math.random() - 0.5);
@@ -242,16 +357,26 @@ const initCategoryChips = () => {
 
 // ====== CART ACTIONS ======
 const handleAddToCart = (productId) => {
-  const cart = getCart();
-  const existing = cart.find((item) => item.id === productId);
+  const user = requireAuthOrRedirect();
+  if (!user) return;
+
+  const cart = readUserCart();
+  const existing = cart.find((item) => String(item.id) === String(productId));
   if (existing) {
     existing.qty += 1;
   } else {
-    cart.push({ id: productId, qty: 1 });
+    const source = allProducts.find((item) => String(item.id) === String(productId)) || {};
+    cart.push({
+      id: String(productId),
+      title: source.title || '',
+      price: Number(source.price || 0),
+      img: source.images?.[0] || source.img || '',
+      qty: 1,
+    });
   }
-  saveCart(cart);
+  writeUserCart(cart);
   updateCartBadge();
-  showToast(t('cart_added'));
+  showToast('Savatga qo‘shildi');
 };
 
 const handleWishlist = (productId) => {
@@ -344,9 +469,7 @@ const init = async () => {
   initInfiniteScroll();
   renderRecommended();
   renderNewDropsRow((newestProducts.length ? newestProducts : shuffle(products).slice(0, 8)));
-  if (promoTrack && promoDots) {
-    initAutoCarousel(promoTrack, promoDots, 16);
-  }
+  initHomeSlider();
 };
 
 init();
@@ -355,4 +478,5 @@ window.addEventListener('langChanged', () => {
   applyFilters();
   renderRecommended();
   renderNewDropsRow(shuffle(allProducts).slice(0, 8));
+  initHomeSlider();
 });

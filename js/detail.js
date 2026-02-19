@@ -1,8 +1,6 @@
 import { db, collection, getDocs, query, orderBy, doc, getDoc } from './firebase.js';
 import {
   ensureSeedData,
-  getCart,
-  saveCart,
   getWishlist,
   saveWishlist,
   getCurrentUser,
@@ -37,6 +35,61 @@ const variantSelect = document.querySelector('#variantSelect');
 const params = new URLSearchParams(window.location.search);
 const productId = params.get('id');
 
+
+
+function getCurrentUserStrict() {
+  const keys = ['currentUser', 'CURRENT_USER', 'user', 'USER', 'authUser', 'AUTH_USER'];
+  for (const k of keys) {
+    const raw = localStorage.getItem(k);
+    if (!raw) continue;
+    try {
+      const u = JSON.parse(raw);
+      if (u && typeof u === 'object' && (u.id || u.uid || u.phone || u.email)) {
+        if (k !== 'currentUser') {
+          localStorage.setItem('currentUser', JSON.stringify(u));
+        }
+        return u;
+      }
+    } catch (_) {}
+  }
+  return null;
+}
+
+function getUserId(u) {
+  return String(u?.id || u?.uid || u?.phone || u?.email || '');
+}
+
+function getCartKey() {
+  const u = getCurrentUserStrict();
+  if (!u) return null;
+  return `CART_${getUserId(u)}`;
+}
+
+function readUserCart() {
+  const key = getCartKey();
+  if (!key) return [];
+  try {
+    return JSON.parse(localStorage.getItem(key) || '[]');
+  } catch (_) {
+    return [];
+  }
+}
+
+function writeUserCart(items) {
+  const key = getCartKey();
+  if (!key) return;
+  localStorage.setItem(key, JSON.stringify(items || []));
+}
+
+function requireAuthOrRedirect() {
+  const u = getCurrentUserStrict();
+  if (!u) {
+    alert('Avval accountga kiring');
+    window.location.href = 'account.html';
+    return null;
+  }
+  return u;
+}
 
 let selectedVariant = null;
 
@@ -160,9 +213,15 @@ const handleWishlist = (productId) => {
 
 // ====== CART ACTIONS ======
 const addToCart = (product) => {
-  const cart = getCart();
+  const user = requireAuthOrRedirect();
+  if (!user) return;
+
+  const cart = readUserCart();
   const baseItem = {
     id: String(product.id),
+    title: product.title || '',
+    price: Number(product.price || 0),
+    img: product.images?.[0] || product.img || '',
     qty: 1,
   };
   const itemPayload = selectedVariant
@@ -182,9 +241,9 @@ const addToCart = (product) => {
   } else {
     cart.push(itemPayload);
   }
-  saveCart(cart);
+  writeUserCart(cart);
   updateCartBadge();
-  showToast(t('cart_added'));
+  showToast('Savatga qo‘shildi');
 };
 
 // ====== CARD ACTIONS ======

@@ -1,9 +1,6 @@
 import { db, collection, getDocs, query, orderBy } from './firebase.js';
 import {
   ensureSeedData,
-  getCart,
-  saveCart,
-  addToCart,
   getCachedProducts,
   setCachedProducts,
 } from './storage.js';
@@ -21,6 +18,61 @@ const summaryBox = document.querySelector('#summary-box');
 const emptyState = document.querySelector('#empty-state');
 const promoInput = document.querySelector('#promo-code');
 const promoButton = document.querySelector('#apply-promo');
+
+
+function getCurrentUserStrict() {
+  const keys = ['currentUser', 'CURRENT_USER', 'user', 'USER', 'authUser', 'AUTH_USER'];
+  for (const k of keys) {
+    const raw = localStorage.getItem(k);
+    if (!raw) continue;
+    try {
+      const u = JSON.parse(raw);
+      if (u && typeof u === 'object' && (u.id || u.uid || u.phone || u.email)) {
+        if (k !== 'currentUser') {
+          localStorage.setItem('currentUser', JSON.stringify(u));
+        }
+        return u;
+      }
+    } catch (_) {}
+  }
+  return null;
+}
+
+function getUserId(u) {
+  return String(u?.id || u?.uid || u?.phone || u?.email || '');
+}
+
+function getCartKey() {
+  const u = getCurrentUserStrict();
+  if (!u) return null;
+  return `CART_${getUserId(u)}`;
+}
+
+function readUserCart() {
+  const key = getCartKey();
+  if (!key) return [];
+  try {
+    return JSON.parse(localStorage.getItem(key) || '[]');
+  } catch (_) {
+    return [];
+  }
+}
+
+function writeUserCart(items) {
+  const key = getCartKey();
+  if (!key) return;
+  localStorage.setItem(key, JSON.stringify(items || []));
+}
+
+function requireAuthOrRedirect() {
+  const u = getCurrentUserStrict();
+  if (!u) {
+    alert('Avval accountga kiring');
+    window.location.href = 'account.html';
+    return null;
+  }
+  return u;
+}
 
 let productsMap = new Map();
 let discountPercent = 0;
@@ -56,7 +108,7 @@ const fetchProductsFromFirestore = async () => {
 };
 
 const calculateTotals = () => {
-  const cart = getCart();
+  const cart = readUserCart();
   const subtotal = cart.reduce((sum, item) => {
     const product = productsMap.get(String(item.id));
     const unitPrice = Number(item.variantPrice ?? product?.price ?? item.price ?? 0);
@@ -82,10 +134,11 @@ const calculateTotals = () => {
 };
 
 const renderCart = () => {
-  const cart = getCart();
+  const currentUser = getCurrentUserStrict();
+  const cart = currentUser ? readUserCart() : [];
   if (!cart.length) {
     emptyState?.classList.remove('hidden');
-    if (cartList) cartList.innerHTML = '<p class="text-sm text-slate-300">Savat bo‘sh</p>';
+    if (cartList) cartList.innerHTML = '<p class="text-sm text-slate-300">Savatingiz bo‘sh. Katalogga qayting.</p>';
     if (summaryBox) summaryBox.innerHTML = '';
     return;
   }
@@ -124,23 +177,25 @@ const renderCart = () => {
 
 const updateQuantity = (id, variantName, action) => {
   if (action === 'inc') {
-    const cart = getCart();
+    const cart = readUserCart();
     const line = cart.find((entry) => String(entry.id) === String(id) && String(entry.variantName || '') === String(variantName || ''));
-    addToCart(id, 1, { variantName, variantPrice: line?.variantPrice });
+    if (!line) return;
+    line.qty += 1;
+    writeUserCart(cart);
   } else {
-    const cart = getCart();
+    const cart = readUserCart();
     const item = cart.find((entry) => String(entry.id) === String(id) && String(entry.variantName || '') === String(variantName || ''));
     if (!item) return;
     item.qty = Math.max(1, item.qty - 1);
-    saveCart(cart);
+    writeUserCart(cart);
   }
   renderCart();
   updateCartBadge();
 };
 
 const removeItem = (id, variantName) => {
-  const cart = getCart().filter((item) => !(String(item.id) === String(id) && String(item.variantName || '') === String(variantName || '')));
-  saveCart(cart);
+  const cart = readUserCart().filter((item) => !(String(item.id) === String(id) && String(item.variantName || '') === String(variantName || '')));
+  writeUserCart(cart);
   renderCart();
   updateCartBadge();
   showToast(t('removed'));

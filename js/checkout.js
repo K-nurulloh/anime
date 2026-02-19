@@ -9,13 +9,34 @@ import {
 import { formatPrice, showToast, updateCartBadge } from './ui.js';
 import { applyTranslations, initLangSwitcher, t } from './i18n.js';
 import { STORE_PAYMENT } from './config.js';
-import { uploadToImgBB } from './imgbb.js';
+import { imgbbUpload } from "./imgbb.js";
 import { db, nowTs, collection, addDoc, getDocs, query, orderBy } from './firebase.js';
 
 ensureSeedData();
 applyTranslations();
 initLangSwitcher();
 updateCartBadge();
+
+const API_KEY = "9a6bc6256c8f61ac7df85be0514643b8";
+const PENDING_ORDERS_KEY = 'PENDING_ORDERS';
+
+const readJSON = (key, fallback) => {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw);
+    return parsed ?? fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+const writeJSON = (key, value) => {
+  localStorage.setItem(key, JSON.stringify(value));
+};
+
+const uid = () => `ord_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
 
 const form = document.querySelector('#checkout-form');
 const summaryBox = document.querySelector('#checkout-summary');
@@ -140,7 +161,7 @@ const calculateSummary = () => {
     </div>
   `;
 
-  return { total, deliveryMeta };
+  return { total, subtotal, deliveryMeta };
 };
 
 const setDeliveryType = (type) => {
@@ -158,7 +179,21 @@ const setDeliveryType = (type) => {
   calculateSummary();
 };
 
-const createOrder = async ({ paymentMethod, receiptUrl = null, contactPhone }) => {
+const prependOrderToLocalStorage = (orderPayload) => {
+  const keys = ['orders', 'userOrders'];
+  keys.forEach((key) => {
+    try {
+      const existing = JSON.parse(localStorage.getItem(key) || '[]');
+      const list = Array.isArray(existing) ? existing : [];
+      list.unshift(orderPayload);
+      localStorage.setItem(key, JSON.stringify(list));
+    } catch {
+      localStorage.setItem(key, JSON.stringify([orderPayload]));
+    }
+  });
+};
+
+const createOrder = async ({ paymentMethod, receiptUrl = '' , contactPhone }) => {
   const cart = getCart();
   if (!cart.length) {
     showToast(t('cart_empty'), 'error');
@@ -166,18 +201,22 @@ const createOrder = async ({ paymentMethod, receiptUrl = null, contactPhone }) =
   }
 
   const formData = new FormData(form);
-  const { total, deliveryMeta } = calculateSummary();
+  const { total, subtotal, deliveryMeta } = calculateSummary();
   const currentUser = getCurrentUser();
 
   const payload = {
+    id: `o-${Date.now()}`,
+    date: new Date().toISOString(),
     userId: currentUser?.id || null,
     userName: formData.get('name') || currentUser?.name || 'Guest',
     userPhone: contactPhone || currentUser?.phone || '',
-    items: cart.map((item) => ({ id: String(item.id), qty: Number(item.qty) || 1 })),
+    items: cart.map((item) => ({ ...item })),
+    totalProductsSum: subtotal,
     total,
     payment: paymentMethod,
-    status: 'pending_verification',
-    receiptUrl: receiptUrl || null,
+    status: 'pending',
+    receiptUrl: receiptUrl || '',
+    deliveryType: selectedDelivery || null,
     delivery: {
       type: selectedDelivery,
       label: deliveryMeta.label,
@@ -195,9 +234,11 @@ const createOrder = async ({ paymentMethod, receiptUrl = null, contactPhone }) =
   };
 
   await addDoc(collection(db, 'orders'), payload);
+  prependOrderToLocalStorage(payload);
+
   saveCart([]);
   updateCartBadge();
-  showToast('Buyurtma yuborildi!');
+  showToast(paymentMethod === 'card_transfer' ? 'Chek yuborildi. Tekshirilmoqda...' : 'Buyurtma yuborildi!');
 
   receiptInput.value = '';
   receiptFile = null;
@@ -230,39 +271,6 @@ const initAddressSelectors = () => {
   citySelect.addEventListener('change', () => {
     fillDistricts(citySelect.value);
   });
-};
-
-
-const ensureImgBBApiKey = () => {
-  const windowKey = typeof window !== 'undefined' ? window.IMGBB_API_KEY : '';
-  let localKey = '';
-  try {
-    localKey = localStorage.getItem('IMGBB_API_KEY') || '';
-  } catch {
-    localKey = '';
-  }
-
-  const existingKey = String(windowKey || localKey || '').trim();
-  if (existingKey) return existingKey;
-
-  const entered = prompt('ImgBB API key kiriting:');
-  const key = String(entered || '').trim();
-  if (!key) {
-    showToast('ImgBB API key kiritilmadi', 'error');
-    return null;
-  }
-
-  try {
-    localStorage.setItem('IMGBB_API_KEY', key);
-  } catch {
-    // ignore storage write failures
-  }
-
-  if (typeof window !== 'undefined') {
-    window.IMGBB_API_KEY = key;
-  }
-
-  return key;
 };
 
 const showReceiptStep = () => {
@@ -340,21 +348,83 @@ receiptInput?.addEventListener('change', () => {
 receiptSubmit?.addEventListener('click', async () => {
   const phone = getValidatedPhone();
   if (!phone) return;
-  if (!receiptFile) {
-    showToast(t('receipt_required'), 'error');
+
+  const currentUser = getCurrentUser();
+  if (!currentUser) {
+    showToast('Iltimos, avval akkauntga kiring', 'error');
     return;
   }
 
-  const apiKey = ensureImgBBApiKey();
-  if (!apiKey) return;
+  const cart = getCart();
+  if (!cart.length) {
+    showToast(t('cart_empty'), 'error');
+    return;
+  }
+
+  if (!receiptFile) {
+    showToast('Chek faylini tanlang', 'error');
+    return;
+  }
 
   try {
     setButtonLoading(receiptSubmit, 'Yuborilmoqda...', true);
-    const { url: receiptUrl } = await uploadToImgBB(receiptFile);
-    await createOrder({ paymentMethod: 'card_transfer', receiptUrl, contactPhone: phone });
+    const imageUrl = await imgbbUpload(receiptFile, API_KEY);
+
+    const formData = new FormData(form);
+    const { subtotal } = calculateSummary();
+    const deliveryType = selectedDelivery === 'standard' ? 'standart' : selectedDelivery === 'fast' ? 'tezkor' : null;
+    const pendingOrder = {
+      id: uid(),
+      createdAt: Date.now(),
+      user: {
+        name: String(formData.get('name') || currentUser?.name || ''),
+        phone,
+      },
+      items: cart.map((item) => {
+        const product = productsMap.get(String(item.id)) || {};
+        return {
+          id: item.id,
+          title: String(product.title || item.title || 'Mahsulot'),
+          price: Number(product.price ?? item.price ?? 0),
+          qty: Number(item.qty) || 1,
+          img: product.img || product.images?.[0] || item.img || '',
+        };
+      }),
+      subtotal,
+      deliveryType,
+      region: String(formData.get('city') || ''),
+      district: String(formData.get('district') || ''),
+      address: String(formData.get('address') || ''),
+      paymentMethod: 'receipt',
+      receipt: {
+        url: imageUrl,
+        fileName: receiptFile.name || '',
+      },
+      status: 'pending',
+    };
+
+    const pending = readJSON(PENDING_ORDERS_KEY, []);
+    pending.unshift(pendingOrder);
+    writeJSON(PENDING_ORDERS_KEY, pending);
+
+    saveCart([]);
+    updateCartBadge();
+    showToast('Tekshiruvga yuborildi');
+
+    receiptInput.value = '';
+    receiptFile = null;
+    if (receiptPreviewUrl) URL.revokeObjectURL(receiptPreviewUrl);
+    receiptPreviewUrl = null;
+    receiptPreview.innerHTML = t('receipt_preview');
+    receiptFilename.textContent = 'Fayl tanlanmagan';
+
+    setTimeout(() => {
+      window.location.href = 'orders.html';
+    }, 700);
   } catch (error) {
     console.error(error);
-    showToast('Chekni yuborishda xatolik', 'error');
+    const message = String(error?.message || 'Chekni yuborishda xatolik');
+    showToast(message, 'error');
   } finally {
     setButtonLoading(receiptSubmit, '', false);
   }

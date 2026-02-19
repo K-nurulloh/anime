@@ -3,6 +3,7 @@ import {
   getUsers,
   saveUsers,
   setCurrentUserId,
+  clearCart,
   getCurrentUser,
   getWishlist,
   saveWishlist,
@@ -179,8 +180,14 @@ registerForm.addEventListener('submit', (event) => {
 });
 
 logoutBtn.addEventListener('click', () => {
+  clearCart();
   setCurrentUserId(null);
   localStorage.removeItem('currentUser');
+  localStorage.removeItem('CURRENT_USER');
+  localStorage.removeItem('user');
+  localStorage.removeItem('USER');
+  localStorage.removeItem('authUser');
+  localStorage.removeItem('AUTH_USER');
   localStorage.setItem('isAdmin', 'false');
   showToast(t('logout_done'));
   renderProfile();

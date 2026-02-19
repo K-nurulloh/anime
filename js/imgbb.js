@@ -11,12 +11,15 @@ const fileToBase64 = (file) =>
 
 function getImgBBKey() {
   // 1) window global
-  if (typeof window !== "undefined" && window.IMGBB_API_KEY) return String(window.IMGBB_API_KEY);
+  if (typeof window !== "undefined" && window.IMGBB_API_KEY)
+    return String(window.IMGBB_API_KEY);
+
   // 2) localStorage
   try {
     const v = localStorage.getItem("IMGBB_API_KEY");
     if (v) return String(v);
   } catch (e) {}
+
   // 3) missing
   return "";
 }
@@ -46,6 +49,10 @@ export async function imgbbUpload(file, apiKey) {
 // New export for checkout.js compatibility
 export async function uploadToImgBB(file) {
   const apiKey = getImgBBKey();
-  if (!apiKey) throw new Error("ImgBB API key topilmadi. Set window.IMGBB_API_KEY or localStorage IMGBB_API_KEY.");
+  if (!apiKey)
+    throw new Error(
+      "ImgBB API key topilmadi. Set window.IMGBB_API_KEY or localStorage IMGBB_API_KEY."
+    );
+
   return imgbbUpload(file, apiKey);
 }
