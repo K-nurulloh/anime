@@ -243,3 +243,88 @@ export const initAdminEditDelegation = (root = document) => {
     }
   });
 };
+
+
+// You are Codex. ONLY fix the bugs described below. DO NOT redesign UI, DO NOT modify index.html/catalog.html/detail.html/cart.html or any CSS unless absolutely required to fix the bug. Keep all existing layout/classes. Only touch these files if needed: `js/imgbb.js`, `js/checkout.js`, `js/admin.js`, `admin.html`, `checkout.html`.
+
+// GOAL
+
+// 1. ImgBB upload must work reliably for:
+
+//    * checkout receipt upload ("Chekni yuborish")
+//    * admin product image upload (if admin uses ImgBB)
+// 2. Remove any hardcoded placeholder like `PASTE_MY_KEY`.
+// 3. Stop prompting for ImgBB API key every time. Ask only if key is missing.
+// 4. Admin "Saqlash" must work and actually create/update products in Firebase (NOT products.json). The project uses Firebase, so DO NOT fetch `products.json`. Remove any `fetch("products.json")` logic.
+// 5. Fix current errors seen in console:
+
+//    * GET /products.json 404 (Not Found)
+//    * POST https://api.imgbb.com/1/upload?key=PASTE_MY_KEY 400
+//    * “Invalid API v1 key” when key is missing/incorrect
+//    * Module import mismatch: `imgbb.js` must export BOTH names used in project: `uploadToImgBB` AND `imgbbUpload` (backward compatible).
+// 6. Checkout must NOT break and must still submit order data to Firebase (and show “Tekshiryapti” state). After submission, the order must appear in admin panel section "Tekshiruvdagi buyurtmalar". Do not change admin panel UI, only data flow if broken.
+// 7. IMPORTANT: If the project already has Firebase write logic for orders/products, keep it and just repair the broken parts (ImgBB + products.json removal + missing fields). Don’t replace Firebase architecture.
+
+// IMPLEMENTATION DETAILS
+
+// A) `js/imgbb.js` (REPLACE ENTIRE FILE with a clean stable module)
+
+// * Must export:
+
+//   * `async function uploadToImgBB(file)`  // 1-arg, uses stored key
+//   * `async function imgbbUpload(file, apiKey)` // 2-arg, direct key
+//   * `const imgbbUpload = ...` is OK but must be named export too.
+// * Key source priority:
+
+//   1. `window.IMGBB_API_KEY` if defined
+//   2. `localStorage.getItem("IMGBB_API_KEY")`
+//   3. if missing: prompt once, save to localStorage, and reuse
+// * Must NOT contain `PASTE_MY_KEY`.
+// * Must base64 encode file via FileReader and POST to:
+//   `https://api.imgbb.com/1/upload?key=${encodeURIComponent(apiKey)}`
+// * Robust error message:
+//   Throw: `data?.error?.message || "Image upload failed (status: XXX)"`
+
+// B) `js/checkout.js`
+
+// * Ensure it imports ImgBB like:
+//   `import { uploadToImgBB } from "./imgbb.js";`
+// * Find the “Chekni yuborish” button handler and:
+
+//   * validate file selected
+//   * call `uploadToImgBB(file)` to get `receiptUrl`
+//   * include `receiptUrl` in the order object saved to Firebase
+//   * include delivery type selected (Standart/Tezkor) and its days/price fields if your checkout already has them
+// * Must NOT add delivery price into total (user wants total to be only product subtotal). Keep existing subtotal logic; do not add shipping to total.
+
+// C) `js/admin.js`
+
+// * Remove any usage of `products.json` completely.
+// * Admin must read products from Firebase and render them as before.
+// * Admin "Saqlash" (save product) must:
+
+//   * upload selected image(s) to ImgBB using `uploadToImgBB(file)` OR keep existing img url if already present
+//   * write product doc to Firebase (create or update) with fields matching existing product schema (id, title/name, price, category, img/url, etc.)
+// * Admin must also listen/read orders collection (tekshiruvdagi buyurtmalar). When an order comes with `receiptUrl`, show it as an image preview/link if UI already supports, otherwise at least store it and keep data accessible.
+
+// D) `admin.html` / `checkout.html`
+
+// * Only change IDs/selectors if current JS cannot find elements (minimal changes).
+// * Ensure file input for receipt has an ID used by checkout.js (example: `#receiptFile`).
+
+// E) SECURITY NOTE (do not block implementation)
+
+// * We accept that ImgBB key will be stored in localStorage for now. Do not propose server-side solution in this task.
+
+// DELIVERABLES
+
+// 1. Provide final updated code for:
+
+//    * `js/imgbb.js`
+//    * the specific modified parts of `js/checkout.js`
+//    * the specific modified parts of `js/admin.js`
+//    * any minimal HTML changes (if needed)
+// 2. Explain in short bullet points what changed and why.
+// 3. Do NOT touch unrelated files and do NOT change styles.
+
+// Now apply changes.

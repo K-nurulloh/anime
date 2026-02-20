@@ -4,4 +4,4 @@ export const STORE_PAYMENT = {
   bank: 'UZCARD',
 };
 
-export const IMGBB_API_KEY = 'PASTE_MY_KEY';
+export const IMGBB_API_KEY = '9a6bc6256c8f61ac7df85be0514643b8';
