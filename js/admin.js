@@ -23,8 +23,6 @@ import {
   deleteDoc,
 } from './firebase.js';
 
-
-
 import uploadToImgBB, { uploadToImgBB as uploadToImgBBNamed } from "./imgbb.js";
 // ====== INIT ======
 ensureSeedData();

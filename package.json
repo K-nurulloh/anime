@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@dataconnect/generated": "file:src/dataconnect-generated",
     "@tailwindcss/cli": "^4.1.18",
     "tailwindcss": "^4.1.18"
   },
