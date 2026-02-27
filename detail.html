@@ -3,18 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Uzum Market — Detail</title>
+    <title>Anime Shop — Mahsulot</title>
     <link rel="stylesheet" href="css/output.css" />
     <link rel="stylesheet" href="css/theme.css" />
   </head>
   <body class="anime-bg text-white">
     <!-- ====== NAVBAR ====== -->
     <header class="fixed top-0 z-50 flex h-14 w-full items-center border-b border-slate-800 bg-slate-950/95 px-4 md:hidden">
-      <a href="index.html" class="text-lg font-semibold text-white">Uzum Market</a>
+      <a href="index.html" class="text-lg font-semibold text-white">Anime Shop</a>
     </header>
     <header class="sticky top-0 z-50 hidden border-b border-slate-800 bg-slate-950/90 backdrop-blur md:block">
       <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4">
-        <a href="index.html" class="text-xl font-bold text-white">Uzum Market</a>
+        <a href="index.html" class="text-xl font-bold text-white">Anime Shop</a>
         <nav class="flex items-center gap-3 text-sm">
           <a href="index.html" class="text-slate-200 hover:text-white" data-i18n="home"></a>
           <a href="catalog.html" class="text-slate-200 hover:text-white" data-i18n="catalog"></a>
@@ -34,7 +34,7 @@
       </div>
     </header>
 
-    <main class="bottom-safe-lg mx-auto max-w-6xl space-y-10 px-4 pb-24 pt-14 md:pt-20">
+    <main class="bottom-safe-lg mx-auto max-w-6xl space-y-10 px-4 pb-32 pt-14 md:pt-20">
       <div id="error-box" class="hidden rounded-2xl bg-rose-500/10 px-4 py-3 text-sm text-rose-200"></div>
       <section id="detail-wrapper">
         <p id="dDesc" class="hidden"></p>
@@ -44,7 +44,7 @@
         <select id="variantSelect" class="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-2 text-sm text-white"></select>
       </section>
 
-       <section id="comments-section" class="space-y-4">
+      <section id="comments-section" class="space-y-4">
         <h2 class="text-lg font-semibold text-white">Izohlar / Comments</h2>
         <div id="comments-login-note" class="hidden rounded-2xl glass p-6 text-center text-sm text-white/70">
           <p>Izoh yozish uchun login qiling</p>
@@ -75,12 +75,12 @@
         <div id="comments-list" class="space-y-4"></div>
       </section>
 
-       <section class="space-y-4">
+      <section class="space-y-4">
         <h2 class="text-lg font-semibold text-white" data-i18n="similar"></h2>
         <div id="similar-list" class="similar-grid"></div>
       </section>
 
-         <section class="space-y-4">
+      <section class="space-y-4">
         <h2 class="text-lg font-semibold text-white" data-i18n="more"></h2>
         <div id="more-list" class="similar-grid"></div>
       </section>
@@ -121,6 +121,120 @@
         </a>
       </div>
     </nav>
+
+    <!-- Image Viewer Modal -->
+    <div id="img-viewer" class="img-viewer hidden" aria-hidden="true">
+      <div class="img-viewer__overlay" data-close="1"></div>
+
+      <button class="img-viewer__close" type="button" aria-label="Close" data-close="1">✕</button>
+
+      <button class="img-viewer__nav img-viewer__nav--prev" type="button" aria-label="Previous">‹</button>
+
+      <div class="img-viewer__stage" role="dialog" aria-modal="true">
+        <img id="img-viewer-img" alt="Preview" />
+      </div>
+
+      <button class="img-viewer__nav img-viewer__nav--next" type="button" aria-label="Next">›</button>
+    </div>
+
+    <style>
+      .img-viewer.hidden { display: none; }
+
+      .img-viewer {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.92);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+      }
+
+      .img-viewer__overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.92);
+        z-index: 1;
+      }
+
+      .img-viewer__stage {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        padding: 16px;
+        z-index: 2;
+      }
+
+      #img-viewer-img {
+        max-width: min(95vw, 980px);
+        max-height: 90vh;
+        width: auto;
+        height: auto;
+        object-fit: contain;
+        border-radius: 16px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        background: rgba(255, 255, 255, 0.02);
+      }
+
+      .img-viewer__close {
+        position: absolute;
+        top: 14px;
+        right: 14px;
+        width: 44px;
+        height: 44px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        background: rgba(255, 255, 255, 0.12);
+        color: #fff;
+        font-size: 22px;
+        cursor: pointer;
+        display: grid;
+        place-items: center;
+        backdrop-filter: blur(8px);
+        z-index: 4;
+      }
+
+      .img-viewer__nav {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 56px;
+        height: 56px;
+        border-radius: 999px;
+        background: rgba(0, 0, 0, 0.55);
+        border: 2px solid rgba(255, 255, 255, 0.9);
+        color: #fff;
+        font-size: 30px;
+        display: grid;
+        place-items: center;
+        cursor: pointer;
+        backdrop-filter: blur(6px);
+        z-index: 10001;
+        transition: all .2s ease;
+      }
+
+      .img-viewer__nav:hover {
+        background: rgba(0, 0, 0, 0.75);
+        transform: translateY(-50%) scale(1.1);
+      }
+
+       .img-viewer__nav--prev { left: 18px; }
+      .img-viewer__nav--next { right: 18px; }
+
+         @media (max-width: 480px) {
+        .img-viewer__nav {
+          width: 44px;
+          height: 44px;
+          font-size: 28px;
+        }
+
+              #img-viewer-img {
+          max-width: 96vw;
+          max-height: 86vh;
+        }
+      }
+    </style>
 
       <script type="module" src="js/detail.js"></script>
   </body>

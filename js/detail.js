@@ -92,6 +92,9 @@ function requireAuthOrRedirect() {
 }
 
 let selectedVariant = null;
+let selectedImage = '';
+let selectedImageIndex = 0;
+let galleryImages = [];
 
 const formatLocalPrice = (value) => `${Number(value || 0).toLocaleString(getLang() === 'ru' ? 'ru-RU' : 'uz-UZ')} so'm`;
 
@@ -178,13 +181,13 @@ const renderGallery = (images, title) => {
   return `
     <div class="space-y-3">
       <div class="overflow-hidden rounded-2xl bg-white/5">
-        <img id="main-image" src="${thumbnails[0]}" alt="${title}" class="h-56 w-full object-cover" />
+        <img id="main-img" src="${thumbnails[0]}" alt="${title}" class="h-56 w-full object-cover" />
       </div>
-      <div class="flex gap-3 overflow-x-auto">
+      <div id="thumbs" class="flex gap-3 overflow-x-auto">
         ${thumbnails
           .map(
             (image, index) => `
-          <button class="gallery-thumb flex-shrink-0 overflow-hidden rounded-xl border border-white/10" data-gallery-thumb data-image="${image}">
+          <button class="gallery-thumb flex-shrink-0 overflow-hidden rounded-xl border border-white/10" type="button" data-gallery-thumb data-idx="${index}" data-image="${image}">
             <img src="${image}" alt="${title} thumbnail ${index + 1}" class="h-14 w-14 object-cover" />
           </button>`
           )
@@ -221,7 +224,8 @@ const addToCart = (product) => {
     id: String(product.id),
     title: product.title || '',
     price: Number(product.price || 0),
-    img: product.images?.[0] || product.img || '',
+    img: selectedImage || galleryImages[selectedImageIndex] || product.images?.[0] || product.img || '',
+    selectedImage: selectedImage || galleryImages[selectedImageIndex] || product.images?.[0] || product.img || '',
     qty: 1,
   };
   const itemPayload = selectedVariant
@@ -386,6 +390,9 @@ const init = async () => {
 
   const products = firestoreProducts;
   const images = product.images?.length ? product.images.slice(0, 10) : [product.img].filter(Boolean);
+  galleryImages = images;
+  selectedImage = images[0] || product.img || '';
+  selectedImageIndex = 0;
   const oldPrice = Number(product.oldPrice);
   const hasOldPrice = Number.isFinite(oldPrice) && oldPrice > Number(product.price);
   const discount = Number(product.discount ?? product.discountPercent);
@@ -474,13 +481,7 @@ const init = async () => {
     });
   }
   if (wishlistBtn) wishlistBtn.addEventListener('click', () => handleWishlist(product.id));
-  document.querySelectorAll('[data-gallery-thumb]').forEach((button) => {
-    button.addEventListener('click', () => {
-      const mainImage = document.querySelector('#main-image');
-      if (!mainImage) return;
-      mainImage.src = button.dataset.image;
-    });
-  });
+
 
   const similar = products.filter((item) => item.category === product.category && String(item.id) !== String(product.id));
   similarList.innerHTML = similar.slice(0, 8).map(renderProductCard).join('');
@@ -516,6 +517,8 @@ window.addEventListener('langChanged', () => {
   init();
 });
 
+
+
 commentForm?.addEventListener('submit', (event) => {
   event.preventDefault();
   const currentUser = getCurrentUser();
@@ -545,3 +548,175 @@ commentForm?.addEventListener('submit', (event) => {
   commentRating.value = '';
   renderComments();
 });
+
+
+
+(() => {
+  const viewer = document.querySelector('#img-viewer');
+  const viewerImg = document.querySelector('#img-viewer-img');
+  const btnPrev = document.querySelector('.img-viewer__nav--prev');
+  const btnNext = document.querySelector('.img-viewer__nav--next');
+  if (!viewer || !viewerImg || !btnPrev || !btnNext) return;
+
+  const getMainImg = () => document.querySelector('#main-img') || document.querySelector('#detail-wrapper img');
+  const getThumbButtons = () => Array.from(document.querySelectorAll('#thumbs [data-idx], [data-gallery-thumb][data-idx]'));
+
+  const getThumbSource = (thumbBtn) => {
+    const img = thumbBtn?.querySelector('img');
+    return String(
+      thumbBtn?.dataset?.image ||
+      thumbBtn?.dataset?.img ||
+      thumbBtn?.dataset?.src ||
+      thumbBtn?.getAttribute('data-image') ||
+      thumbBtn?.getAttribute('data-img') ||
+      thumbBtn?.getAttribute('data-src') ||
+      img?.dataset?.img ||
+      img?.dataset?.src ||
+      img?.getAttribute('src') ||
+      ''
+    ).trim();
+  };
+
+  let images = [];
+
+  const rebuildImages = () => {
+    const thumbUrls = getThumbButtons().map(getThumbSource).filter(Boolean);
+    const mainSrc = String(getMainImg()?.getAttribute('src') || '').trim();
+    images = [...new Set(thumbUrls.length ? thumbUrls : mainSrc ? [mainSrc] : [])];
+    if (!images.length && galleryImages.length) images = [...galleryImages];
+  };
+
+  const setActiveImage = (index) => {
+    if (!images.length) return;
+    selectedImageIndex = ((index % images.length) + images.length) % images.length;
+    selectedImage = images[selectedImageIndex];
+
+    const main = getMainImg();
+    if (main) {
+      main.src = selectedImage;
+      main.style.cursor = 'zoom-in';
+    }
+
+    getThumbButtons().forEach((btn) => {
+      const isActive = Number(btn.dataset.idx) === selectedImageIndex;
+      btn.classList.toggle('border-white/70', isActive);
+      btn.classList.toggle('border-white/10', !isActive);
+    });
+  };
+
+  function openViewer(index) {
+    rebuildImages();
+    if (!images.length) return;
+
+    setActiveImage(index);
+    viewerImg.src = images[selectedImageIndex];
+
+    const wasHidden = viewer.classList.contains('hidden');
+    viewer.classList.remove('hidden');
+    viewer.removeAttribute('aria-hidden');
+
+    if (wasHidden) {
+      document.body.dataset.prevOverflow = document.body.style.overflow || '';
+      document.body.style.overflow = 'hidden';
+    }
+  }
+
+  function closeViewer() {
+    if (document.activeElement) {
+      document.activeElement.blur();
+    }
+
+    viewer.classList.add('hidden');
+    viewer.setAttribute('aria-hidden', 'true');
+    viewerImg.src = '';
+
+    document.body.style.overflow = document.body.dataset.prevOverflow || '';
+    delete document.body.dataset.prevOverflow;
+  }
+
+  const showPrev = () => openViewer(selectedImageIndex - 1);
+  const showNext = () => openViewer(selectedImageIndex + 1);
+
+  viewer.addEventListener('click', (e) => {
+    if (e.target === viewer || e.target.dataset.close) {
+      closeViewer();
+    }
+  });
+
+  viewerImg.addEventListener('click', (e) => e.stopPropagation());
+  btnPrev.addEventListener('click', (e) => {
+    e.stopPropagation();
+    showPrev();
+  });
+  btnNext.addEventListener('click', (e) => {
+    e.stopPropagation();
+    showNext();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (viewer.classList.contains('hidden')) return;
+    if (e.key === 'Escape') closeViewer();
+    if (e.key === 'ArrowLeft') showPrev();
+    if (e.key === 'ArrowRight') showNext();
+  });
+
+  let startX = 0;
+  let startY = 0;
+  viewer.addEventListener('touchstart', (e) => {
+    if (viewer.classList.contains('hidden')) return;
+    const touch = e.touches?.[0];
+    if (!touch) return;
+    startX = touch.clientX;
+    startY = touch.clientY;
+  }, { passive: true });
+
+  viewer.addEventListener('touchend', (e) => {
+    if (viewer.classList.contains('hidden')) return;
+    const touch = e.changedTouches?.[0];
+    if (!touch) return;
+    const dx = touch.clientX - startX;
+    const dy = touch.clientY - startY;
+    if (Math.abs(dy) > Math.abs(dx)) return;
+    if (dx < -40) showNext();
+    if (dx > 40) showPrev();
+  }, { passive: true });
+
+  const attachHandlers = () => {
+    rebuildImages();
+    if (!images.length) return;
+
+    const main = getMainImg();
+    if (main && main.dataset.viewerBound !== '1') {
+      main.dataset.viewerBound = '1';
+      main.style.cursor = 'zoom-in';
+      main.addEventListener('click', () => openViewer(selectedImageIndex));
+    }
+
+    getThumbButtons().forEach((btn, idx) => {
+      if (btn.dataset.thumbBound === '1') return;
+      btn.dataset.thumbBound = '1';
+      btn.style.cursor = 'pointer';
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        rebuildImages();
+        const dataIdx = Number(btn.dataset.idx);
+        const src = getThumbSource(btn);
+        const srcIdx = images.indexOf(src);
+        const nextIndex = Number.isFinite(dataIdx) ? dataIdx : srcIdx >= 0 ? srcIdx : idx;
+        setActiveImage(nextIndex);
+      });
+    });
+
+    setActiveImage(selectedImageIndex || 0);
+  };
+
+  attachHandlers();
+  window.addEventListener('langChanged', () => setTimeout(attachHandlers, 0));
+  const root = document.querySelector('#detail-wrapper');
+  if (root) {
+    const observer = new MutationObserver(() => attachHandlers());
+    observer.observe(root, { childList: true, subtree: true });
+  }
+})();
+

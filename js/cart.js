@@ -150,7 +150,7 @@ const renderCart = () => {
       const title = product?.title || item.title || 'Mahsulot';
       const category = product?.category || item.category || '';
       const price = Number(item.variantPrice ?? product?.price ?? item.price ?? 0);
-      const image = product?.images?.[0] || product?.img || item.image || item.img || '';
+      const image = item.selectedImage || product?.images?.[0] || product?.img || item.image || item.img || '';
       if (!product && item.id == null) return '';
       return `
         <div class="flex flex-col gap-4 rounded-2xl glass p-4 shadow-sm md:flex-row md:items-center cart-item">

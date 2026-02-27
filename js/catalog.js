@@ -85,6 +85,7 @@ const productCardHTML = (product) => {
     'https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=800&q=80';
   const isSaved = getWishlist().some((item) => String(item.id) === String(product.id));
   const oldPrice = product.oldPrice && product.oldPrice > product.price ? product.oldPrice : null;
+  const discountPercent = oldPrice ? Math.round(((oldPrice - product.price) / oldPrice) * 100) : null;
   const adminMode = isAdminUser();
   const actionMarkup = adminMode
     ? `<button type="button" class="pc-btn edit-btn" data-edit-id="${product.id}">✏️ Edit</button>`
@@ -96,8 +97,9 @@ const productCardHTML = (product) => {
   return `
     <article class="product-card">
       <a href="detail.html?id=${encodeURIComponent(String(product.id))}" class="pc-media">
-        <div class="pc-badges">
-          <span class="pc-pill">⭐ ${product.rating ?? 4.8}</span>
+        <div class="absolute left-2 top-2 z-10"><span class="pc-pill">⭐ ${product.rating ?? 4.8}</span></div>
+        ${discountPercent ? `<div class="absolute left-2 top-10 z-10"><span class="pc-pill">-${discountPercent}%</span></div>` : ''}
+        <div class="absolute right-2 top-2 z-10">
           <button class="wishlist-btn pc-pill" data-id="${product.id}" aria-label="Wishlist">
             ${isSaved ? '❤️' : '🤍'}
           </button>
