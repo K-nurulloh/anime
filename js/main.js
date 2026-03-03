@@ -1,6 +1,6 @@
 import { db, collection, getDocs, query, orderBy, limit } from './firebase.js';
 import { ensureSeedData, getWishlist, saveWishlist, getCachedProducts, setCachedProducts } from './storage.js';
-import { initAdminEditDelegation, isAdminUser, renderCarouselSkeleton, renderSkeleton, showToast, updateCartBadge } from './ui.js';
+import { initAdminEditDelegation, isAdminUser, renderCarouselSkeleton, renderProductCard, renderSkeleton, showToast, updateCartBadge } from './ui.js';
 import { applyTranslations, initLangSwitcher, t } from './i18n.js';
 import { initAutoCarousel } from './slider.js';
 
@@ -217,50 +217,6 @@ const fetchPopularProducts = async (count = 48) => {
   }
 };
 
-const productCardHTML = (product) => {
-  const image =
-    product.images?.[0] ||
-    product.img ||
-    'https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=800&q=80';
-  const isSaved = getWishlist().some((item) => item.id === product.id);
-  const oldPrice = product.oldPrice && product.oldPrice > product.price ? product.oldPrice : null;
-  const adminMode = isAdminUser();
-  const actionMarkup = adminMode
-    ? `<button type="button" class="pc-btn edit-btn" data-edit-id="${product.id}">✏️ Edit</button>`
-    : `
-        <button class="add-cart-btn pc-btn primary" data-id="${product.id}">${t('add_to_cart')}</button>
-        <a href="detail.html?id=${product.id}" class="pc-btn">${t('details')}</a>
-      `;
-  return `
-    <article class="product-card">
-      <a href="detail.html?id=${product.id}" class="pc-media">
-        <div class="pc-badges">
-          <span class="pc-pill">⭐ ${product.rating ?? 4.8}</span>
-          <button class="wishlist-btn pc-pill" data-id="${product.id}" aria-label="Wishlist">
-            ${isSaved ? '❤️' : '🤍'}
-          </button>
-        </div>
-        <img src="${image}" alt="${product.title}" loading="lazy" />
-      </a>
-      <div class="pc-body">
-        <p class="pc-cat">${product.category}</p>
-        <h3 class="pc-title">${product.title}</h3>
-        <div class="pc-priceRow">
-          <span class="pc-price">${Number(product.price || 0).toLocaleString('ru-RU')} so'm</span>
-          ${
-            oldPrice
-              ? `<span class="pc-old">${Number(oldPrice || 0).toLocaleString('ru-RU')} so'm</span>`
-              : ''
-          }
-        </div>
-        <div class="pc-actions">
-          ${actionMarkup}
-        </div>
-      </div>
-    </article>
-  `;
-};
-
 const offlineBlockHTML = (title, desc) => `
   <div class="section text-center">
     <div class="text-3xl">📡</div>
@@ -278,7 +234,7 @@ const renderNextBatch = () => {
     loader?.classList.add('hidden');
     return;
   }
-  productList.insertAdjacentHTML('beforeend', nextItems.map(productCardHTML).join(''));
+  productList.insertAdjacentHTML('beforeend', nextItems.map(renderProductCard).join(''));
   currentIndex += batchSize;
 };
 
@@ -404,6 +360,8 @@ const initListActions = (container) => {
       handleAddToCart(cartBtn.dataset.id);
     }
     if (wishlistBtn) {
+      event.preventDefault();
+      event.stopPropagation();
       handleWishlist(wishlistBtn.dataset.id);
     }
   });
@@ -425,13 +383,13 @@ const initInfiniteScroll = () => {
 const renderRecommended = () => {
   if (!recommendedList) return;
   const items = shuffle(allProducts).slice(0, 8);
-  recommendedList.innerHTML = items.map(productCardHTML).join('');
+  recommendedList.innerHTML = items.map(renderProductCard).join('');
   initListActions(recommendedList);
 };
 
 const renderNewDropsRow = (items) => {
   if (!newDropsRow) return;
-  newDropsRow.innerHTML = items.map((item) => `<div class="slide">${productCardHTML(item)}</div>`).join('');
+  newDropsRow.innerHTML = items.map((item) => `<div class="slide">${renderProductCard(item)}</div>`).join('');
   initListActions(newDropsRow);
   if (newDropsDots) initAutoCarousel(newDropsRow, newDropsDots, 14);
 };

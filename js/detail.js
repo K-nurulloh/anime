@@ -226,6 +226,7 @@ const addToCart = (product) => {
     price: Number(product.price || 0),
     img: selectedImage || galleryImages[selectedImageIndex] || product.images?.[0] || product.img || '',
     selectedImage: selectedImage || galleryImages[selectedImageIndex] || product.images?.[0] || product.img || '',
+    selectedImageUrl: selectedImage || galleryImages[selectedImageIndex] || product.images?.[0] || product.img || '',
     qty: 1,
   };
   const itemPayload = selectedVariant
@@ -238,6 +239,7 @@ const addToCart = (product) => {
   const existing = cart.find(
     (item) =>
       String(item.id) === String(itemPayload.id) &&
+      String(item.selectedImageUrl || item.selectedImage || item.img || '') === String(itemPayload.selectedImageUrl || itemPayload.selectedImage || itemPayload.img || '') &&
       String(item.variantName || '') === String(itemPayload.variantName || '')
   );
   if (existing) {
@@ -578,6 +580,8 @@ commentForm?.addEventListener('submit', (event) => {
   };
 
   let images = [];
+  let restoreScrollY = 0;
+  let lastFocused = null;
 
   const rebuildImages = () => {
     const thumbUrls = getThumbButtons().map(getThumbSource).filter(Boolean);
@@ -616,8 +620,16 @@ commentForm?.addEventListener('submit', (event) => {
     viewer.removeAttribute('aria-hidden');
 
     if (wasHidden) {
+      lastFocused = document.activeElement;
+      restoreScrollY = window.scrollY || window.pageYOffset || 0;
       document.body.dataset.prevOverflow = document.body.style.overflow || '';
       document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${restoreScrollY}px`;
+      document.body.style.left = '0';
+      document.body.style.right = '0';
+      document.body.style.width = '100%';
+      btnNext.focus({ preventScroll: true });
     }
   }
 
@@ -630,8 +642,19 @@ commentForm?.addEventListener('submit', (event) => {
     viewer.setAttribute('aria-hidden', 'true');
     viewerImg.src = '';
 
+    const y = Math.abs(parseInt(document.body.style.top || '0', 10)) || restoreScrollY || 0;
     document.body.style.overflow = document.body.dataset.prevOverflow || '';
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.left = '';
+    document.body.style.right = '';
+    document.body.style.width = '';
     delete document.body.dataset.prevOverflow;
+    window.scrollTo(0, y);
+
+    if (lastFocused && typeof lastFocused.focus === 'function') {
+      lastFocused.focus({ preventScroll: true });
+    }
   }
 
   const showPrev = () => openViewer(selectedImageIndex - 1);

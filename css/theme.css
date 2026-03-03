@@ -47,7 +47,7 @@ body::before {
 }
 
 .bottom-safe-lg {
-  padding-bottom: calc(var(--nav-height) + 5.5rem + env(safe-area-inset-bottom));
+  padding-bottom: calc(var(--nav-height) + 7rem + env(safe-area-inset-bottom));
 }
 
 .bottom-nav {
@@ -555,6 +555,7 @@ body::before {
 
 .pc-media {
   position: relative;
+  display: block;
   border-radius: 16px;
   overflow: hidden;
   aspect-ratio: 4 / 3;
@@ -568,27 +569,132 @@ body::before {
   display: block;
 }
 
+.pc-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+
 .pc-badges {
   position: absolute;
   top: 0.5rem;
   left: 0.5rem;
+  right: 0.5rem;
   display: flex;
   gap: 0.4rem;
-  z-index: 2;
+  align-items: center;
+  z-index: 3;
 }
 
-.pc-pill {
+.pc-pill,
+.pc-badge {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  min-height: 28px;
   gap: 0.25rem;
-  padding: 0.2rem 0.5rem;
+  padding: 0.35rem 0.55rem;
   border-radius: 999px;
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   font-weight: 600;
   color: var(--text-main);
-  background: rgba(12, 18, 36, 0.8);
+  background: rgba(12, 18, 36, 0.82);
   border: 1px solid rgba(109, 252, 255, 0.35);
   box-shadow: 0 6px 14px rgba(109, 252, 255, 0.2);
+}
+
+.pc-badge {
+  position: absolute;
+  pointer-events: none;
+}
+
+.pc-badge-rating {
+  top: 10px;
+  left: 10px;
+}
+
+.pc-badge-discount {
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.pc-badge-heart {
+  top: 10px;
+  right: 10px;
+  pointer-events: auto;
+}
+
+@media (max-width: 640px) {
+  .pc-pill,
+  .pc-badge {
+    min-height: 26px;
+    padding: 0.28rem 0.48rem;
+    font-size: 0.68rem;
+  }
+}
+
+
+.product-card__img {
+  min-height: 155px;
+}
+
+.product-card__badges {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.badge-pill {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 28px;
+  padding: 0.34rem 0.58rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(8, 12, 24, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(6px);
+}
+
+.badge-star {
+  color: #facc15;
+  line-height: 1;
+}
+
+.pc-media {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.pc-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  padding: 0.5rem;
+}
+
+@media (min-width: 640px) {
+  .product-card__img {
+    min-height: 168px;
+  }
+}
+
+@media (max-width: 640px) {
+  .badge-pill {
+    min-height: 26px;
+    padding: 0.3rem 0.52rem;
+    font-size: 0.68rem;
+  }
 }
 
 .pc-body {

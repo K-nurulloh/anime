@@ -10,7 +10,7 @@ import { formatPrice, showToast, updateCartBadge } from './ui.js';
 import { applyTranslations, initLangSwitcher, t } from './i18n.js';
 import { STORE_PAYMENT } from './config.js';
 import { imgbbUpload } from "./imgbb.js";
-import { db, nowTs, collection, addDoc, getDocs, query, orderBy } from './firebase.js';
+import { db, nowTs, collection, doc, setDoc, getDocs, query, orderBy } from './firebase.js';
 
 ensureSeedData();
 applyTranslations();
@@ -18,7 +18,6 @@ initLangSwitcher();
 updateCartBadge();
 
 const API_KEY = "9a6bc6256c8f61ac7df85be0514643b8";
-const PENDING_ORDERS_KEY = 'PENDING_ORDERS';
 
 const readJSON = (key, fallback) => {
   try {
@@ -36,7 +35,6 @@ const writeJSON = (key, value) => {
 };
 
 const uid = () => `ord_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-
 
 const form = document.querySelector('#checkout-form');
 const summaryBox = document.querySelector('#checkout-summary');
@@ -193,7 +191,7 @@ const prependOrderToLocalStorage = (orderPayload) => {
   });
 };
 
-const createOrder = async ({ paymentMethod, receiptUrl = '' , contactPhone }) => {
+const createOrder = async ({ paymentMethod, receiptUrl = '', contactPhone }) => {
   const cart = getCart();
   if (!cart.length) {
     showToast(t('cart_empty'), 'error');
@@ -204,8 +202,10 @@ const createOrder = async ({ paymentMethod, receiptUrl = '' , contactPhone }) =>
   const { total, subtotal, deliveryMeta } = calculateSummary();
   const currentUser = getCurrentUser();
 
+  const orderId = uid(); // <<< MUHIM: ord_... bo'ladi
+
   const payload = {
-    id: `o-${Date.now()}`,
+    id: orderId,
     date: new Date().toISOString(),
     userId: currentUser?.id || null,
     userName: formData.get('name') || currentUser?.name || 'Guest',
@@ -233,7 +233,10 @@ const createOrder = async ({ paymentMethod, receiptUrl = '' , contactPhone }) =>
     updatedAt: nowTs(),
   };
 
-  await addDoc(collection(db, 'orders'), payload);
+  // ❌ OLD: await addDoc(collection(db, 'orders'), payload);
+  // ✅ NEW: docId = ord_...
+  await setDoc(doc(db, 'orders', orderId), payload);
+
   prependOrderToLocalStorage(payload);
 
   saveCart([]);
@@ -251,6 +254,7 @@ const createOrder = async ({ paymentMethod, receiptUrl = '' , contactPhone }) =>
     window.location.href = 'orders.html';
   }, 700);
 };
+
 
 const fillDistricts = (region) => {
   if (!districtSelect) return;
@@ -345,6 +349,7 @@ receiptInput?.addEventListener('change', () => {
   receiptFilename.textContent = file.name;
 });
 
+// ✅ 2) Chek yuborilganda ham Firestore'ga yozamiz (order bo'sh bo'lib qolmaydi)
 receiptSubmit?.addEventListener('click', async () => {
   const phone = getValidatedPhone();
   if (!phone) return;
@@ -371,41 +376,41 @@ receiptSubmit?.addEventListener('click', async () => {
     const imageUrl = await imgbbUpload(receiptFile, API_KEY);
 
     const formData = new FormData(form);
-    const { subtotal } = calculateSummary();
-    const deliveryType = selectedDelivery === 'standard' ? 'standart' : selectedDelivery === 'fast' ? 'tezkor' : null;
-    const pendingOrder = {
-      id: uid(),
-      createdAt: Date.now(),
-      user: {
-        name: String(formData.get('name') || currentUser?.name || ''),
-        phone,
-      },
-      items: cart.map((item) => {
-        const product = productsMap.get(String(item.id)) || {};
-        return {
-          id: item.id,
-          title: String(product.title || item.title || 'Mahsulot'),
-          price: Number(product.price ?? item.price ?? 0),
-          qty: Number(item.qty) || 1,
-          img: product.img || product.images?.[0] || item.img || '',
-        };
-      }),
-      subtotal,
-      deliveryType,
-      region: String(formData.get('city') || ''),
-      district: String(formData.get('district') || ''),
-      address: String(formData.get('address') || ''),
-      paymentMethod: 'receipt',
-      receipt: {
-        url: imageUrl,
-        fileName: receiptFile.name || '',
-      },
+    const { total, subtotal, deliveryMeta } = calculateSummary();
+
+    const orderId = uid();
+
+    const payload = {
+      id: orderId,
+      date: new Date().toISOString(),
+      userId: currentUser?.id || null,
+      userName: String(formData.get('name') || currentUser?.name || 'Guest'),
+      userPhone: phone,
+      items: cart.map((item) => ({ ...item })),
+      totalProductsSum: subtotal,
+      total,
+      payment: 'receipt',
       status: 'pending',
+      receiptUrl: imageUrl,
+      deliveryType: selectedDelivery || null,
+      delivery: {
+        type: selectedDelivery,
+        label: deliveryMeta.label,
+        price: deliveryMeta.price,
+        perKgUsd: deliveryMeta.perKgUsd,
+        weightKg: deliveryMeta.weightKg,
+      },
+      address: {
+        region: String(formData.get('city') || ''),
+        district: String(formData.get('district') || ''),
+        homeAddress: String(formData.get('address') || ''),
+      },
+      createdAt: nowTs(),
+      updatedAt: nowTs(),
     };
 
-    const pending = readJSON(PENDING_ORDERS_KEY, []);
-    pending.unshift(pendingOrder);
-    writeJSON(PENDING_ORDERS_KEY, pending);
+    await setDoc(doc(db, 'orders', orderId), payload);
+    prependOrderToLocalStorage(payload);
 
     saveCart([]);
     updateCartBadge();

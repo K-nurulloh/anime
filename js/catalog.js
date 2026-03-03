@@ -1,6 +1,6 @@
 import { fetchProducts } from './api.js';
 import { ensureSeedData, getWishlist, saveWishlist } from './storage.js';
-import { initAdminEditDelegation, isAdminUser, renderSkeleton, showToast, updateCartBadge } from './ui.js';
+import { initAdminEditDelegation, renderProductCard, renderSkeleton, showToast, updateCartBadge } from './ui.js';
 import { applyTranslations, initLangSwitcher, t } from './i18n.js';
 
 // ====== INIT ======
@@ -78,47 +78,6 @@ let currentIndex = 0;
 let activeCategory = 'all';
 const batchSize = 12;
 
-const productCardHTML = (product) => {
-  const image =
-    product.images?.[0] ||
-    product.img ||
-    'https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=800&q=80';
-  const isSaved = getWishlist().some((item) => String(item.id) === String(product.id));
-  const oldPrice = product.oldPrice && product.oldPrice > product.price ? product.oldPrice : null;
-  const discountPercent = oldPrice ? Math.round(((oldPrice - product.price) / oldPrice) * 100) : null;
-  const adminMode = isAdminUser();
-  const actionMarkup = adminMode
-    ? `<button type="button" class="pc-btn edit-btn" data-edit-id="${product.id}">✏️ Edit</button>`
-    : `
-        <button class="add-cart-btn pc-btn primary" data-id="${product.id}">${t('add_to_cart')}</button>
-        <a href="detail.html?id=${encodeURIComponent(String(product.id))}" class="pc-btn">${t('details')}</a>
-      `;
-
-  return `
-    <article class="product-card">
-      <a href="detail.html?id=${encodeURIComponent(String(product.id))}" class="pc-media">
-        <div class="absolute left-2 top-2 z-10"><span class="pc-pill">⭐ ${product.rating ?? 4.8}</span></div>
-        ${discountPercent ? `<div class="absolute left-2 top-10 z-10"><span class="pc-pill">-${discountPercent}%</span></div>` : ''}
-        <div class="absolute right-2 top-2 z-10">
-          <button class="wishlist-btn pc-pill" data-id="${product.id}" aria-label="Wishlist">
-            ${isSaved ? '❤️' : '🤍'}
-          </button>
-        </div>
-        <img src="${image}" alt="${product.title}" loading="lazy" />
-      </a>
-      <div class="pc-body">
-        <p class="pc-cat">${product.category || ''}</p>
-        <h3 class="pc-title">${product.title || ''}</h3>
-        <div class="pc-priceRow">
-          <span class="pc-price">${Number(product.price || 0).toLocaleString('ru-RU')} so'm</span>
-          ${oldPrice ? `<span class="pc-old">${Number(oldPrice || 0).toLocaleString('ru-RU')} so'm</span>` : ''}
-        </div>
-        <div class="pc-actions">${actionMarkup}</div>
-      </div>
-    </article>
-  `;
-};
-
 const setActiveChip = (category) => {
   categoryChips.forEach((chip) => {
     const isActive = chip.dataset.category === category;
@@ -134,7 +93,7 @@ const renderNextBatch = () => {
     return;
   }
   loader?.classList.remove('hidden');
-  productList.insertAdjacentHTML('beforeend', nextItems.map(productCardHTML).join(''));
+  productList.insertAdjacentHTML('beforeend', nextItems.map(renderProductCard).join(''));
   currentIndex += batchSize;
 };
 
@@ -233,7 +192,11 @@ const initListActions = () => {
     const cartBtn = event.target.closest('.add-cart-btn');
     const wishlistBtn = event.target.closest('.wishlist-btn');
     if (cartBtn) handleAddToCart(cartBtn.dataset.id);
-    if (wishlistBtn) handleWishlist(wishlistBtn.dataset.id);
+    if (wishlistBtn) {
+      event.preventDefault();
+      event.stopPropagation();
+      handleWishlist(wishlistBtn.dataset.id);
+    }
   });
 };
 
