@@ -27,11 +27,11 @@ import {
 ensureSeedData();
 
 // ====== SETTINGS (SHUNI O'ZING QO'YASAN) ======
-const PUBLIC_BASE_URL = "https://YOUR-VERCEL-DOMAIN.vercel.app"; // <<< Vercel domeningni yoz
+const PUBLIC_BASE_URL = "https://anime-one-blond.vercel.app"; // <<< Vercel domeningni yoz
 
 // Telegram
-const TG_BOT_TOKEN = "PASTE_YOUR_BOT_TOKEN"; // <<< tokenni yoz
-const TG_CHAT_ID = "PASTE_YOUR_CHAT_ID";     // <<< chat idni yoz
+const TG_BOT_TOKEN = "8238090465:AAGbMa3eflX7bFET2kpZsClfMyHyaPtjrAk"; // <<< tokenni yoz
+const TG_CHAT_ID = "5128272954";     // <<< chat idni yoz
 
 async function sendTelegram(text) {
   const url = `https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`;
