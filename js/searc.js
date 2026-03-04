@@ -1,15 +1,7 @@
-import {
-  db,
-  doc,
-  getDoc,
-  collection,
-  query,
-  where,
-  getDocs,
-  limit,
-} from "./firebase.js";
+// js/searc.js
+import { db, doc, getDoc, collection, getDocs } from "./firebase.js";
 
-const app = document.getElementById("app");
+const $app = document.querySelector("#app");
 
 const esc = (s) =>
   String(s ?? "")
@@ -19,174 +11,154 @@ const esc = (s) =>
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
 
-const toDateObj = (value) => {
-  if (!value) return null;
-  if (value?.toDate) return value.toDate(); // Firestore Timestamp
-  if (typeof value === "string") {
-    const d = new Date(value);
-    return isNaN(d.getTime()) ? null : d;
-  }
-  if (typeof value === "number") {
-    const d = new Date(value);
-    return isNaN(d.getTime()) ? null : d;
-  }
-  if (value instanceof Date) return value;
-  return null;
-};
+const getParam = (k) => new URLSearchParams(location.search).get(k);
 
-const fmtDateTime = (value) => {
-  const d = toDateObj(value);
-  if (!d) return "—";
+const toDateText = (v) => {
+  const d = v?.toDate ? v.toDate() : v ? new Date(v) : null;
+  if (!d || isNaN(d.getTime())) return "—";
   return d.toLocaleString("uz-UZ");
 };
 
-const getParam = (name) => {
-  const params = new URLSearchParams(window.location.search);
-  return params.get(name);
+const price = (n) => Number(n || 0).toLocaleString("uz-UZ");
+
+const getReceiptUrl = (order) => {
+  return (
+    order?.receiptUrl ||
+    order?.receiptBase64 ||
+    order?.receipt?.url ||
+    order?.receipt?.base64 ||
+    ""
+  );
 };
 
-async function findOrderSmart(id) {
-  if (!id) return { order: null, docId: null };
+const normalizeAddress = (order) => {
+  // checkout.js yangi format: address: {region,district,homeAddress}
+  const a = order?.address;
+  if (a && typeof a === "object") {
+    return {
+      region: a.region || "—",
+      district: a.district || "—",
+      home: a.homeAddress || a.address || "—",
+    };
+  }
+  // eski formatlar (bo'lishi mumkin)
+  return {
+    region: order?.region || "—",
+    district: order?.district || "—",
+    home: order?.address || order?.homeAddress || "—",
+  };
+};
 
-  // 1) docId sifatida urinamiz
-  try {
-    const snap = await getDoc(doc(db, "orders", id));
-    if (snap.exists()) {
-      return { order: { ...snap.data(), docId: snap.id }, docId: snap.id };
-    }
-  } catch (e) {
-    console.warn("getDoc failed:", e);
+const buildProductsMap = async () => {
+  // Product nomini chiqarish uchun
+  const snap = await getDocs(collection(db, "products"));
+  const map = new Map();
+  snap.docs.forEach((d) => {
+    const data = d.data() || {};
+    map.set(String(d.id), { id: d.id, ...data });
+  });
+  return map;
+};
+
+async function load() {
+  const id = getParam("id");
+  if (!id) {
+    $app.innerHTML = `<div class="wrap"><h1 class="text-3xl font-bold">Buyurtma</h1><p>ID yo‘q</p></div>`;
+    return;
   }
 
-  // 2) field: id == ...
-  try {
-    const q1 = query(
-      collection(db, "orders"),
-      where("id", "==", id),
-      limit(1)
-    );
-    const s1 = await getDocs(q1);
-    if (!s1.empty) {
-      const d = s1.docs[0];
-      return { order: { ...d.data(), docId: d.id }, docId: d.id };
-    }
-  } catch (e) {
-    console.warn("where(id==) failed:", e);
-  }
-
-  // 3) legacy: docId ichida saqlangan bo‘lishi mumkin
-  try {
-    const q2 = query(
-      collection(db, "orders"),
-      where("docId", "==", id),
-      limit(1)
-    );
-    const s2 = await getDocs(q2);
-    if (!s2.empty) {
-      const d = s2.docs[0];
-      return { order: { ...d.data(), docId: d.id }, docId: d.id };
-    }
-  } catch (e) {
-    console.warn("where(docId==) failed:", e);
-  }
-
-  return { order: null, docId: null };
-}
-
-function render(order, requestedId) {
-  if (!order) {
-    app.innerHTML = `
-      <div style="padding:16px;max-width:900px;margin:0 auto;font-family:system-ui;">
-        <h1>Buyurtma</h1>
-        <div style="margin-top:12px;padding:14px;border:1px solid #fca5a5;background:#fff1f2;border-radius:12px;">
-          <b>Xatolik:</b> Buyurtma topilmadi.<br/>
-          ID: <code>${esc(requestedId)}</code>
-        </div>
+  let orderDoc = await getDoc(doc(db, "orders", id));
+  if (!orderDoc.exists()) {
+    $app.innerHTML = `
+      <div class="wrap">
+        <h1 class="text-3xl font-bold">Buyurtma</h1>
+        <p><b>ID:</b> ${esc(id)}</p>
+        <p style="color:#b91c1c">Bu ID bilan Firestore'da order topilmadi.</p>
       </div>
     `;
     return;
   }
 
-  const status = order.status || "—";
-  const created =
-    order.createdAt ||
-    order.date ||
-    order.updatedAt ||
-    order.reviewedAt ||
-    null;
+  const order = { id: orderDoc.id, ...orderDoc.data() };
+  const addr = normalizeAddress(order);
+  const receiptUrl = getReceiptUrl(order);
 
-  const total = Number(order.total ?? 0);
-  const userName = order.userName || order.user?.name || "—";
-  const userPhone = order.userPhone || order.user?.phone || "—";
-
-  const addr = order.address || {};
-  const region = addr.region || order.region || "—";
-  const district = addr.district || order.district || "—";
-  const homeAddress = addr.homeAddress || order.addressLine || order.address || "—";
-
-  const delivery = order.delivery?.label || order.deliveryType || "—";
-  const payment = order.payment || "—";
-  const receipt = order.receiptUrl || order.receipt?.url || order.receiptBase64 || "";
+  let productsMap = new Map();
+  try {
+    productsMap = await buildProductsMap();
+  } catch {}
 
   const items = Array.isArray(order.items) ? order.items : [];
+  const itemsHtml = items.length
+    ? items
+        .map((it) => {
+          const pid = String(it.id ?? it.productId ?? "");
+          const p = productsMap.get(pid);
+          const title = p?.title || p?.name || `Mahsulot #${pid}`;
+          const img = (p?.images && p.images[0]) || p?.img || "";
+          const qty = Number(it.qty || 1);
+          const one = Number(p?.price || it.price || 0);
+          const sum = one * qty;
+          return `
+            <div style="display:flex; gap:12px; align-items:center; padding:10px 0; border-bottom:1px solid #eee;">
+              ${img ? `<img src="${esc(img)}" style="width:60px;height:60px;object-fit:cover;border-radius:10px;">` : ""}
+              <div style="flex:1">
+                <div style="font-weight:700">${esc(title)}</div>
+                <div style="color:#555; font-size:14px;">${qty} x ${price(one)} so'm</div>
+              </div>
+              <div style="font-weight:700">${price(sum)} so'm</div>
+            </div>
+          `;
+        })
+        .join("")
+    : `<p>—</p>`;
 
-  const missingImportant =
-    !order.userName && !order.userPhone && !items.length && !addr?.region && !order.total;
+  const userName = order.userName || order.user?.name || "—";
+  const userPhone = order.userPhone || order.user?.phone || "—";
+  const payment = order.payment || "—";
+  const deliveryLabel = order.delivery?.label || order.deliveryType || "—";
 
-  const warnHtml = missingImportant
-    ? `
-    <div style="margin:12px 0;padding:14px;border:1px solid #fca5a5;background:#fff1f2;border-radius:12px;">
-      <b>Diqqat:</b> Bu order Firestore’da to‘liq saqlanmagan (faqat status yozilgan bo‘lishi mumkin). 
-      Shuning uchun foydalanuvchi/manzil/mahsulotlar ko‘rinmaydi.<br/><br/>
-      <b>Yechim:</b> admin panel Firestore’dagi <b>ord_...</b> docId bilan update qilishi kerak (pastda admin.js fix bor).
-    </div>`
-    : "";
+  const total = order.total ?? order.totalPrice ?? 0;
 
-  app.innerHTML = `
-    <div style="padding:16px;max-width:900px;margin:0 auto;font-family:system-ui;">
-      <h1>Buyurtma</h1>
+  $app.innerHTML = `
+    <div class="wrap">
+      <h1 class="text-4xl font-bold" style="margin:10px 0 20px;">Buyurtma</h1>
 
-      ${warnHtml}
+      <div style="margin:0 0 14px;">
+        <div><b>ID:</b> ${esc(order.id)}</div>
+        <div><b>Status:</b> ${esc(order.status || "—")}</div>
+        <div><b>Sana:</b> ${esc(toDateText(order.createdAt || order.date))}</div>
+        <div><b>Jami:</b> ${esc(price(total))} so'm</div>
+        <div><b>Foydalanuvchi:</b> ${esc(userName)} (${esc(userPhone)})</div>
+        <div><b>Manzil:</b> ${esc(addr.region)}, ${esc(addr.district)}, ${esc(addr.home)}</div>
+        <div><b>Yetkazish:</b> ${esc(deliveryLabel)}</div>
+        <div><b>To'lov:</b> ${esc(payment)}</div>
+      </div>
 
-      <p><b>ID:</b> ${esc(order.id || requestedId || "—")}</p>
-      <p><b>docId:</b> ${esc(order.docId || "—")}</p>
-      <p><b>Status:</b> ${esc(status)}</p>
-      <p><b>Sana:</b> ${esc(fmtDateTime(created))}</p>
-      <p><b>Jami:</b> ${esc(total.toLocaleString("uz-UZ"))} so'm</p>
-      <p><b>Foydalanuvchi:</b> ${esc(userName)} (${esc(userPhone)})</p>
-      <p><b>Manzil:</b> ${esc(region)}, ${esc(district)}, ${esc(homeAddress)}</p>
-      <p><b>Yetkazish:</b> ${esc(delivery)}</p>
-      <p><b>To'lov:</b> ${esc(payment)}</p>
-      <p><b>Chek:</b> ${
-        receipt
-          ? `<a href="${esc(receipt)}" target="_blank" rel="noreferrer">Chekni ko‘rish</a>`
-          : "—"
-      }</p>
+      <div style="margin:18px 0;">
+        <h2 class="text-2xl font-bold" style="margin:0 0 10px;">Chek</h2>
+        ${
+          receiptUrl
+            ? `<a href="${esc(receiptUrl)}" target="_blank" rel="noreferrer" style="display:inline-block">
+                 <img src="${esc(receiptUrl)}" style="max-width:360px; width:100%; border-radius:14px; border:1px solid #eee;" />
+               </a>`
+            : `<p>—</p>`
+        }
+      </div>
 
-      <h2>Mahsulotlar</h2>
-      ${
-        items.length
-          ? `<ul>${items
-              .map((it) => {
-                const title = it.title || it.name || it.productTitle || `Product #${it.id ?? "?"}`;
-                const qty = Number(it.qty || 1);
-                return `<li>${esc(title)} — <b>${qty}x</b></li>`;
-              })
-              .join("")}</ul>`
-          : `<p>—</p>`
-      }
+      <div style="margin:18px 0;">
+        <h2 class="text-2xl font-bold" style="margin:0 0 10px;">Mahsulotlar</h2>
+        ${itemsHtml}
+      </div>
 
-      <h2>Raw JSON</h2>
-      <pre style="background:#0b1220;color:#a7f3d0;padding:14px;border-radius:12px;overflow:auto;">${esc(
-        JSON.stringify(order, null, 2)
-      )}</pre>
+      <div style="margin:22px 0;">
+        <h2 class="text-2xl font-bold">Raw JSON</h2>
+        <pre style="background:#0b1020;color:#c7ffb5;padding:14px;border-radius:14px;overflow:auto;">${esc(
+          JSON.stringify(order, null, 2)
+        )}</pre>
+      </div>
     </div>
   `;
 }
 
-(async function init() {
-  const requestedId = getParam("id");
-  app.textContent = "Yuklanmoqda...";
-  const { order } = await findOrderSmart(requestedId);
-  render(order, requestedId);
-})();   
+load();
