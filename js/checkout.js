@@ -191,6 +191,26 @@ const prependOrderToLocalStorage = (orderPayload) => {
   });
 };
 
+/**
+ * ✅ CART itemlarni boyitib yozamiz:
+ *  - title, img, price orderning o'zida bo'ladi (search sahifa productsiz ham chiqaradi)
+ */
+const buildOrderItems = (cart) => {
+  return cart.map((item) => {
+    const p = productsMap.get(String(item.id));
+    const price = Number(p?.price || item.price || 0);
+    const img = p?.images?.[0] || p?.img || item.img || '';
+    const title = p?.title || item.title || 'Mahsulot';
+    return {
+      id: String(item.id),
+      qty: Number(item.qty) || 1,
+      price,
+      title,
+      img,
+    };
+  });
+};
+
 const createOrder = async ({ paymentMethod, receiptUrl = '', contactPhone }) => {
   const cart = getCart();
   if (!cart.length) {
@@ -202,20 +222,41 @@ const createOrder = async ({ paymentMethod, receiptUrl = '', contactPhone }) => 
   const { total, subtotal, deliveryMeta } = calculateSummary();
   const currentUser = getCurrentUser();
 
-  const orderId = uid(); // <<< MUHIM: ord_... bo'ladi
+  const orderId = uid();
+
+  // ✅ top-level address fields (admin/search uchun oson)
+  const region = String(formData.get('city') || '');
+  const district = String(formData.get('district') || '');
+  const addressText = String(formData.get('address') || '');
+
+  const items = buildOrderItems(cart);
 
   const payload = {
+    // ids
     id: orderId,
+    docId: orderId,
+
+    // times
     date: new Date().toISOString(),
+    createdAt: nowTs(),
+    updatedAt: nowTs(),
+
+    // user
     userId: currentUser?.id || null,
-    userName: formData.get('name') || currentUser?.name || 'Guest',
-    userPhone: contactPhone || currentUser?.phone || '',
-    items: cart.map((item) => ({ ...item })),
+    userName: String(formData.get('name') || currentUser?.name || 'Guest'),
+    userPhone: String(contactPhone || currentUser?.phone || ''),
+
+    // totals
+    subtotal,
     totalProductsSum: subtotal,
     total,
-    payment: paymentMethod,
-    status: 'pending',
+
+    // payment & receipt
+    payment: paymentMethod,            // masalan: 'cash' yoki 'card_transfer' yoki 'receipt'
     receiptUrl: receiptUrl || '',
+    status: 'pending',
+
+    // delivery
     deliveryType: selectedDelivery || null,
     delivery: {
       type: selectedDelivery,
@@ -224,18 +265,24 @@ const createOrder = async ({ paymentMethod, receiptUrl = '', contactPhone }) => 
       perKgUsd: deliveryMeta.perKgUsd,
       weightKg: deliveryMeta.weightKg,
     },
-    address: {
-      region: formData.get('city') || '',
-      district: formData.get('district') || '',
-      homeAddress: formData.get('address') || '',
+
+    // ✅ top-level address
+    region,
+    district,
+    address: addressText,
+
+    // ✅ nested address (ham qoladi)
+    addressObj: {
+      region,
+      district,
+      homeAddress: addressText,
     },
-    createdAt: nowTs(),
-    updatedAt: nowTs(),
+
+    // ✅ items full
+    items,
   };
 
-  // ❌ OLD: await addDoc(collection(db, 'orders'), payload);
-  // ✅ NEW: docId = ord_...
-  await setDoc(doc(db, 'orders', orderId), payload);
+  await setDoc(doc(db, 'orders', orderId), payload, { merge: true });
 
   prependOrderToLocalStorage(payload);
 
@@ -254,7 +301,6 @@ const createOrder = async ({ paymentMethod, receiptUrl = '', contactPhone }) => 
     window.location.href = 'orders.html';
   }, 700);
 };
-
 
 const fillDistricts = (region) => {
   if (!districtSelect) return;
@@ -349,7 +395,6 @@ receiptInput?.addEventListener('change', () => {
   receiptFilename.textContent = file.name;
 });
 
-// ✅ 2) Chek yuborilganda ham Firestore'ga yozamiz (order bo'sh bo'lib qolmaydi)
 receiptSubmit?.addEventListener('click', async () => {
   const phone = getValidatedPhone();
   if (!phone) return;
@@ -375,57 +420,13 @@ receiptSubmit?.addEventListener('click', async () => {
     setButtonLoading(receiptSubmit, 'Yuborilmoqda...', true);
     const imageUrl = await imgbbUpload(receiptFile, API_KEY);
 
-    const formData = new FormData(form);
-    const { total, subtotal, deliveryMeta } = calculateSummary();
-
-    const orderId = uid();
-
-    const payload = {
-      id: orderId,
-      date: new Date().toISOString(),
-      userId: currentUser?.id || null,
-      userName: String(formData.get('name') || currentUser?.name || 'Guest'),
-      userPhone: phone,
-      items: cart.map((item) => ({ ...item })),
-      totalProductsSum: subtotal,
-      total,
-      payment: 'receipt',
-      status: 'pending',
+    await createOrder({
+      paymentMethod: 'receipt',
       receiptUrl: imageUrl,
-      deliveryType: selectedDelivery || null,
-      delivery: {
-        type: selectedDelivery,
-        label: deliveryMeta.label,
-        price: deliveryMeta.price,
-        perKgUsd: deliveryMeta.perKgUsd,
-        weightKg: deliveryMeta.weightKg,
-      },
-      address: {
-        region: String(formData.get('city') || ''),
-        district: String(formData.get('district') || ''),
-        homeAddress: String(formData.get('address') || ''),
-      },
-      createdAt: nowTs(),
-      updatedAt: nowTs(),
-    };
+      contactPhone: phone,
+    });
 
-    await setDoc(doc(db, 'orders', orderId), payload);
-    prependOrderToLocalStorage(payload);
-
-    saveCart([]);
-    updateCartBadge();
     showToast('Tekshiruvga yuborildi');
-
-    receiptInput.value = '';
-    receiptFile = null;
-    if (receiptPreviewUrl) URL.revokeObjectURL(receiptPreviewUrl);
-    receiptPreviewUrl = null;
-    receiptPreview.innerHTML = t('receipt_preview');
-    receiptFilename.textContent = 'Fayl tanlanmagan';
-
-    setTimeout(() => {
-      window.location.href = 'orders.html';
-    }, 700);
   } catch (error) {
     console.error(error);
     const message = String(error?.message || 'Chekni yuborishda xatolik');
