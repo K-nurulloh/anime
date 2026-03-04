@@ -2,7 +2,6 @@
 import { db, doc, getDoc, collection, getDocs } from "./firebase.js";
 
 const $app = document.querySelector("#app");
-
 const esc = (s) =>
   String(s ?? "")
     .replaceAll("&", "&amp;")
@@ -21,18 +20,14 @@ const toDateText = (v) => {
 
 const price = (n) => Number(n || 0).toLocaleString("uz-UZ");
 
-const getReceiptUrl = (order) => {
-  return (
-    order?.receiptUrl ||
-    order?.receiptBase64 ||
-    order?.receipt?.url ||
-    order?.receipt?.base64 ||
-    ""
-  );
-};
+const getReceiptUrl = (order) =>
+  order?.receiptUrl ||
+  order?.receiptBase64 ||
+  order?.receipt?.url ||
+  order?.receipt?.base64 ||
+  "";
 
 const normalizeAddress = (order) => {
-  // checkout.js yangi format: address: {region,district,homeAddress}
   const a = order?.address;
   if (a && typeof a === "object") {
     return {
@@ -41,7 +36,6 @@ const normalizeAddress = (order) => {
       home: a.homeAddress || a.address || "—",
     };
   }
-  // eski formatlar (bo'lishi mumkin)
   return {
     region: order?.region || "—",
     district: order?.district || "—",
@@ -50,13 +44,9 @@ const normalizeAddress = (order) => {
 };
 
 const buildProductsMap = async () => {
-  // Product nomini chiqarish uchun
   const snap = await getDocs(collection(db, "products"));
   const map = new Map();
-  snap.docs.forEach((d) => {
-    const data = d.data() || {};
-    map.set(String(d.id), { id: d.id, ...data });
-  });
+  snap.docs.forEach((d) => map.set(String(d.id), { id: d.id, ...(d.data() || {}) }));
   return map;
 };
 
@@ -67,15 +57,14 @@ async function load() {
     return;
   }
 
-  let orderDoc = await getDoc(doc(db, "orders", id));
+  const orderDoc = await getDoc(doc(db, "orders", id));
   if (!orderDoc.exists()) {
     $app.innerHTML = `
       <div class="wrap">
         <h1 class="text-3xl font-bold">Buyurtma</h1>
         <p><b>ID:</b> ${esc(id)}</p>
-        <p style="color:#b91c1c">Bu ID bilan Firestore'da order topilmadi.</p>
-      </div>
-    `;
+        <p style="color:#b91c1c">Firestore'da bu ID bilan order topilmadi.</p>
+      </div>`;
     return;
   }
 
@@ -84,41 +73,36 @@ async function load() {
   const receiptUrl = getReceiptUrl(order);
 
   let productsMap = new Map();
-  try {
-    productsMap = await buildProductsMap();
-  } catch {}
+  try { productsMap = await buildProductsMap(); } catch {}
 
   const items = Array.isArray(order.items) ? order.items : [];
   const itemsHtml = items.length
-    ? items
-        .map((it) => {
-          const pid = String(it.id ?? it.productId ?? "");
-          const p = productsMap.get(pid);
-          const title = p?.title || p?.name || `Mahsulot #${pid}`;
-          const img = (p?.images && p.images[0]) || p?.img || "";
-          const qty = Number(it.qty || 1);
-          const one = Number(p?.price || it.price || 0);
-          const sum = one * qty;
-          return `
-            <div style="display:flex; gap:12px; align-items:center; padding:10px 0; border-bottom:1px solid #eee;">
-              ${img ? `<img src="${esc(img)}" style="width:60px;height:60px;object-fit:cover;border-radius:10px;">` : ""}
-              <div style="flex:1">
-                <div style="font-weight:700">${esc(title)}</div>
-                <div style="color:#555; font-size:14px;">${qty} x ${price(one)} so'm</div>
-              </div>
-              <div style="font-weight:700">${price(sum)} so'm</div>
+    ? items.map((it) => {
+        const pid = String(it.id ?? it.productId ?? "");
+        const p = productsMap.get(pid);
+        const title = p?.title || p?.name || `Mahsulot #${pid}`;
+        const img = (p?.images && p.images[0]) || p?.img || "";
+        const qty = Number(it.qty || 1);
+        const one = Number(p?.price || it.price || 0);
+        const sum = one * qty;
+
+        return `
+          <div style="display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid #eee;">
+            ${img ? `<img src="${esc(img)}" style="width:60px;height:60px;object-fit:cover;border-radius:10px;">` : ""}
+            <div style="flex:1">
+              <div style="font-weight:700">${esc(title)}</div>
+              <div style="color:#555;font-size:14px;">${qty} x ${price(one)} so'm</div>
             </div>
-          `;
-        })
-        .join("")
+            <div style="font-weight:700">${price(sum)} so'm</div>
+          </div>`;
+      }).join("")
     : `<p>—</p>`;
 
   const userName = order.userName || order.user?.name || "—";
   const userPhone = order.userPhone || order.user?.phone || "—";
   const payment = order.payment || "—";
   const deliveryLabel = order.delivery?.label || order.deliveryType || "—";
-
-  const total = order.total ?? order.totalPrice ?? 0;
+  const total = order.total ?? 0;
 
   $app.innerHTML = `
     <div class="wrap">
@@ -139,8 +123,8 @@ async function load() {
         <h2 class="text-2xl font-bold" style="margin:0 0 10px;">Chek</h2>
         ${
           receiptUrl
-            ? `<a href="${esc(receiptUrl)}" target="_blank" rel="noreferrer" style="display:inline-block">
-                 <img src="${esc(receiptUrl)}" style="max-width:360px; width:100%; border-radius:14px; border:1px solid #eee;" />
+            ? `<a href="${esc(receiptUrl)}" target="_blank" rel="noreferrer">
+                 <img src="${esc(receiptUrl)}" style="max-width:360px;width:100%;border-radius:14px;border:1px solid #eee;" />
                </a>`
             : `<p>—</p>`
         }
@@ -153,12 +137,9 @@ async function load() {
 
       <div style="margin:22px 0;">
         <h2 class="text-2xl font-bold">Raw JSON</h2>
-        <pre style="background:#0b1020;color:#c7ffb5;padding:14px;border-radius:14px;overflow:auto;">${esc(
-          JSON.stringify(order, null, 2)
-        )}</pre>
+        <pre style="background:#0b1020;color:#c7ffb5;padding:14px;border-radius:14px;overflow:auto;">${esc(JSON.stringify(order, null, 2))}</pre>
       </div>
-    </div>
-  `;
+    </div>`;
 }
 
 load();
