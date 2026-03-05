@@ -1,27 +1,171 @@
 // js/admin.js
 import {
   db,
+  nowTs,
   collection,
   doc,
-  getDoc,
   getDocs,
-  setDoc,
-  updateDoc,
-  deleteDoc,
-  addDoc,
   query,
   orderBy,
   limit,
+  updateDoc,
 } from "./firebase.js";
 
-/* ==========================
-   CONFIG
-========================== */
-const BASE_URL = window.location.origin;
-const ORDER_LINK = (id) => `${BASE_URL}/searc.html?id=${encodeURIComponent(id)}`;
+/**
+ * ADMIN PANEL FIX:
+ * - products.json 404 -> olib tashlandi (admin Firestore'dan ishlaydi)
+ * - Firestore query index muammo -> orderBy(createdAt) + limit -> client filter
+ * - Telegram CORS muammo -> faqat /api/telegram ga yuboramiz
+ * - Card ichidan "Buyurtmani ko'rish" tugmasi olib tashlandi (faqat admin ichida ko'rinadi)
+ */
 
-// Telegram serverless endpoint (Vercel)
+const $ = (sel, root = document) => root.querySelector(sel);
+
+const esc = (s) =>
+  String(s ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+
+const toDateText = (ts) => {
+  try {
+    if (!ts) return "—";
+    const d = ts?.toDate ? ts.toDate() : new Date(ts);
+    if (Number.isNaN(d.getTime())) return "—";
+    return d.toLocaleString("uz-UZ");
+  } catch {
+    return "—";
+  }
+};
+
+const formatPrice = (n) => {
+  const num = Number(n || 0);
+  return num.toLocaleString("uz-UZ");
+};
+
+const statusMeta = (status) => {
+  const s = String(status || "pending");
+  if (s === "approved" || s === "accepted")
+    return { text: "Qabul qilindi", cls: "bg-emerald-500/15 text-emerald-200 border-emerald-400/30" };
+  if (s === "rejected")
+    return { text: "Rad etildi", cls: "bg-rose-500/15 text-rose-200 border-rose-400/30" };
+  if (s === "pending_verification" || s === "pending")
+    return { text: "Ko‘rib chiqilyapti", cls: "bg-amber-500/15 text-amber-200 border-amber-400/30" };
+  return { text: s, cls: "bg-white/10 text-white/80 border-white/15" };
+};
+
+const getOrderDocId = (order) => {
+  // YANGI FORMAT: id = ord_.... va docId ham shunga teng
+  // ESKI FORMAT: id = o-.... va docId = o-....
+  // Ba'zan docId yo'q bo'ladi -> id ni ishlatamiz
+  return String(order?.docId || order?.id || "");
+};
+
+const buildPublicOrderLink = (order) => {
+  // Telegramdan ochiladigan sahifa
+  // SEN aytgandek: search.html emas, searc.html ochilsin
+  const id = String(order?.id || "");
+  const base = window.location.origin; // vercel domeni
+  return `${base}/searc.html?id=${encodeURIComponent(id)}`;
+};
+
+/** ====== DOM BOOTSTRAP ====== */
+function ensureLayout() {
+  // admin.html ichida aniq id'lar bo'lmasa ham ishlashi uchun
+  let root = $("#admin-root") || $("main") || document.body;
+
+  let wrap = $("#adminPanel");
+  if (!wrap) {
+    wrap = document.createElement("div");
+    wrap.id = "adminPanel";
+    wrap.className = "mx-auto max-w-6xl space-y-6 p-4";
+    root.appendChild(wrap);
+  }
+
+  // Pending section
+  let pendingBox = $("#pendingBox");
+  if (!pendingBox) {
+    pendingBox = document.createElement("section");
+    pendingBox.id = "pendingBox";
+    pendingBox.className = "space-y-3";
+    pendingBox.innerHTML = `
+      <div class="flex items-center justify-between">
+        <h2 class="text-xl font-semibold text-white">Tekshiruvdagi buyurtmalar</h2>
+        <button id="refreshBtn" class="rounded-xl border border-white/15 bg-white/5 px-3 py-1 text-xs text-white/80 hover:bg-white/10">
+          Yangilash
+        </button>
+      </div>
+      <div id="pendingList" class="space-y-4"></div>
+      <div id="pendingEmpty" class="hidden rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/70">
+        Tekshiruvda buyurtma yo‘q.
+      </div>
+    `;
+    wrap.appendChild(pendingBox);
+  }
+
+  // Modal
+  let modal = $("#receipt-modal");
+  if (!modal) {
+    modal = document.createElement("div");
+    modal.id = "receipt-modal";
+    modal.className = "fixed inset-0 hidden items-center justify-center bg-black/60 p-4";
+    modal.innerHTML = `
+      <div class="w-full max-w-2xl rounded-2xl border border-white/10 bg-slate-950 p-4">
+        <div class="flex items-center justify-between">
+          <h3 class="text-white font-semibold">Chek</h3>
+          <button id="receipt-close" class="text-white/70 hover:text-white">✕</button>
+        </div>
+        <div class="mt-3">
+          <img id="receipt-img" src="" alt="receipt" class="w-full rounded-xl border border-white/10 bg-white/5 object-contain" />
+          <a id="receipt-open" href="#" target="_blank" rel="noreferrer"
+             class="mt-3 inline-flex rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs text-white/80 hover:bg-white/10">
+            Yangi oynada ochish
+          </a>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
+
+  // tab route: #payments bo'lsa
+  // (admin.html da payment bo'lim bo'lsa ham bo'lmasa ham zarar qilmaydi)
+}
+
+ensureLayout();
+
+const pendingList = $("#pendingList");
+const pendingEmpty = $("#pendingEmpty");
+const refreshBtn = $("#refreshBtn");
+
+const receiptModal = $("#receipt-modal");
+const receiptImg = $("#receipt-img");
+const receiptOpen = $("#receipt-open");
+const receiptClose = $("#receipt-close");
+
+/** ====== RECEIPT MODAL ====== */
+function openReceipt(url) {
+  if (!url) return;
+  receiptImg.src = url;
+  receiptOpen.href = url;
+  receiptModal.classList.remove("hidden");
+  receiptModal.classList.add("flex");
+}
+function closeReceipt() {
+  receiptModal.classList.add("hidden");
+  receiptModal.classList.remove("flex");
+  receiptImg.src = "";
+  receiptOpen.href = "#";
+}
+receiptClose?.addEventListener("click", closeReceipt);
+receiptModal?.addEventListener("click", (e) => {
+  if (e.target === receiptModal) closeReceipt();
+});
+
+/** ====== TELEGRAM (Vercel API) ====== */
 async function sendTelegram(text) {
+  // Faqat shu endpoint -> CORS yo'q
   const res = await fetch("/api/telegram", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -35,497 +179,235 @@ async function sendTelegram(text) {
   return data;
 }
 
-/* ==========================
-   DOM
-========================== */
-const elPending = document.querySelector("#pending-orders");
-const elProducts = document.querySelector("#products-list");
-const elComments = document.querySelector("#comments-list");
-const elToast = document.querySelector("#toast");
-
-// Receipt modal
-const receiptModal = document.querySelector("#receipt-modal");
-const receiptImg = document.querySelector("#receipt-img");
-const receiptClose = document.querySelector("#receipt-close");
-
-/* ==========================
-   UTIL
-========================== */
-const esc = (s) =>
-  String(s ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-
-const money = (n) => Number(n || 0).toLocaleString("uz-UZ");
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-function toast(msg, type = "info") {
-  if (!elToast) {
-    console.log("[toast]", msg);
-    return;
-  }
-  elToast.textContent = msg;
-  elToast.classList.remove("hidden");
-  elToast.dataset.type = type;
-  clearTimeout(toast._t);
-  toast._t = setTimeout(() => elToast.classList.add("hidden"), 2600);
+/** ====== FIRESTORE ====== */
+async function fetchRecentOrders() {
+  // Index muammo bo'lmasligi uchun: faqat createdAt bo'yicha olamiz, keyin filter
+  const snap = await getDocs(query(collection(db, "orders"), orderBy("createdAt", "desc"), limit(100)));
+  return snap.docs.map((d) => ({ docId: d.id, ...d.data() }));
 }
 
-function toDateText(v) {
-  const d = v?.toDate ? v.toDate() : v ? new Date(v) : null;
-  if (!d || isNaN(d.getTime())) return "—";
-  return d.toLocaleString("uz-UZ");
-}
+async function setOrderStatus(order, status, extra = {}) {
+  const docId = getOrderDocId(order);
+  if (!docId) throw new Error("docId topilmadi");
 
-function getReceiptUrl(order) {
-  return (
-    order?.receiptUrl ||
-    order?.receipt?.url ||
-    order?.receiptBase64 ||
-    order?.receipt?.base64 ||
-    ""
-  );
-}
-
-function statusText(s) {
-  if (s === "pending" || s === "pending_verification") return "Ko‘rib chiqilyapti";
-  if (s === "approved" || s === "accepted") return "Qabul qilindi";
-  if (s === "rejected") return "Rad etildi";
-  return s || "—";
-}
-
-/* ==========================
-   STATE
-========================== */
-let state = {
-  products: [],
-  comments: [],
-  orders: [],
-};
-
-/* ==========================
-   FIRESTORE LOADERS
-========================== */
-async function loadProducts() {
-  const snap = await getDocs(query(collection(db, "products"), orderBy("createdAt", "desc"), limit(200)));
-  return snap.docs.map((d) => {
-    const data = d.data() || {};
-    const images = Array.isArray(data.images) ? data.images : data.img ? [data.img] : [];
-    return { id: d.id, ...data, images, img: data.img || images[0] || "" };
+  await updateDoc(doc(db, "orders", docId), {
+    status,
+    updatedAt: nowTs(),
+    ...extra,
   });
 }
 
-async function loadComments() {
-  // Agar comments kolleksiyang boshqa nomda bo'lsa, shu yerini o'zgartirasan.
-  const snap = await getDocs(query(collection(db, "comments"), orderBy("createdAt", "desc"), limit(200)));
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-}
-
-async function loadOrders() {
-  // INDEX muammosini kamaytirish uchun:
-  // createdAt bo'yicha oxirgi buyurtmalarni olib, statusni JS'da ajratamiz.
-  const snap = await getDocs(query(collection(db, "orders"), orderBy("createdAt", "desc"), limit(200)));
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-}
-
-/* ==========================
-   RENDER: PRODUCTS
-========================== */
-function renderProducts() {
-  if (!elProducts) return;
-
-  if (!state.products.length) {
-    elProducts.innerHTML = `
-      <div class="rounded-2xl glass p-4 text-sm text-white/70">
-        Mahsulot yo‘q.
-      </div>`;
-    return;
-  }
-
-  elProducts.innerHTML = state.products
-    .map((p) => {
-      const img = p.img || p.images?.[0] || "";
-      return `
-        <div class="rounded-2xl glass p-4 border border-white/10 shadow-sm">
-          <div class="flex gap-4">
-            <div class="h-20 w-20 rounded-xl overflow-hidden border border-white/10 bg-white/5 flex items-center justify-center">
-              ${img ? `<img src="${esc(img)}" class="h-full w-full object-cover" alt="">` : `<span class="text-white/40 text-xs">No image</span>`}
-            </div>
-
-            <div class="flex-1">
-              <div class="text-white font-semibold">${esc(p.title || p.name || "Nomsiz")}</div>
-              <div class="text-white/60 text-xs mt-1">${esc(p.category || "")}</div>
-              <div class="mt-2 flex items-center justify-between">
-                <div class="text-white font-bold">${money(p.price)} so'm</div>
-                <div class="text-white/60 text-xs">${p.discount ? `-${esc(p.discount)}%` : ""}</div>
-              </div>
-
-              <div class="mt-3 flex gap-2">
-                <button class="btn-edit neon-btn rounded-lg px-3 py-2 text-xs font-semibold" data-edit-product="${esc(p.id)}">✏️ Edit</button>
-                <button class="btn-del rounded-lg px-3 py-2 text-xs font-semibold border border-rose-400/40 text-rose-200" data-del-product="${esc(p.id)}">🗑 Delete</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-    })
-    .join("");
-}
-
-/* ==========================
-   RENDER: COMMENTS
-========================== */
-function renderComments() {
-  if (!elComments) return;
-
-  if (!state.comments.length) {
-    elComments.innerHTML = `
-      <div class="rounded-2xl glass p-4 text-sm text-white/70">
-        Hozircha izoh yo‘q.
-      </div>`;
-    return;
-  }
-
-  elComments.innerHTML = state.comments
-    .map((c) => {
-      return `
-        <div class="rounded-2xl glass p-4 border border-white/10">
-          <div class="flex items-center justify-between gap-3">
-            <div>
-              <div class="text-white font-semibold">${esc(c.userName || c.name || "Anonim")}</div>
-              <div class="text-white/60 text-xs">${toDateText(c.createdAt || c.date)}</div>
-            </div>
-            <button class="rounded-lg px-3 py-2 text-xs font-semibold border border-rose-400/40 text-rose-200" data-del-comment="${esc(c.id)}">Delete</button>
-          </div>
-          <div class="mt-2 text-white/85 text-sm">${esc(c.text || c.comment || "")}</div>
-        </div>
-      `;
-    })
-    .join("");
-}
-
-/* ==========================
-   RENDER: PENDING ORDERS (Tekshiruvdagi)
-========================== */
+/** ====== RENDER ====== */
 function orderCardHTML(order) {
-  const buyerName = order.userName || order.user?.name || "—";
-  const buyerPhone = order.userPhone || order.user?.phone || "—";
+  const id = String(order?.id || order?.docId || "");
+  const docId = String(order?.docId || "");
+  const userName = order?.userName || order?.user?.name || "—";
+  const userPhone = order?.userPhone || order?.user?.phone || "—";
 
-  const addr = order.address && typeof order.address === "object" ? order.address : null;
-  const region = addr?.region || order.region || "—";
-  const district = addr?.district || order.district || "—";
-  const home = addr?.homeAddress || addr?.address || order.addressText || "—";
+  const region = order?.address?.region || "—";
+  const district = order?.address?.district || "—";
+  const homeAddress = order?.address?.homeAddress || "—";
+  const addrText = [region, district, homeAddress].filter(Boolean).join(", ");
 
-  const receiptUrl = getReceiptUrl(order);
+  const itemsCount = Array.isArray(order?.items) ? order.items.length : 0;
+  const total = Number(order?.total || 0);
+  const payment = order?.payment || "—";
+  const createdAt = order?.createdAt || order?.date || null;
 
-  // BUYURTMANI KO'RISH tugmasi yo'q (siz so'ragansiz)
+  const st = statusMeta(order?.status);
+  const receiptUrl = order?.receiptUrl || "";
+
   return `
-    <div class="rounded-2xl glass p-4 border border-white/10 shadow-sm">
+    <div class="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-sm">
       <div class="flex items-start justify-between gap-3">
-        <div>
-          <div class="text-xs text-white/50">Buyurtma ID</div>
-          <div class="font-semibold text-white">${esc(order.id)}</div>
+        <div class="min-w-0">
+          <div class="text-xs text-white/60">Buyurtma ID</div>
+          <div class="font-semibold text-white break-all">${esc(id)}</div>
+          ${docId && docId !== id ? `<div class="mt-1 text-[11px] text-white/40">docId: ${esc(docId)}</div>` : ""}
         </div>
-        <div class="text-right">
-          <div class="text-xs text-white/50">Holat</div>
-          <div class="inline-flex rounded-full px-3 py-1 text-xs font-semibold bg-amber-400/20 text-amber-200">
-            ${esc(statusText(order.status))}
-          </div>
-        </div>
+
+        <span class="shrink-0 rounded-full border px-3 py-1 text-xs ${st.cls}">
+          ${esc(st.text)}
+        </span>
       </div>
 
-      <div class="grid grid-cols-2 gap-3 pt-3 text-sm text-white/85">
+      <div class="mt-3 grid grid-cols-2 gap-3 text-sm">
         <div>
           <div class="text-xs text-white/50">Kim buyurtma qildi</div>
-          <div class="font-medium">${esc(buyerName)} (${esc(buyerPhone)})</div>
+          <div class="font-medium text-white/90">${esc(userName)} (${esc(userPhone)})</div>
         </div>
+
         <div>
           <div class="text-xs text-white/50">Sana</div>
-          <div class="font-medium">${esc(toDateText(order.createdAt || order.date))}</div>
+          <div class="font-medium text-white/90">${esc(toDateText(createdAt))}</div>
         </div>
 
         <div>
           <div class="text-xs text-white/50">Manzil</div>
-          <div class="font-medium">${esc(region)}, ${esc(district)}, ${esc(home)}</div>
+          <div class="font-medium text-white/90">${esc(addrText)}</div>
         </div>
+
         <div>
           <div class="text-xs text-white/50">Jami</div>
-          <div class="font-semibold text-white">${money(order.total || 0)} so'm</div>
+          <div class="font-semibold text-white">${formatPrice(total)} so'm</div>
+        </div>
+
+        <div>
+          <div class="text-xs text-white/50">Mahsulotlar soni</div>
+          <div class="font-medium text-white/90">${itemsCount}</div>
         </div>
 
         <div>
           <div class="text-xs text-white/50">To'lov</div>
-          <div class="font-medium">${esc(order.payment || "—")}</div>
-        </div>
-        <div>
-          <div class="text-xs text-white/50">Mahsulotlar soni</div>
-          <div class="font-medium">${Array.isArray(order.items) ? order.items.length : (order.itemsCount || 0)}</div>
+          <div class="font-medium text-white/90">${esc(payment)}</div>
         </div>
       </div>
 
-      <div class="pt-3">
-        <div class="text-xs text-white/50 mb-2">Chek</div>
+      <div class="mt-4 flex flex-wrap items-center gap-2">
         ${
           receiptUrl
             ? `
-              <button class="inline-flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2"
-                      data-open-receipt="${esc(receiptUrl)}">
-                <img src="${esc(receiptUrl)}" class="h-12 w-12 rounded-lg object-cover" alt="Chek">
-                <span class="text-sm font-semibold text-white">Chekni ko‘rish</span>
-              </button>
-            `
-            : `<div class="text-white/60 text-sm">Chek yo‘q</div>`
+            <button data-action="receipt" data-url="${esc(receiptUrl)}"
+              class="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/80 hover:bg-white/10">
+              <img src="${esc(receiptUrl)}" class="h-9 w-9 rounded-xl object-cover border border-white/10" alt="receipt" />
+              Chekni ko‘rish
+            </button>
+          `
+            : `<div class="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/60">Chek yo‘q</div>`
         }
+
+        <button data-action="approve" data-id="${esc(id)}"
+          class="ml-auto inline-flex items-center justify-center rounded-2xl bg-emerald-500/90 px-4 py-2 text-xs font-semibold text-slate-950 hover:bg-emerald-400">
+          ✅ Qabul
+        </button>
+
+        <button data-action="reject" data-id="${esc(id)}"
+          class="inline-flex items-center justify-center rounded-2xl border border-rose-300/30 bg-rose-500/10 px-4 py-2 text-xs font-semibold text-rose-200 hover:bg-rose-500/15">
+          ❌ Rad
+        </button>
       </div>
 
       ${
-        order.status === "rejected" && order.rejectReason
-          ? `<div class="mt-3 text-xs text-rose-200">Sabab: ${esc(order.rejectReason)}</div>`
+        order?.status === "rejected" && order?.rejectReason
+          ? `<div class="mt-3 rounded-xl border border-rose-300/20 bg-rose-500/10 p-3 text-xs text-rose-100">
+               Sabab: ${esc(order.rejectReason)}
+             </div>`
           : ""
       }
 
-      <div class="pt-4 flex items-center gap-3">
-        <button class="neon-btn rounded-xl px-5 py-2 text-sm font-semibold" data-accept="${esc(order.id)}">✅ Qabul</button>
-        <button class="rounded-xl px-5 py-2 text-sm font-semibold border border-rose-400/40 text-rose-200" data-reject="${esc(order.id)}">❌ Rad</button>
-      </div>
+      <!-- "Buyurtmani ko'rish" tugmasi carddan olib tashlandi (sening talabing) -->
     </div>
   `;
 }
 
-function renderPendingOrders() {
-  if (!elPending) return;
-
-  const pending = state.orders.filter((o) =>
-    ["pending", "pending_verification"].includes(String(o.status || "").toLowerCase())
-  );
-
-  if (!pending.length) {
-    elPending.innerHTML = `
-      <div class="rounded-2xl glass p-4 text-sm text-white/70">
-        Tekshiruvda buyurtma yo‘q.
-      </div>`;
+function renderPending(list) {
+  if (!pendingList) return;
+  if (!list.length) {
+    pendingList.innerHTML = "";
+    pendingEmpty?.classList.remove("hidden");
     return;
   }
-
-  elPending.innerHTML = pending.map(orderCardHTML).join("");
+  pendingEmpty?.classList.add("hidden");
+  pendingList.innerHTML = list.map(orderCardHTML).join("");
 }
 
-/* ==========================
-   ACTIONS: ORDER APPROVE / REJECT
-========================== */
-async function approveOrder(orderId) {
-  toast("Qabul qilinyapti...");
-  const ref = doc(db, "orders", orderId);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) throw new Error("Order topilmadi");
+/** ====== ACTIONS ====== */
+async function approveOrder(order) {
+  await setOrderStatus(order, "approved", { reviewedAt: nowTs(), rejectReason: null });
 
-  await updateDoc(ref, {
-    status: "approved",
-    rejectReason: null,
-    reviewedAt: new Date(),
-    updatedAt: new Date(),
-  });
-
-  const link = ORDER_LINK(orderId);
-  const msg =
+  // Telegram message
+  const link = buildPublicOrderLink(order);
+  const text =
     `✅ Buyurtma qabul qilindi\n` +
-    `ID: ${orderId}\n` +
-    `🔗 Buyurtmani ko‘rish: ${link}`;
+    `ID: ${order.id || order.docId}\n` +
+    `Jami: ${formatPrice(order.total)} so'm\n` +
+    `\n🔗 Buyurtmani ko'rish:\n${link}`;
 
-  await sendTelegram(msg);
-
-  toast("✅ Qabul qilindi (telegramga yuborildi)");
+  await sendTelegram(text);
 }
 
-async function rejectOrder(orderId) {
-  const reason = prompt("Rad etish sababi?");
-  if (reason === null) return;
+async function rejectOrder(order) {
+  const reason = prompt("Rad etish sababi (majburiy):", "");
+  if (!reason || !reason.trim()) return;
 
-  toast("Rad etilyapti...");
-  const ref = doc(db, "orders", orderId);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) throw new Error("Order topilmadi");
+  await setOrderStatus(order, "rejected", { reviewedAt: nowTs(), rejectReason: reason.trim() });
 
-  const rejectReason = String(reason || "").trim() || "Sabab ko‘rsatilmagan";
-
-  await updateDoc(ref, {
-    status: "rejected",
-    rejectReason,
-    reviewedAt: new Date(),
-    updatedAt: new Date(),
-  });
-
-  const link = ORDER_LINK(orderId);
-  const msg =
+  const link = buildPublicOrderLink(order);
+  const text =
     `❌ Buyurtma rad etildi\n` +
-    `ID: ${orderId}\n` +
-    `Sabab: ${rejectReason}\n` +
-    `🔗 Buyurtmani ko‘rish: ${link}`;
+    `ID: ${order.id || order.docId}\n` +
+    `Sabab: ${reason.trim()}\n` +
+    `\n🔗 Buyurtmani ko'rish:\n${link}`;
 
-  await sendTelegram(msg);
-
-  toast("✅ Rad etildi (telegramga yuborildi)");
+  await sendTelegram(text);
 }
 
-/* ==========================
-   ACTIONS: PRODUCTS (edit/delete)
-========================== */
-async function deleteProduct(id) {
-  if (!confirm("Mahsulot o‘chirilsinmi?")) return;
-  toast("O‘chirilmoqda...");
-  await deleteDoc(doc(db, "products", id));
-  toast("✅ O‘chirildi");
+/** ====== LOAD LOOP ====== */
+let __orders = [];
+async function load() {
+  try {
+    const all = await fetchRecentOrders();
+
+    // faqat tekshiruvdagilar (indexsiz client filter)
+    const pending = all.filter((o) => {
+      const s = String(o?.status || "pending");
+      return s === "pending" || s === "pending_verification";
+    });
+
+    __orders = all;
+    renderPending(pending);
+  } catch (e) {
+    console.error("Admin load error:", e);
+    if (pendingList) {
+      pendingList.innerHTML = `
+        <div class="rounded-2xl border border-rose-300/20 bg-rose-500/10 p-4 text-sm text-rose-100">
+          Xatolik: ${esc(e?.message || e)}
+          <div class="mt-2 text-xs text-rose-100/80">
+            Eslatma: Vercel env tokenlar qo'shilganini va /api/telegram mavjudligini tekshir.
+          </div>
+        </div>
+      `;
+    }
+  }
 }
 
-async function editProduct(id) {
-  const p = state.products.find((x) => x.id === id);
-  if (!p) return;
+refreshBtn?.addEventListener("click", load);
 
-  const title = prompt("Title:", p.title || p.name || "");
-  if (title === null) return;
+pendingList?.addEventListener("click", async (e) => {
+  const btn = e.target.closest("button[data-action]");
+  if (!btn) return;
 
-  const priceStr = prompt("Price (so'm):", String(p.price || 0));
-  if (priceStr === null) return;
-
-  const price = Number(priceStr || 0);
-
-  toast("Saqlanyapti...");
-  await updateDoc(doc(db, "products", id), {
-    title,
-    price,
-    updatedAt: new Date(),
-  });
-  toast("✅ Saqlandi");
-}
-
-/* ==========================
-   ACTIONS: COMMENTS
-========================== */
-async function deleteComment(id) {
-  if (!confirm("Izoh o‘chirilsinmi?")) return;
-  toast("O‘chirilmoqda...");
-  await deleteDoc(doc(db, "comments", id));
-  toast("✅ O‘chirildi");
-}
-
-/* ==========================
-   RECEIPT MODAL
-========================== */
-function openReceipt(url) {
-  if (!receiptModal || !receiptImg) {
-    // fallback: new tab
-    window.open(url, "_blank");
+  const action = btn.dataset.action;
+  if (action === "receipt") {
+    openReceipt(btn.dataset.url);
     return;
   }
-  receiptImg.src = url;
-  receiptModal.classList.remove("hidden");
-}
-function closeReceipt() {
-  if (!receiptModal || !receiptImg) return;
-  receiptModal.classList.add("hidden");
-  receiptImg.src = "";
-}
 
-receiptClose?.addEventListener("click", closeReceipt);
-receiptModal?.addEventListener("click", (e) => {
-  if (e.target === receiptModal) closeReceipt();
-});
+  // order topish: id orqali
+  const id = btn.dataset.id;
+  const order = __orders.find((o) => String(o.id || o.docId) === String(id));
+  if (!order) return alert("Order topilmadi");
 
-/* ==========================
-   EVENTS
-========================== */
-document.addEventListener("click", async (e) => {
-  const btnAccept = e.target.closest("[data-accept]");
-  const btnReject = e.target.closest("[data-reject]");
-  const btnOpenReceipt = e.target.closest("[data-open-receipt]");
-
-  const btnDelProduct = e.target.closest("[data-del-product]");
-  const btnEditProduct = e.target.closest("[data-edit-product]");
-
-  const btnDelComment = e.target.closest("[data-del-comment]");
+  btn.disabled = true;
 
   try {
-    if (btnOpenReceipt) {
-      openReceipt(btnOpenReceipt.dataset.openReceipt);
-      return;
-    }
-
-    if (btnAccept) {
-      await approveOrder(btnAccept.dataset.accept);
-      await refreshAll();
-      return;
-    }
-
-    if (btnReject) {
-      await rejectOrder(btnReject.dataset.reject);
-      await refreshAll();
-      return;
-    }
-
-    if (btnDelProduct) {
-      await deleteProduct(btnDelProduct.dataset.delProduct);
-      await refreshAll();
-      return;
-    }
-
-    if (btnEditProduct) {
-      await editProduct(btnEditProduct.dataset.editProduct);
-      await refreshAll();
-      return;
-    }
-
-    if (btnDelComment) {
-      await deleteComment(btnDelComment.dataset.delComment);
-      await refreshAll();
-      return;
+    if (action === "approve") {
+      await approveOrder(order);
+      await load();
+      alert("✅ Qabul qilindi + Telegramga yuborildi");
+    } else if (action === "reject") {
+      await rejectOrder(order);
+      await load();
+      alert("❌ Rad qilindi + Telegramga yuborildi");
     }
   } catch (err) {
     console.error(err);
-    toast("❌ Xatolik: " + (err?.message || "error"), "error");
+    alert("Xatolik: " + (err?.message || err));
+  } finally {
+    btn.disabled = false;
   }
 });
 
-/* ==========================
-   MAIN: LOAD + RENDER
-========================== */
-async function refreshAll() {
-  // Skeleton / Loading (xohlasang chiroyli skeleton qo‘shamiz)
-  try {
-    const [products, comments, orders] = await Promise.all([
-      loadProducts().catch((e) => {
-        console.error("products load:", e);
-        return [];
-      }),
-      loadComments().catch((e) => {
-        console.error("comments load:", e);
-        return [];
-      }),
-      loadOrders().catch((e) => {
-        console.error("orders load:", e);
-        return [];
-      }),
-    ]);
-
-    state.products = products;
-    state.comments = comments;
-    state.orders = orders;
-
-    renderProducts();
-    renderComments();
-    renderPendingOrders();
-  } catch (e) {
-    console.error(e);
-    toast("❌ Yuklashda xatolik: " + (e?.message || "error"), "error");
-  }
-}
-
-// Auto refresh
-refreshAll();
-
-// xohlasang har 10 sekundda yangilab turadi:
-setInterval(() => {
-  refreshAll();
-}, 10000);
+// Auto refresh (har 10 sekund)
+load();
+setInterval(load, 10000);
