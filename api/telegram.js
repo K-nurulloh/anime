@@ -17,8 +17,8 @@ export default async function handler(req, res) {
     const token = process.env.TG_BOT_TOKEN;
     const chatId = process.env.TG_CHAT_ID;
 
-    if (!token) return res.status(500).json({ ok: false, error: "8238090465:AAGbMa3eflX7bFET2kpZsClfMyHyaPtjrAk" });
-    if (!chatId) return res.status(500).json({ ok: false, error: "5128272954" });
+    if (!token) return res.status(500).json({ ok: false, error: "TG_BOT_TOKEN missing" });
+    if (!chatId) return res.status(500).json({ ok: false, error: "TG_CHAT_ID missing" });
 
     const { text } = req.body || {};
     if (!text) return res.status(400).json({ ok: false, error: "text required" });

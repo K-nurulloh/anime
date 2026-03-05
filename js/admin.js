@@ -1,596 +1,531 @@
 // js/admin.js
-import { ensureSeedData, getCurrentUser, getProductComments, saveProductComments } from "./storage.js";
-import { showToast, statusLabel } from "./ui.js";
-import { fetchProducts } from "./api.js";
 import {
   db,
   collection,
-  addDoc,
-  getDocs,
-  getDoc,
   doc,
+  getDoc,
+  getDocs,
   setDoc,
   updateDoc,
   deleteDoc,
-  serverTimestamp,
-  orderBy,
+  addDoc,
   query,
-  limit
+  orderBy,
+  limit,
 } from "./firebase.js";
-import { imgbbUpload } from "./imgbb.js";
-import { IMGBB_API_KEY } from "./config.js";
 
-ensureSeedData();
+/* ==========================
+   CONFIG
+========================== */
+const BASE_URL = window.location.origin;
+const ORDER_LINK = (id) => `${BASE_URL}/searc.html?id=${encodeURIComponent(id)}`;
 
-const accessDenied = document.querySelector("#access-denied");
-const adminPanel = document.querySelector("#admin-panel");
-
-const pendingOrdersList = document.querySelector("#pending-orders");
-const pendingEmpty = document.querySelector("#pending-empty");
-
-const receiptModal = document.querySelector("#receipt-modal");
-const receiptImage = document.querySelector("#receipt-image");
-const receiptClose = document.querySelector("#receipt-close");
-
-const productForm = document.querySelector("#admin-product-form");
-const productTitle = document.querySelector("#product-title");
-const productCategory = document.querySelector("#product-category");
-const productPrice = document.querySelector("#product-price");
-const productStock = document.querySelector("#product-stock");
-const productOldPrice = document.querySelector("#product-old-price");
-const productDiscount = document.querySelector("#product-discount");
-const productDescription = document.querySelector("#pDesc");
-const productRating = document.querySelector("#product-rating");
-const productVariantName = document.querySelector("#variant-name");
-const productVariantPrice = document.querySelector("#variant-price");
-const addVariantBtn = document.querySelector("#add-variant-btn");
-const variantList = document.querySelector("#variant-list");
-const productImages = document.querySelector("#pImages");
-const imageLimitError = document.querySelector("#image-limit-error");
-const imagePreview = document.querySelector("#image-preview");
-const adminProductsEmpty = document.querySelector("#admin-products-empty");
-const adminProductsList = document.querySelector("#adminProducts");
-const saveButton = document.querySelector("#btnSave");
-
-const commentsEmpty = document.querySelector("#comments-empty");
-const adminComments = document.querySelector("#admin-comments");
-
-// ===== ADMIN CHECK =====
-const currentUser = getCurrentUser?.() || (() => {
-  try { return JSON.parse(localStorage.getItem("currentUser") || "null"); } catch { return null; }
-})();
-
-const isAdmin = currentUser?.isAdmin === true;
-
-if (!isAdmin) {
-  accessDenied?.classList.remove("hidden");
-  adminPanel?.classList.add("hidden");
-} else {
-  accessDenied?.classList.add("hidden");
-  adminPanel?.classList.remove("hidden");
-}
-
-// ===== STATE =====
-let selectedFiles = [];
-let selectedPreviews = [];
-let adminProducts = [];
-let editingId = null;
-let productVariants = [];
-let productsMap = new Map();
-
-// ===== HELPERS =====
-const formatDate = (v) => {
-  const d = v?.toDate ? v.toDate() : v ? new Date(v) : null;
-  if (!d || isNaN(d.getTime())) return "—";
-  return d.toLocaleString("uz-UZ");
-};
-
-const getItemsCount = (items = []) => (Array.isArray(items) ? items : []).reduce((s, it) => s + Number(it.qty || 1), 0);
-
-const getReceiptUrl = (order) => {
-  return order?.receiptUrl || order?.receiptBase64 || order?.receipt?.url || order?.receipt?.base64 || "";
-};
-
-const orderLink = (id) => `${location.origin}/searc.html?id=${encodeURIComponent(id)}`;
-
-// ===== TELEGRAM VIA VERCEL API =====
+// Telegram serverless endpoint (Vercel)
 async function sendTelegram(text) {
-  // front-end -> /api/telegram
   const res = await fetch("/api/telegram", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ text }),
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok || !data.ok) {
+  if (!res.ok || data?.ok === false) {
     console.error("Telegram API error:", data);
-    throw new Error(data?.error || "Telegramga yuborilmadi");
+    throw new Error(data?.error || "Telegram yuborilmadi");
   }
   return data;
 }
 
-// ===== ORDERS RENDER =====
-const renderOrderCard = (order) => {
-  const buyerName = order.userName || order.user?.name || "—";
-  const buyerPhone = order.userPhone || order.user?.phone || "—";
-  const receiptSrc = getReceiptUrl(order);
+/* ==========================
+   DOM
+========================== */
+const elPending = document.querySelector("#pending-orders");
+const elProducts = document.querySelector("#products-list");
+const elComments = document.querySelector("#comments-list");
+const elToast = document.querySelector("#toast");
 
-  const addr = order.address && typeof order.address === "object"
-    ? `${order.address.region || "—"}, ${order.address.district || "—"}, ${order.address.homeAddress || "—"}`
-    : `${order.region || "—"}, ${order.district || "—"}, ${order.address || "—"}`;
+// Receipt modal
+const receiptModal = document.querySelector("#receipt-modal");
+const receiptImg = document.querySelector("#receipt-img");
+const receiptClose = document.querySelector("#receipt-close");
 
-  const statusChip = statusLabel(order.status);
+/* ==========================
+   UTIL
+========================== */
+const esc = (s) =>
+  String(s ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 
-  return `
-    <article class="rounded-2xl glass p-4 shadow-sm">
-      <div class="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p class="text-xs text-slate-400">Buyurtma ID</p>
-          <p class="text-sm font-semibold text-white">${order.id}</p>
+const money = (n) => Number(n || 0).toLocaleString("uz-UZ");
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-          <p class="mt-2 text-xs text-slate-400">Foydalanuvchi</p>
-          <p class="text-sm text-slate-200">${buyerName} (${buyerPhone})</p>
-
-          <p class="mt-2 text-xs text-slate-400">Manzil</p>
-          <p class="text-sm text-slate-200">${addr}</p>
-        </div>
-
-        <div>
-          <p class="text-xs text-slate-400">Sana</p>
-          <p class="text-sm text-slate-200">${formatDate(order.createdAt || order.date)}</p>
-
-          <p class="mt-2 text-xs text-slate-400">Mahsulotlar soni</p>
-          <p class="text-sm text-slate-200">${getItemsCount(order.items)}</p>
-
-          <p class="mt-2 text-xs text-slate-400">To'lov</p>
-          <p class="text-sm text-slate-200">${order.payment || "—"}</p>
-        </div>
-
-        <div>
-          <p class="text-xs text-slate-400">Jami</p>
-          <p class="text-sm font-semibold text-white">${Number(order.total || 0).toLocaleString("uz-UZ")} so'm</p>
-
-          <p class="mt-2 text-xs text-slate-400">Holat</p>
-          <span class="${statusChip.cls}">${statusChip.text}</span>
-
-          ${
-            order.status === "rejected" && order.rejectReason
-              ? `<p class="mt-2 text-xs text-rose-200">Sabab: ${order.rejectReason}</p>`
-              : ""
-          }
-        </div>
-      </div>
-
-      ${
-        receiptSrc
-          ? `
-            <a href="${receiptSrc}" target="_blank" rel="noreferrer"
-               class="receipt-open mt-3 inline-flex items-center gap-2 rounded-xl glass-soft px-3 py-2 text-xs text-white/80"
-               data-href="${receiptSrc}">
-              <img src="${receiptSrc}" alt="Receipt" class="h-16 w-16 rounded-lg object-cover" />
-              <span>Chekni ko‘rish</span>
-            </a>
-          `
-          : `<p class="mt-3 text-xs text-slate-500">Chek mavjud emas.</p>`
-      }
-
-      <div class="mt-4 flex flex-wrap gap-3">
-        <a class="rounded-xl border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold text-white hover:border-white/40"
-           target="_blank" rel="noreferrer"
-           href="${orderLink(order.id)}">Buyurtmani ko‘rish</a>
-
-        <button class="confirm-btn neon-btn rounded-xl px-4 py-2 text-xs font-semibold" data-id="${order.id}">✅ Qabul</button>
-        <button class="reject-btn rounded-xl border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold text-white hover:border-white/40" data-id="${order.id}">❌ Rad</button>
-      </div>
-    </article>
-  `;
-};
-
-async function fetchPendingOrders() {
-  // INDEX muammosini olmaslik uchun faqat orderBy qilyapmiz, filterni JS’da qilamiz
-  const snap = await getDocs(query(collection(db, "orders"), orderBy("createdAt", "desc"), limit(50)));
-  const all = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-  return all.filter((o) => o.status === "pending" || o.status === "pending_verification");
+function toast(msg, type = "info") {
+  if (!elToast) {
+    console.log("[toast]", msg);
+    return;
+  }
+  elToast.textContent = msg;
+  elToast.classList.remove("hidden");
+  elToast.dataset.type = type;
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => elToast.classList.add("hidden"), 2600);
 }
 
-async function renderOrders() {
-  if (!isAdmin) return;
-  try {
-    const orders = await fetchPendingOrders();
-    if (!orders.length) {
-      pendingEmpty?.classList.remove("hidden");
-      pendingOrdersList.innerHTML = "";
-      return;
-    }
-    pendingEmpty?.classList.add("hidden");
-    pendingOrdersList.innerHTML = orders.map((o) => renderOrderCard(o)).join("");
-  } catch (e) {
-    console.error(e);
-    pendingEmpty?.classList.remove("hidden");
-    pendingOrdersList.innerHTML = "";
-    showToast("Buyurtmalarni yuklashda xatolik", "error");
-  }
+function toDateText(v) {
+  const d = v?.toDate ? v.toDate() : v ? new Date(v) : null;
+  if (!d || isNaN(d.getTime())) return "—";
+  return d.toLocaleString("uz-UZ");
 }
 
-// ===== UPDATE ORDER STATUS =====
-async function updateOrderStatus(orderId, status, rejectReason = null) {
-  const ref = doc(db, "orders", orderId);
-  await setDoc(ref, { status, rejectReason: rejectReason || null, reviewedAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true });
-  await renderOrders();
+function getReceiptUrl(order) {
+  return (
+    order?.receiptUrl ||
+    order?.receipt?.url ||
+    order?.receiptBase64 ||
+    order?.receipt?.base64 ||
+    ""
+  );
 }
 
-// ===== RECEIPT MODAL =====
-adminPanel?.addEventListener("click", async (event) => {
-  const confirmBtn = event.target.closest(".confirm-btn");
-  const rejectBtn = event.target.closest(".reject-btn");
-  const receiptOpen = event.target.closest(".receipt-open");
+function statusText(s) {
+  if (s === "pending" || s === "pending_verification") return "Ko‘rib chiqilyapti";
+  if (s === "approved" || s === "accepted") return "Qabul qilindi";
+  if (s === "rejected") return "Rad etildi";
+  return s || "—";
+}
 
-  if (receiptOpen) {
-    event.preventDefault();
-    const href = receiptOpen.getAttribute("data-href") || receiptOpen.getAttribute("href");
-    if (!href) return;
-    if (receiptImage && receiptModal) {
-      receiptImage.src = href;
-      receiptModal.classList.remove("hidden");
-      receiptModal.classList.add("flex");
-    } else {
-      window.open(href, "_blank", "noopener");
-    }
-    return;
-  }
-
-  if (confirmBtn) {
-    const id = confirmBtn.dataset.id;
-    await updateOrderStatus(id, "approved");
-
-    const link = orderLink(id);
-    try {
-      await sendTelegram(`✅ <b>Buyurtma qabul qilindi</b>\n🆔 ID: <code>${id}</code>\n🔗 <a href="${link}">Buyurtmani ko‘rish</a>`);
-    } catch (e) {
-      console.error(e);
-    }
-
-    showToast("Buyurtma qabul qilindi");
-    return;
-  }
-
-  if (rejectBtn) {
-    const id = rejectBtn.dataset.id;
-    const reason = prompt("Rad etish sababi (ixtiyoriy):") || null;
-
-    await updateOrderStatus(id, "rejected", reason);
-
-    const link = orderLink(id);
-    try {
-      await sendTelegram(`❌ <b>Buyurtma rad etildi</b>\n🆔 ID: <code>${id}</code>\n📝 Sabab: ${reason || "-"}\n🔗 <a href="${link}">Buyurtmani ko‘rish</a>`);
-    } catch (e) {
-      console.error(e);
-    }
-
-    showToast("Buyurtma rad etildi", "error");
-    return;
-  }
-});
-
-receiptClose?.addEventListener("click", () => {
-  receiptModal?.classList.add("hidden");
-  receiptModal?.classList.remove("flex");
-});
-
-receiptModal?.addEventListener("click", (event) => {
-  if (event.target === receiptModal) {
-    receiptModal.classList.add("hidden");
-    receiptModal.classList.remove("flex");
-  }
-});
-
-// ===== PRODUCTS CRUD (sening eski logikangni saqlab qoldim) =====
-const renderVariants = () => {
-  if (!variantList) return;
-  if (!productVariants.length) {
-    variantList.innerHTML =
-      '<p class="text-xs text-white/50">Variantlar qo‘shilmagan. Narx uchun asosiy price ishlatiladi.</p>';
-    return;
-  }
-  variantList.innerHTML = productVariants
-    .map(
-      (v, i) => `
-      <div class="flex items-center justify-between rounded-xl border border-slate-700 bg-slate-900/40 px-3 py-2 text-sm">
-        <div>
-          <p class="font-medium text-white">${v.name}</p>
-          <p class="text-xs text-white/60">${Number(v.price).toLocaleString('uz-UZ')} so'm</p>
-        </div>
-        <button type="button" class="remove-variant rounded-lg border border-rose-400/50 px-2 py-1 text-xs text-rose-200" data-index="${i}">❌</button>
-      </div>`
-    )
-    .join("");
+/* ==========================
+   STATE
+========================== */
+let state = {
+  products: [],
+  comments: [],
+  orders: [],
 };
 
-const updateImagePreview = () => {
-  if (!imagePreview) return;
-  imagePreview.innerHTML = selectedPreviews
-    .map(
-      (img, i) => `
-      <div class="relative overflow-hidden rounded-xl border border-slate-700 bg-slate-800/60">
-        <img src="${img}" class="h-32 w-full object-cover" />
-        <button type="button" class="remove-image absolute right-2 top-2 rounded-full bg-black/70 px-2 py-1 text-xs text-white" data-index="${i}">❌</button>
-      </div>`
-    )
-    .join("");
-};
-
-const resetProductForm = () => {
-  selectedFiles.forEach((_, i) => {
-    const p = selectedPreviews[i];
-    if (p && p.startsWith("blob:")) URL.revokeObjectURL(p);
+/* ==========================
+   FIRESTORE LOADERS
+========================== */
+async function loadProducts() {
+  const snap = await getDocs(query(collection(db, "products"), orderBy("createdAt", "desc"), limit(200)));
+  return snap.docs.map((d) => {
+    const data = d.data() || {};
+    const images = Array.isArray(data.images) ? data.images : data.img ? [data.img] : [];
+    return { id: d.id, ...data, images, img: data.img || images[0] || "" };
   });
-  selectedFiles = [];
-  selectedPreviews = [];
-  editingId = null;
-  productVariants = [];
-  updateImagePreview();
-  renderVariants();
-  imageLimitError?.classList.add("hidden");
-  if (saveButton) saveButton.textContent = "Saqlash";
-  productForm?.reset();
-};
-
-const renderAdminProducts = () => {
-  if (!adminProducts.length) {
-    adminProductsEmpty?.classList.remove("hidden");
-    adminProductsList.innerHTML = "";
-    return;
-  }
-  adminProductsEmpty?.classList.add("hidden");
-
-  adminProductsList.innerHTML = adminProducts
-    .map((p) => `
-      <article class="rounded-2xl border border-slate-700 bg-slate-800/60 p-4 text-sm text-slate-200">
-        <img src="${(p.images && p.images[0]) || p.img || ""}" class="h-32 w-full rounded-xl object-cover" />
-        <div class="mt-3 space-y-1">
-          <p class="font-semibold text-white">${p.title || "—"}</p>
-          <p class="text-xs text-slate-400">${p.category || "—"}</p>
-        </div>
-        <div class="mt-3 flex flex-wrap items-center justify-between gap-2">
-          <span class="text-sm font-semibold text-white">${Number(p.price || 0).toLocaleString("uz-UZ")} so'm</span>
-          ${(p.discount ?? p.discountPercent) ? `<span class="text-xs font-semibold text-emerald-200">-${p.discount ?? p.discountPercent}%</span>` : ""}
-        </div>
-        <div class="mt-3 flex justify-end gap-2">
-          <button type="button" class="edit-product-btn rounded-lg border border-slate-600 px-3 py-1 text-xs text-slate-200 hover:border-slate-400" data-id="${p.id}">✏️ Edit</button>
-          <button type="button" class="delete-product-btn rounded-lg border border-rose-500/60 px-3 py-1 text-xs text-rose-200 hover:border-rose-400" data-id="${p.id}">🗑 Delete</button>
-        </div>
-      </article>
-    `)
-    .join("");
-};
-
-async function loadAdminProducts() {
-  const snap = await getDocs(query(collection(db, "products"), orderBy("createdAt", "desc")));
-  adminProducts = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-  renderAdminProducts();
 }
 
-productImages?.addEventListener("change", (e) => {
-  const files = Array.from(e.target.files || []);
-  if (!files.length) return;
+async function loadComments() {
+  // Agar comments kolleksiyang boshqa nomda bo'lsa, shu yerini o'zgartirasan.
+  const snap = await getDocs(query(collection(db, "comments"), orderBy("createdAt", "desc"), limit(200)));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
 
-  if (files.length + selectedFiles.length > 10) {
-    showToast("Maksimum 10 ta rasm yuklash mumkin", "error");
-    imageLimitError?.classList.remove("hidden");
-    productImages.value = "";
+async function loadOrders() {
+  // INDEX muammosini kamaytirish uchun:
+  // createdAt bo'yicha oxirgi buyurtmalarni olib, statusni JS'da ajratamiz.
+  const snap = await getDocs(query(collection(db, "orders"), orderBy("createdAt", "desc"), limit(200)));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+/* ==========================
+   RENDER: PRODUCTS
+========================== */
+function renderProducts() {
+  if (!elProducts) return;
+
+  if (!state.products.length) {
+    elProducts.innerHTML = `
+      <div class="rounded-2xl glass p-4 text-sm text-white/70">
+        Mahsulot yo‘q.
+      </div>`;
     return;
   }
 
-  imageLimitError?.classList.add("hidden");
-
-  files.forEach((f) => {
-    selectedFiles.push(f);
-    selectedPreviews.push(URL.createObjectURL(f));
-  });
-
-  updateImagePreview();
-  productImages.value = "";
-});
-
-imagePreview?.addEventListener("click", (e) => {
-  const btn = e.target.closest(".remove-image");
-  if (!btn) return;
-  const idx = Number(btn.dataset.index);
-  const [removed] = selectedPreviews.splice(idx, 1);
-  if (removed && removed.startsWith("blob:")) URL.revokeObjectURL(removed);
-  selectedFiles.splice(idx, 1);
-  updateImagePreview();
-});
-
-addVariantBtn?.addEventListener("click", () => {
-  const name = productVariantName?.value?.trim();
-  const price = Number(productVariantPrice?.value);
-  if (!name) return showToast("Variant nomini kiriting", "error");
-  if (!Number.isFinite(price) || price <= 0) return showToast("Variant narxi musbat bo‘lishi kerak", "error");
-  productVariants.push({ name, price });
-  renderVariants();
-  if (productVariantName) productVariantName.value = "";
-  if (productVariantPrice) productVariantPrice.value = "";
-});
-
-variantList?.addEventListener("click", (e) => {
-  const btn = e.target.closest(".remove-variant");
-  if (!btn) return;
-  const idx = Number(btn.dataset.index);
-  productVariants = productVariants.filter((_, i) => i !== idx);
-  renderVariants();
-});
-
-productForm?.addEventListener("submit", async (e) => {
-  e.preventDefault();
-
-  if (!selectedFiles.length && !selectedPreviews.length) {
-    showToast("Kamida 1 ta rasm yuklang", "error");
-    return;
-  }
-
-  const title = productTitle.value.trim();
-  if (!title) return showToast("Mahsulot nomini kiriting", "error");
-
-  const payload = {
-    title,
-    category: productCategory.value,
-    price: Number(productPrice.value) || 0,
-    stock: Number.isFinite(Number(productStock?.value)) ? Number(productStock.value) : null,
-    oldPrice: Number(productOldPrice.value) || null,
-    discount: Number(productDiscount.value) || null,
-    rating: Number(productRating?.value) || null,
-    desc: (productDescription?.value || "").trim() || null,
-    updatedAt: serverTimestamp(),
-    active: true,
-    variants: productVariants,
-  };
-
-  try {
-    const imageUrls = selectedFiles.length
-      ? await Promise.all(selectedFiles.map((f) => imgbbUpload(f, IMGBB_API_KEY)))
-      : [...selectedPreviews];
-
-    if (editingId) {
-      await updateDoc(doc(db, "products", editingId), { ...payload, images: imageUrls });
-      showToast("Mahsulot yangilandi");
-    } else {
-      await addDoc(collection(db, "products"), { ...payload, images: imageUrls, createdAt: serverTimestamp() });
-      showToast("Mahsulot muvaffaqiyatli qo‘shildi");
-    }
-
-    resetProductForm();
-    await loadAdminProducts();
-  } catch (err) {
-    console.error(err);
-    showToast("Mahsulotni saqlashda xatolik", "error");
-  }
-});
-
-adminProductsList?.addEventListener("click", async (e) => {
-  const del = e.target.closest(".delete-product-btn");
-  const edit = e.target.closest(".edit-product-btn");
-
-  if (del) {
-    const id = del.dataset.id;
-    if (!id) return;
-    if (!confirm("Mahsulotni o‘chirishni tasdiqlaysizmi?")) return;
-    try {
-      await deleteDoc(doc(db, "products", id));
-      showToast("Mahsulot o‘chirildi");
-      await loadAdminProducts();
-    } catch (err) {
-      console.error(err);
-      showToast("O‘chirishda xatolik", "error");
-    }
-    return;
-  }
-
-  if (edit) {
-    const id = edit.dataset.id;
-    const p = adminProducts.find((x) => String(x.id) === String(id));
-    if (!p) return;
-
-    editingId = p.id;
-    productTitle.value = p.title || "";
-    productCategory.value = p.category || "Telefon";
-    productPrice.value = p.price ?? "";
-    productStock.value = p.stock ?? "";
-    productOldPrice.value = p.oldPrice ?? "";
-    productDiscount.value = p.discount ?? p.discountPercent ?? "";
-    if (productRating) productRating.value = p.rating ?? "";
-    if (productDescription) productDescription.value = p.desc || p.description || "";
-
-    selectedFiles = [];
-    selectedPreviews = (p.images && p.images.length) ? [...p.images] : (p.img ? [p.img] : []);
-    productVariants = Array.isArray(p.variants) ? p.variants : [];
-    renderVariants();
-    updateImagePreview();
-
-    if (saveButton) saveButton.textContent = "Yangilash";
-  }
-});
-
-// ===== COMMENTS (o'zgartirmadim) =====
-const renderAdminComments = () => {
-  const comments = getProductComments();
-  const entries = Object.values(comments).flat();
-  if (!entries.length) {
-    commentsEmpty?.classList.remove("hidden");
-    adminComments.innerHTML = "";
-    return;
-  }
-  commentsEmpty?.classList.add("hidden");
-  adminComments.innerHTML = entries
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-    .map((c) => {
-      const p = productsMap.get(String(c.productId));
+  elProducts.innerHTML = state.products
+    .map((p) => {
+      const img = p.img || p.images?.[0] || "";
       return `
-        <article class="rounded-2xl border border-slate-700 bg-[#0f2f52] p-4 text-sm text-slate-200">
-          <div class="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <p class="text-xs text-slate-400">Mahsulot</p>
-              <p class="font-semibold text-white">${p?.title || "Noma'lum"} (${c.productId})</p>
+        <div class="rounded-2xl glass p-4 border border-white/10 shadow-sm">
+          <div class="flex gap-4">
+            <div class="h-20 w-20 rounded-xl overflow-hidden border border-white/10 bg-white/5 flex items-center justify-center">
+              ${img ? `<img src="${esc(img)}" class="h-full w-full object-cover" alt="">` : `<span class="text-white/40 text-xs">No image</span>`}
             </div>
-            <div class="text-xs text-slate-400">${formatDate(c.createdAt)}</div>
+
+            <div class="flex-1">
+              <div class="text-white font-semibold">${esc(p.title || p.name || "Nomsiz")}</div>
+              <div class="text-white/60 text-xs mt-1">${esc(p.category || "")}</div>
+              <div class="mt-2 flex items-center justify-between">
+                <div class="text-white font-bold">${money(p.price)} so'm</div>
+                <div class="text-white/60 text-xs">${p.discount ? `-${esc(p.discount)}%` : ""}</div>
+              </div>
+
+              <div class="mt-3 flex gap-2">
+                <button class="btn-edit neon-btn rounded-lg px-3 py-2 text-xs font-semibold" data-edit-product="${esc(p.id)}">✏️ Edit</button>
+                <button class="btn-del rounded-lg px-3 py-2 text-xs font-semibold border border-rose-400/40 text-rose-200" data-del-product="${esc(p.id)}">🗑 Delete</button>
+              </div>
+            </div>
           </div>
-          <p class="mt-2">Kimdan: ${c.userName} (${c.userPhone || "Telefon: N/A"})</p>
-          <p class="mt-2 text-slate-300">${c.text}</p>
-          ${c.rating ? `<p class="mt-2 text-xs text-amber-400">Reyting: ${c.rating}/5</p>` : ""}
-          <form class="reply-form mt-3 flex flex-col gap-2" data-id="${c.id}" data-product-id="${c.productId}">
-            <textarea rows="2" required class="w-full rounded-xl border border-slate-700 bg-slate-800/60 px-3 py-2 text-xs text-white" placeholder="Javob yozing..."></textarea>
-            <button class="self-start rounded-xl bg-blue-500 px-3 py-1 text-xs font-semibold text-white hover:bg-blue-600">Javob berish</button>
-          </form>
-        </article>
+        </div>
       `;
     })
     .join("");
-};
-
-adminComments?.addEventListener("submit", (e) => {
-  const form = e.target.closest(".reply-form");
-  if (!form) return;
-  e.preventDefault();
-  const textarea = form.querySelector("textarea");
-  const text = textarea.value.trim();
-  if (!text) return;
-
-  const productId = form.dataset.productId;
-  const commentId = form.dataset.id;
-
-  const all = getProductComments();
-  const list = all[productId] || [];
-  const updated = list.map((c) => {
-    if (c.id !== commentId) return c;
-    return {
-      ...c,
-      replies: [
-        { id: `r-${Date.now()}`, adminId: currentUser?.id || "admin", adminName: currentUser?.name || "Admin", text, createdAt: new Date().toISOString() },
-        ...(c.replies || []),
-      ],
-    };
-  });
-
-  all[productId] = updated;
-  saveProductComments(all);
-  renderAdminComments();
-});
-
-// ===== INIT =====
-async function init() {
-  // productsMap comment uchun
-  try {
-    const { products } = await fetchProducts();
-    const combined = [...products];
-    productsMap = new Map(combined.map((p) => [String(p.id), p]));
-  } catch {
-    productsMap = new Map();
-  }
-
-  await loadAdminProducts();
-  await renderOrders();
-  renderAdminComments();
-  renderVariants();
 }
 
-init();
+/* ==========================
+   RENDER: COMMENTS
+========================== */
+function renderComments() {
+  if (!elComments) return;
+
+  if (!state.comments.length) {
+    elComments.innerHTML = `
+      <div class="rounded-2xl glass p-4 text-sm text-white/70">
+        Hozircha izoh yo‘q.
+      </div>`;
+    return;
+  }
+
+  elComments.innerHTML = state.comments
+    .map((c) => {
+      return `
+        <div class="rounded-2xl glass p-4 border border-white/10">
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <div class="text-white font-semibold">${esc(c.userName || c.name || "Anonim")}</div>
+              <div class="text-white/60 text-xs">${toDateText(c.createdAt || c.date)}</div>
+            </div>
+            <button class="rounded-lg px-3 py-2 text-xs font-semibold border border-rose-400/40 text-rose-200" data-del-comment="${esc(c.id)}">Delete</button>
+          </div>
+          <div class="mt-2 text-white/85 text-sm">${esc(c.text || c.comment || "")}</div>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+/* ==========================
+   RENDER: PENDING ORDERS (Tekshiruvdagi)
+========================== */
+function orderCardHTML(order) {
+  const buyerName = order.userName || order.user?.name || "—";
+  const buyerPhone = order.userPhone || order.user?.phone || "—";
+
+  const addr = order.address && typeof order.address === "object" ? order.address : null;
+  const region = addr?.region || order.region || "—";
+  const district = addr?.district || order.district || "—";
+  const home = addr?.homeAddress || addr?.address || order.addressText || "—";
+
+  const receiptUrl = getReceiptUrl(order);
+
+  // BUYURTMANI KO'RISH tugmasi yo'q (siz so'ragansiz)
+  return `
+    <div class="rounded-2xl glass p-4 border border-white/10 shadow-sm">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <div class="text-xs text-white/50">Buyurtma ID</div>
+          <div class="font-semibold text-white">${esc(order.id)}</div>
+        </div>
+        <div class="text-right">
+          <div class="text-xs text-white/50">Holat</div>
+          <div class="inline-flex rounded-full px-3 py-1 text-xs font-semibold bg-amber-400/20 text-amber-200">
+            ${esc(statusText(order.status))}
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3 pt-3 text-sm text-white/85">
+        <div>
+          <div class="text-xs text-white/50">Kim buyurtma qildi</div>
+          <div class="font-medium">${esc(buyerName)} (${esc(buyerPhone)})</div>
+        </div>
+        <div>
+          <div class="text-xs text-white/50">Sana</div>
+          <div class="font-medium">${esc(toDateText(order.createdAt || order.date))}</div>
+        </div>
+
+        <div>
+          <div class="text-xs text-white/50">Manzil</div>
+          <div class="font-medium">${esc(region)}, ${esc(district)}, ${esc(home)}</div>
+        </div>
+        <div>
+          <div class="text-xs text-white/50">Jami</div>
+          <div class="font-semibold text-white">${money(order.total || 0)} so'm</div>
+        </div>
+
+        <div>
+          <div class="text-xs text-white/50">To'lov</div>
+          <div class="font-medium">${esc(order.payment || "—")}</div>
+        </div>
+        <div>
+          <div class="text-xs text-white/50">Mahsulotlar soni</div>
+          <div class="font-medium">${Array.isArray(order.items) ? order.items.length : (order.itemsCount || 0)}</div>
+        </div>
+      </div>
+
+      <div class="pt-3">
+        <div class="text-xs text-white/50 mb-2">Chek</div>
+        ${
+          receiptUrl
+            ? `
+              <button class="inline-flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2"
+                      data-open-receipt="${esc(receiptUrl)}">
+                <img src="${esc(receiptUrl)}" class="h-12 w-12 rounded-lg object-cover" alt="Chek">
+                <span class="text-sm font-semibold text-white">Chekni ko‘rish</span>
+              </button>
+            `
+            : `<div class="text-white/60 text-sm">Chek yo‘q</div>`
+        }
+      </div>
+
+      ${
+        order.status === "rejected" && order.rejectReason
+          ? `<div class="mt-3 text-xs text-rose-200">Sabab: ${esc(order.rejectReason)}</div>`
+          : ""
+      }
+
+      <div class="pt-4 flex items-center gap-3">
+        <button class="neon-btn rounded-xl px-5 py-2 text-sm font-semibold" data-accept="${esc(order.id)}">✅ Qabul</button>
+        <button class="rounded-xl px-5 py-2 text-sm font-semibold border border-rose-400/40 text-rose-200" data-reject="${esc(order.id)}">❌ Rad</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderPendingOrders() {
+  if (!elPending) return;
+
+  const pending = state.orders.filter((o) =>
+    ["pending", "pending_verification"].includes(String(o.status || "").toLowerCase())
+  );
+
+  if (!pending.length) {
+    elPending.innerHTML = `
+      <div class="rounded-2xl glass p-4 text-sm text-white/70">
+        Tekshiruvda buyurtma yo‘q.
+      </div>`;
+    return;
+  }
+
+  elPending.innerHTML = pending.map(orderCardHTML).join("");
+}
+
+/* ==========================
+   ACTIONS: ORDER APPROVE / REJECT
+========================== */
+async function approveOrder(orderId) {
+  toast("Qabul qilinyapti...");
+  const ref = doc(db, "orders", orderId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) throw new Error("Order topilmadi");
+
+  await updateDoc(ref, {
+    status: "approved",
+    rejectReason: null,
+    reviewedAt: new Date(),
+    updatedAt: new Date(),
+  });
+
+  const link = ORDER_LINK(orderId);
+  const msg =
+    `✅ Buyurtma qabul qilindi\n` +
+    `ID: ${orderId}\n` +
+    `🔗 Buyurtmani ko‘rish: ${link}`;
+
+  await sendTelegram(msg);
+
+  toast("✅ Qabul qilindi (telegramga yuborildi)");
+}
+
+async function rejectOrder(orderId) {
+  const reason = prompt("Rad etish sababi?");
+  if (reason === null) return;
+
+  toast("Rad etilyapti...");
+  const ref = doc(db, "orders", orderId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) throw new Error("Order topilmadi");
+
+  const rejectReason = String(reason || "").trim() || "Sabab ko‘rsatilmagan";
+
+  await updateDoc(ref, {
+    status: "rejected",
+    rejectReason,
+    reviewedAt: new Date(),
+    updatedAt: new Date(),
+  });
+
+  const link = ORDER_LINK(orderId);
+  const msg =
+    `❌ Buyurtma rad etildi\n` +
+    `ID: ${orderId}\n` +
+    `Sabab: ${rejectReason}\n` +
+    `🔗 Buyurtmani ko‘rish: ${link}`;
+
+  await sendTelegram(msg);
+
+  toast("✅ Rad etildi (telegramga yuborildi)");
+}
+
+/* ==========================
+   ACTIONS: PRODUCTS (edit/delete)
+========================== */
+async function deleteProduct(id) {
+  if (!confirm("Mahsulot o‘chirilsinmi?")) return;
+  toast("O‘chirilmoqda...");
+  await deleteDoc(doc(db, "products", id));
+  toast("✅ O‘chirildi");
+}
+
+async function editProduct(id) {
+  const p = state.products.find((x) => x.id === id);
+  if (!p) return;
+
+  const title = prompt("Title:", p.title || p.name || "");
+  if (title === null) return;
+
+  const priceStr = prompt("Price (so'm):", String(p.price || 0));
+  if (priceStr === null) return;
+
+  const price = Number(priceStr || 0);
+
+  toast("Saqlanyapti...");
+  await updateDoc(doc(db, "products", id), {
+    title,
+    price,
+    updatedAt: new Date(),
+  });
+  toast("✅ Saqlandi");
+}
+
+/* ==========================
+   ACTIONS: COMMENTS
+========================== */
+async function deleteComment(id) {
+  if (!confirm("Izoh o‘chirilsinmi?")) return;
+  toast("O‘chirilmoqda...");
+  await deleteDoc(doc(db, "comments", id));
+  toast("✅ O‘chirildi");
+}
+
+/* ==========================
+   RECEIPT MODAL
+========================== */
+function openReceipt(url) {
+  if (!receiptModal || !receiptImg) {
+    // fallback: new tab
+    window.open(url, "_blank");
+    return;
+  }
+  receiptImg.src = url;
+  receiptModal.classList.remove("hidden");
+}
+function closeReceipt() {
+  if (!receiptModal || !receiptImg) return;
+  receiptModal.classList.add("hidden");
+  receiptImg.src = "";
+}
+
+receiptClose?.addEventListener("click", closeReceipt);
+receiptModal?.addEventListener("click", (e) => {
+  if (e.target === receiptModal) closeReceipt();
+});
+
+/* ==========================
+   EVENTS
+========================== */
+document.addEventListener("click", async (e) => {
+  const btnAccept = e.target.closest("[data-accept]");
+  const btnReject = e.target.closest("[data-reject]");
+  const btnOpenReceipt = e.target.closest("[data-open-receipt]");
+
+  const btnDelProduct = e.target.closest("[data-del-product]");
+  const btnEditProduct = e.target.closest("[data-edit-product]");
+
+  const btnDelComment = e.target.closest("[data-del-comment]");
+
+  try {
+    if (btnOpenReceipt) {
+      openReceipt(btnOpenReceipt.dataset.openReceipt);
+      return;
+    }
+
+    if (btnAccept) {
+      await approveOrder(btnAccept.dataset.accept);
+      await refreshAll();
+      return;
+    }
+
+    if (btnReject) {
+      await rejectOrder(btnReject.dataset.reject);
+      await refreshAll();
+      return;
+    }
+
+    if (btnDelProduct) {
+      await deleteProduct(btnDelProduct.dataset.delProduct);
+      await refreshAll();
+      return;
+    }
+
+    if (btnEditProduct) {
+      await editProduct(btnEditProduct.dataset.editProduct);
+      await refreshAll();
+      return;
+    }
+
+    if (btnDelComment) {
+      await deleteComment(btnDelComment.dataset.delComment);
+      await refreshAll();
+      return;
+    }
+  } catch (err) {
+    console.error(err);
+    toast("❌ Xatolik: " + (err?.message || "error"), "error");
+  }
+});
+
+/* ==========================
+   MAIN: LOAD + RENDER
+========================== */
+async function refreshAll() {
+  // Skeleton / Loading (xohlasang chiroyli skeleton qo‘shamiz)
+  try {
+    const [products, comments, orders] = await Promise.all([
+      loadProducts().catch((e) => {
+        console.error("products load:", e);
+        return [];
+      }),
+      loadComments().catch((e) => {
+        console.error("comments load:", e);
+        return [];
+      }),
+      loadOrders().catch((e) => {
+        console.error("orders load:", e);
+        return [];
+      }),
+    ]);
+
+    state.products = products;
+    state.comments = comments;
+    state.orders = orders;
+
+    renderProducts();
+    renderComments();
+    renderPendingOrders();
+  } catch (e) {
+    console.error(e);
+    toast("❌ Yuklashda xatolik: " + (e?.message || "error"), "error");
+  }
+}
+
+// Auto refresh
+refreshAll();
+
+// xohlasang har 10 sekundda yangilab turadi:
+setInterval(() => {
+  refreshAll();
+}, 10000);
