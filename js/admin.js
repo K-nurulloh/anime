@@ -1,1087 +1,832 @@
-// js/admin.js (FULL ADMIN: Orders + Products + Comments + Payments)
-// Works with Vercel / Firestore / /api/telegram
+import {
+  ensureSeedData,
+  getProductComments,
+  saveProductComments,
+} from "./storage.js";
+
+import { showToast, statusLabel } from "./ui.js";
+import { IMGBB_API_KEY } from "./config.js";
+import { imgbbUpload } from "./imgbb.js";
+
 import {
   db,
-  nowTs,
   collection,
-  doc,
-  getDoc,
-  getDocs,
-  setDoc,
   addDoc,
-  updateDoc,
-  deleteDoc,
   query,
   where,
-  orderBy,
-  limit,
+  getDocs,
+  getDoc,
+  serverTimestamp,
+  doc,
+  setDoc,
+  updateDoc,
+  deleteDoc,
 } from "./firebase.js";
 
-/* -------------------- helpers -------------------- */
-const $ = (sel, root = document) => root.querySelector(sel);
+// ====== INIT ======
+ensureSeedData();
 
-const esc = (s) =>
-  String(s ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+// ====== DOM ======
+const accessDenied = document.querySelector("#access-denied");
+const adminPanel = document.querySelector("#admin-panel");
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const pendingOrdersList = document.querySelector("#pending-orders");
+const pendingEmpty = document.querySelector("#pending-empty");
 
-const toDateObj = (ts) => {
+const receiptModal = document.querySelector("#receipt-modal");
+const receiptImage = document.querySelector("#receipt-image");
+const receiptClose = document.querySelector("#receipt-close");
+
+const productForm = document.querySelector("#admin-product-form");
+const productTitle = document.querySelector("#product-title");
+const productCategory = document.querySelector("#product-category");
+const productPrice = document.querySelector("#product-price");
+const productStock = document.querySelector("#product-stock");
+const productOldPrice = document.querySelector("#product-old-price");
+const productDiscount = document.querySelector("#product-discount");
+const productDescription = document.querySelector("#pDesc");
+const productRating = document.querySelector("#product-rating");
+const productVariantName = document.querySelector("#variant-name");
+const productVariantPrice = document.querySelector("#variant-price");
+const addVariantBtn = document.querySelector("#add-variant-btn");
+const variantList = document.querySelector("#variant-list");
+const productImages = document.querySelector("#pImages");
+const imageLimitError = document.querySelector("#image-limit-error");
+const imagePreview = document.querySelector("#image-preview");
+const adminProductsEmpty = document.querySelector("#admin-products-empty");
+const adminProductsList = document.querySelector("#adminProducts");
+const saveButton = document.querySelector("#btnSave");
+
+const commentsEmpty = document.querySelector("#comments-empty");
+const adminComments = document.querySelector("#admin-comments");
+
+// ====== PAYMENTS (OPTIONAL DOM) ======
+// Agar admin.html'da payments inputlar bo‘lsa shular ishlaydi.
+// Bo‘lmasa, hech narsa qilmaydi.
+const payOwner = document.querySelector("#pay-owner");
+const payCard = document.querySelector("#pay-card");
+const payBank = document.querySelector("#pay-bank");
+const paySaveBtn = document.querySelector("#pay-save");
+const payStatus = document.querySelector("#pay-status");
+
+// ====== ADMIN CHECK ======
+const readCurrentUser = () => {
+  const raw = localStorage.getItem("currentUser");
+  if (!raw) return null;
   try {
-    if (!ts) return null;
-    if (ts?.toDate) return ts.toDate();
-    const d = new Date(ts);
-    if (Number.isNaN(d.getTime())) return null;
-    return d;
+    return JSON.parse(raw);
   } catch {
     return null;
   }
 };
 
-const toDateText = (ts) => {
-  const d = toDateObj(ts);
-  if (!d) return "—";
-  return d.toLocaleString("uz-UZ");
-};
+const currentUser = readCurrentUser();
+const isAdmin = currentUser?.isAdmin === true;
 
-const formatPrice = (n) => {
-  const num = Number(n || 0);
-  return num.toLocaleString("uz-UZ");
-};
-
-function toast(msg, type = "info") {
-  let box = $("#__toast");
-  if (!box) {
-    box = document.createElement("div");
-    box.id = "__toast";
-    box.className =
-      "fixed bottom-4 right-4 z-[9999] flex max-w-sm flex-col gap-2";
-    document.body.appendChild(box);
-  }
-  const el = document.createElement("div");
-  const cls =
-    type === "error"
-      ? "border-rose-300/30 bg-rose-500/15 text-rose-100"
-      : type === "success"
-      ? "border-emerald-300/30 bg-emerald-500/15 text-emerald-100"
-      : "border-white/15 bg-white/10 text-white/90";
-  el.className =
-    "rounded-2xl border px-4 py-3 text-sm shadow-lg backdrop-blur " + cls;
-  el.textContent = msg;
-  box.appendChild(el);
-  setTimeout(() => el.remove(), 2600);
+if (!isAdmin) {
+  accessDenied?.classList.remove("hidden");
+  adminPanel?.classList.add("hidden");
+} else {
+  accessDenied?.classList.add("hidden");
+  adminPanel?.classList.remove("hidden");
 }
 
-const statusMeta = (status) => {
-  const s = String(status || "pending");
-  if (s === "approved" || s === "accepted")
-    return {
-      text: "Qabul qilindi",
-      cls: "bg-emerald-500/15 text-emerald-200 border-emerald-400/30",
-    };
-  if (s === "rejected")
-    return {
-      text: "Rad etildi",
-      cls: "bg-rose-500/15 text-rose-200 border-rose-400/30",
-    };
-  if (s === "pending_verification" || s === "pending")
-    return {
-      text: "Ko‘rib chiqilyapti",
-      cls: "bg-amber-500/15 text-amber-200 border-amber-400/30",
-    };
-  return { text: s, cls: "bg-white/10 text-white/80 border-white/15" };
+// ====== HELPERS ======
+const formatDate = (value) => {
+  const v = value?.toDate ? value.toDate() : value;
+  if (!v) return "—";
+  return new Date(v).toLocaleString("uz-UZ");
 };
 
-const getOrderDocId = (order) => String(order?.docId || order?.id || "");
+const safe = (v, fallback = "—") => {
+  if (v === null || v === undefined) return fallback;
+  const s = String(v).trim();
+  return s ? s : fallback;
+};
 
-/* -------------------- Telegram (via Vercel API) -------------------- */
+const sortByCreatedAtDesc = (a, b) => {
+  const ta = a?.createdAt?.toDate ? a.createdAt.toDate().getTime() : new Date(a?.createdAt || 0).getTime();
+  const tb = b?.createdAt?.toDate ? b.createdAt.toDate().getTime() : new Date(b?.createdAt || 0).getTime();
+  return tb - ta;
+};
+
+const getItemsCount = (items = []) =>
+  Array.isArray(items) ? items.reduce((sum, item) => sum + Number(item.qty || 0), 0) : 0;
+
+const buildReceiptUrl = (order) => {
+  return order?.receiptUrl || order?.receiptBase64 || order?.receipt?.url || "";
+};
+
+const buildBuyerName = (order) => order?.userName || order?.user?.name || "Noma'lum";
+const buildBuyerPhone = (order) => order?.userPhone || order?.user?.phone || "Telefon: N/A";
+
+const buildAddress = (order) => {
+  const addr = order?.address || {};
+  const region = addr.region || order?.region || "";
+  const district = addr.district || order?.district || "";
+  const home = addr.homeAddress || order?.address || "";
+  const text = [region, district, home].filter(Boolean).join(", ");
+  return text || "—";
+};
+
+const buildDelivery = (order) => {
+  const d = order?.delivery || {};
+  return d?.label || order?.deliveryType || "—";
+};
+
+const buildTotal = (order) => {
+  const n = Number(order?.total ?? order?.subtotal ?? 0);
+  return Number.isFinite(n) ? n : 0;
+};
+
+// ✅ BUYURTMA LINK (Telegramga shu ketadi)
+// Sen aytgandek searc.html ochilsin
+const buildOrderLink = (orderId) => {
+  const origin = window.location.origin;
+  return `${origin}/searc.html?id=${encodeURIComponent(orderId)}`;
+};
+
+// ====== TELEGRAM (SERVER API via /api/telegram) ======
 async function sendTelegram(text) {
+  // Vercel serverless: /api/telegram -> env token/chatId ishlaydi
   const res = await fetch("/api/telegram", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ text }),
   });
+
   const data = await res.json().catch(() => ({}));
   if (!res.ok || data?.ok === false) {
-    console.error("Telegram API error:", data);
-    throw new Error(data?.error || "Telegram yuborilmadi");
+    console.error("Telegram error:", data);
+    throw new Error(data?.error || "Telegramga yuborilmadi");
   }
   return data;
 }
 
-function buildPublicOrderLink(order) {
-  // Sen aytgandek: searc.html ochilsin
-  const id = String(order?.id || "");
-  return `${window.location.origin}/searc.html?id=${encodeURIComponent(id)}`;
-}
+// ====== STATE ======
+let selectedFiles = [];
+let selectedPreviews = [];
+let adminProducts = [];
+let editingId = null;
+let productVariants = [];
+let productsMap = new Map(); // comments uchun
 
-/* -------------------- UI skeleton -------------------- */
-function ensureAdminLayout() {
-  // admin.html ichida <main> bo'lsa o'sha yerga joylaymiz
-  const host = $("main") || document.body;
+// ====== ORDERS (FIRESTORE) ======
+const fetchPendingOrders = async () => {
+  if (!isAdmin) return [];
 
-  let root = $("#adminRoot");
-  if (!root) {
-    root = document.createElement("div");
-    root.id = "adminRoot";
-    root.className = "mx-auto max-w-6xl px-4 pb-24 pt-4 md:pt-6";
-    host.appendChild(root);
-  }
+  // ✅ index talab qilmasligi uchun orderBy ishlatmaymiz
+  const q = query(
+    collection(db, "orders"),
+    where("status", "in", ["pending", "pending_verification"])
+  );
 
-  // Top tabs
-  let tabs = $("#adminTabs");
-  if (!tabs) {
-    tabs = document.createElement("div");
-    tabs.id = "adminTabs";
-    tabs.className =
-      "mb-5 flex flex-wrap gap-2 rounded-2xl border border-white/10 bg-white/5 p-2 backdrop-blur";
-    tabs.innerHTML = `
-      <a class="adminTab rounded-xl px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10" href="#orders">Buyurtmalar</a>
-      <a class="adminTab rounded-xl px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10" href="#products">Mahsulotlar</a>
-      <a class="adminTab rounded-xl px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10" href="#comments">Kommentlar</a>
-      <a class="adminTab rounded-xl px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10" href="#payments">Payments</a>
-      <span class="ml-auto flex items-center gap-2 px-2 text-xs text-white/60">
-        <span id="adminNetDot" class="inline-block h-2 w-2 rounded-full bg-emerald-400"></span>
-        <span id="adminNetText">online</span>
-      </span>
-    `;
-    root.appendChild(tabs);
-  }
+  const snap = await getDocs(q);
+  const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
-  let view = $("#adminView");
-  if (!view) {
-    view = document.createElement("div");
-    view.id = "adminView";
-    view.className = "space-y-6";
-    root.appendChild(view);
-  }
+  // ✅ client-side sort
+  items.sort(sortByCreatedAtDesc);
+  return items;
+};
 
-  // Receipt modal
-  let rModal = $("#receipt-modal");
-  if (!rModal) {
-    rModal = document.createElement("div");
-    rModal.id = "receipt-modal";
-    rModal.className = "fixed inset-0 hidden items-center justify-center bg-black/60 p-4 z-[9998]";
-    rModal.innerHTML = `
-      <div class="w-full max-w-3xl rounded-2xl border border-white/10 bg-slate-950 p-4">
-        <div class="flex items-center justify-between">
-          <h3 class="text-white font-semibold">Chek</h3>
-          <button id="receipt-close" class="text-white/70 hover:text-white">✕</button>
-        </div>
-        <div class="mt-3">
-          <img id="receipt-img" src="" alt="receipt" class="w-full rounded-xl border border-white/10 bg-white/5 object-contain" />
-          <div class="mt-3 flex flex-wrap gap-2">
-            <a id="receipt-open" href="#" target="_blank" rel="noreferrer"
-              class="inline-flex rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs text-white/80 hover:bg-white/10">
-              Yangi oynada ochish
-            </a>
-            <button id="receipt-copy" class="inline-flex rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs text-white/80 hover:bg-white/10">
-              Linkni nusxalash
-            </button>
-          </div>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(rModal);
-  }
+const renderOrderCard = (order) => {
+  const buyerName = buildBuyerName(order);
+  const buyerPhone = buildBuyerPhone(order);
 
-  // Order detail modal
-  let oModal = $("#order-modal");
-  if (!oModal) {
-    oModal = document.createElement("div");
-    oModal.id = "order-modal";
-    oModal.className = "fixed inset-0 hidden items-center justify-center bg-black/60 p-4 z-[9998]";
-    oModal.innerHTML = `
-      <div class="w-full max-w-3xl rounded-2xl border border-white/10 bg-slate-950 p-4">
-        <div class="flex items-center justify-between">
-          <h3 class="text-white font-semibold">Buyurtma</h3>
-          <button id="order-close" class="text-white/70 hover:text-white">✕</button>
-        </div>
-        <div id="order-content" class="mt-3"></div>
-      </div>
-    `;
-    document.body.appendChild(oModal);
-  }
+  const receiptUrl = buildReceiptUrl(order);
 
-  // Product modal
-  let pModal = $("#product-modal");
-  if (!pModal) {
-    pModal = document.createElement("div");
-    pModal.id = "product-modal";
-    pModal.className = "fixed inset-0 hidden items-center justify-center bg-black/60 p-4 z-[9998]";
-    pModal.innerHTML = `
-      <div class="w-full max-w-3xl rounded-2xl border border-white/10 bg-slate-950 p-4">
-        <div class="flex items-center justify-between">
-          <h3 id="product-modal-title" class="text-white font-semibold">Mahsulot</h3>
-          <button id="product-close" class="text-white/70 hover:text-white">✕</button>
-        </div>
+  const rejectReason = order?.rejectReason
+    ? `<p class="mt-2 text-xs text-rose-200">Sabab: ${order.rejectReason}</p>`
+    : "";
 
-        <form id="product-form" class="mt-4 grid gap-3 md:grid-cols-2">
-          <input type="hidden" name="docId" />
-          <label class="block">
-            <div class="mb-1 text-xs text-white/60">Title</div>
-            <input name="title" class="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none" required />
-          </label>
-
-          <label class="block">
-            <div class="mb-1 text-xs text-white/60">Category</div>
-            <input name="category" class="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none" />
-          </label>
-
-          <label class="block">
-            <div class="mb-1 text-xs text-white/60">Price (so'm)</div>
-            <input name="price" type="number" class="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none" required />
-          </label>
-
-          <label class="block">
-            <div class="mb-1 text-xs text-white/60">Discount (%)</div>
-            <input name="discount" type="number" class="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none" />
-          </label>
-
-          <label class="block md:col-span-2">
-            <div class="mb-1 text-xs text-white/60">Image URL</div>
-            <input name="img" class="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none" placeholder="https://..." />
-          </label>
-
-          <label class="block md:col-span-2">
-            <div class="mb-1 text-xs text-white/60">Description</div>
-            <textarea name="desc" rows="3" class="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none"></textarea>
-          </label>
-
-          <div class="md:col-span-2 flex flex-wrap gap-2 pt-2">
-            <button id="product-save" type="submit" class="rounded-xl bg-emerald-500/90 px-4 py-2 text-xs font-semibold text-slate-950 hover:bg-emerald-400">
-              Saqlash
-            </button>
-            <button id="product-cancel" type="button" class="rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-xs font-semibold text-white/80 hover:bg-white/10">
-              Bekor
-            </button>
-          </div>
-        </form>
-      </div>
-    `;
-    document.body.appendChild(pModal);
-  }
-}
-
-ensureAdminLayout();
-
-const view = $("#adminView");
-const netDot = $("#adminNetDot");
-const netText = $("#adminNetText");
-
-/* -------------------- network indicator -------------------- */
-function setNet() {
-  const on = navigator.onLine;
-  if (netDot) netDot.className = "inline-block h-2 w-2 rounded-full " + (on ? "bg-emerald-400" : "bg-rose-400");
-  if (netText) netText.textContent = on ? "online" : "offline";
-}
-window.addEventListener("online", setNet);
-window.addEventListener("offline", setNet);
-setNet();
-
-/* -------------------- modals logic -------------------- */
-const receiptModal = $("#receipt-modal");
-const receiptImg = $("#receipt-img");
-const receiptOpen = $("#receipt-open");
-const receiptClose = $("#receipt-close");
-const receiptCopy = $("#receipt-copy");
-
-function openReceipt(url) {
-  if (!url) return;
-  receiptImg.src = url;
-  receiptOpen.href = url;
-  receiptModal.classList.remove("hidden");
-  receiptModal.classList.add("flex");
-}
-function closeReceipt() {
-  receiptModal.classList.add("hidden");
-  receiptModal.classList.remove("flex");
-  receiptImg.src = "";
-  receiptOpen.href = "#";
-}
-receiptClose?.addEventListener("click", closeReceipt);
-receiptModal?.addEventListener("click", (e) => {
-  if (e.target === receiptModal) closeReceipt();
-});
-receiptCopy?.addEventListener("click", async () => {
-  try {
-    await navigator.clipboard.writeText(receiptOpen.href);
-    toast("Nusxalandi", "success");
-  } catch {
-    toast("Nusxalab bo'lmadi", "error");
-  }
-});
-
-const orderModal = $("#order-modal");
-const orderClose = $("#order-close");
-const orderContent = $("#order-content");
-function openOrderModal(html) {
-  orderContent.innerHTML = html;
-  orderModal.classList.remove("hidden");
-  orderModal.classList.add("flex");
-}
-function closeOrderModal() {
-  orderModal.classList.add("hidden");
-  orderModal.classList.remove("flex");
-  orderContent.innerHTML = "";
-}
-orderClose?.addEventListener("click", closeOrderModal);
-orderModal?.addEventListener("click", (e) => {
-  if (e.target === orderModal) closeOrderModal();
-});
-
-const productModal = $("#product-modal");
-const productClose = $("#product-close");
-const productCancel = $("#product-cancel");
-const productForm = $("#product-form");
-const productModalTitle = $("#product-modal-title");
-
-function openProductModal(title = "Mahsulot") {
-  productModalTitle.textContent = title;
-  productModal.classList.remove("hidden");
-  productModal.classList.add("flex");
-}
-function closeProductModal() {
-  productModal.classList.add("hidden");
-  productModal.classList.remove("flex");
-  productForm.reset();
-  productForm.docId.value = "";
-}
-productClose?.addEventListener("click", closeProductModal);
-productCancel?.addEventListener("click", closeProductModal);
-productModal?.addEventListener("click", (e) => {
-  if (e.target === productModal) closeProductModal();
-});
-
-/* -------------------- state -------------------- */
-let __orders = [];
-let __products = [];
-let __comments = [];
-
-/* -------------------- Firestore loaders -------------------- */
-async function loadOrders() {
-  // orderBy(createdAt) single field -> index so'ramaydi
-  const snap = await getDocs(query(collection(db, "orders"), orderBy("createdAt", "desc"), limit(150)));
-  __orders = snap.docs.map((d) => ({ docId: d.id, ...d.data() }));
-  return __orders;
-}
-
-async function loadProducts() {
-  // products collection
-  let snap;
-  try {
-    snap = await getDocs(query(collection(db, "products"), orderBy("createdAt", "desc"), limit(300)));
-  } catch {
-    snap = await getDocs(collection(db, "products"));
-  }
-  __products = snap.docs.map((d) => ({ docId: d.id, ...d.data() }));
-  return __products;
-}
-
-async function loadComments() {
-  // comments collection
-  let snap;
-  try {
-    snap = await getDocs(query(collection(db, "comments"), orderBy("createdAt", "desc"), limit(200)));
-  } catch {
-    snap = await getDocs(collection(db, "comments"));
-  }
-  __comments = snap.docs.map((d) => ({ docId: d.id, ...d.data() }));
-  return __comments;
-}
-
-async function loadPaymentSettings() {
-  // settings/payment doc
-  const ref = doc(db, "settings", "payment");
-  const snap = await getDoc(ref);
-  const data = snap.exists() ? snap.data() : {};
-  return data || {};
-}
-
-/* -------------------- Orders actions -------------------- */
-async function setOrderStatus(order, status, extra = {}) {
-  const docId = getOrderDocId(order);
-  if (!docId) throw new Error("docId topilmadi");
-  await updateDoc(doc(db, "orders", docId), {
-    status,
-    updatedAt: nowTs(),
-    ...extra,
-  });
-}
-
-async function approveOrder(order) {
-  await setOrderStatus(order, "approved", { reviewedAt: nowTs(), rejectReason: null });
-
-  const link = buildPublicOrderLink(order);
-  const text =
-    `✅ Buyurtma qabul qilindi\n` +
-    `ID: ${order.id || order.docId}\n` +
-    `Jami: ${formatPrice(order.total)} so'm\n` +
-    `\n🔗 Buyurtmani ko'rish:\n${link}`;
-
-  await sendTelegram(text);
-}
-
-async function rejectOrder(order) {
-  const reason = prompt("Rad etish sababi (majburiy):", "");
-  if (!reason || !reason.trim()) return;
-
-  await setOrderStatus(order, "rejected", { reviewedAt: nowTs(), rejectReason: reason.trim() });
-
-  const link = buildPublicOrderLink(order);
-  const text =
-    `❌ Buyurtma rad etildi\n` +
-    `ID: ${order.id || order.docId}\n` +
-    `Sabab: ${reason.trim()}\n` +
-    `\n🔗 Buyurtmani ko'rish:\n${link}`;
-
-  await sendTelegram(text);
-}
-
-/* -------------------- Orders render -------------------- */
-function orderCardHTML(order) {
-  const id = String(order?.id || order?.docId || "");
-  const userName = order?.userName || order?.user?.name || "—";
-  const userPhone = order?.userPhone || order?.user?.phone || "—";
-
-  const region = order?.address?.region || "—";
-  const district = order?.address?.district || "—";
-  const homeAddress = order?.address?.homeAddress || "—";
-  const addrText = [region, district, homeAddress].filter(Boolean).join(", ");
-
-  const itemsCount = Array.isArray(order?.items) ? order.items.length : 0;
-  const total = Number(order?.total || 0);
-  const payment = order?.payment || "—";
-  const createdAt = order?.createdAt || order?.date || null;
-
-  const st = statusMeta(order?.status);
-  const receiptUrl = order?.receiptUrl || "";
+  const statusChip = statusLabel(order.status);
+  const total = buildTotal(order);
 
   return `
-    <div class="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-sm">
-      <div class="flex items-start justify-between gap-3">
-        <div class="min-w-0">
-          <div class="text-xs text-white/60">Buyurtma ID</div>
-          <div class="font-semibold text-white break-all">${esc(id)}</div>
+    <article class="rounded-2xl glass p-4 shadow-sm">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div class="min-w-[220px]">
+          <p class="text-xs text-slate-400">Buyurtma ID</p>
+          <p class="text-sm font-semibold text-white break-all">${order.id}</p>
+
+          <p class="mt-2 text-xs text-slate-400">Foydalanuvchi</p>
+          <p class="text-sm text-slate-200">Kimdan: ${safe(buyerName)} (${safe(buyerPhone)})</p>
         </div>
 
-        <div class="flex items-center gap-2">
-          <button data-action="detail" data-id="${esc(id)}" class="rounded-xl border border-white/15 bg-white/5 px-3 py-1 text-[11px] text-white/80 hover:bg-white/10">
-            Ko‘rib chiqilyapti
-          </button>
-          <span class="shrink-0 rounded-full border px-3 py-1 text-xs ${st.cls}">
-            ${esc(st.text)}
-          </span>
-        </div>
-      </div>
+        <div class="min-w-[180px]">
+          <p class="text-xs text-slate-400">Sana</p>
+          <p class="text-sm text-slate-200">${formatDate(order.createdAt || order.date)}</p>
 
-      <div class="mt-3 grid grid-cols-2 gap-3 text-sm">
-        <div>
-          <div class="text-xs text-white/50">Kim buyurtma qildi</div>
-          <div class="font-medium text-white/90">${esc(userName)} (${esc(userPhone)})</div>
+          <p class="mt-2 text-xs text-slate-400">Mahsulotlar soni</p>
+          <p class="text-sm text-slate-200">${getItemsCount(order.items)}</p>
         </div>
 
-        <div>
-          <div class="text-xs text-white/50">Sana</div>
-          <div class="font-medium text-white/90">${esc(toDateText(createdAt))}</div>
+        <div class="min-w-[180px]">
+          <p class="text-xs text-slate-400">Jami</p>
+          <p class="text-sm font-semibold text-white">${total.toLocaleString("uz-UZ")} so'm</p>
+
+          <p class="mt-2 text-xs text-slate-400">Yetkazish</p>
+          <p class="text-sm text-slate-200">${safe(buildDelivery(order))}</p>
         </div>
 
-        <div>
-          <div class="text-xs text-white/50">Manzil</div>
-          <div class="font-medium text-white/90">${esc(addrText || "—")}</div>
+        <div class="min-w-[180px]">
+          <p class="text-xs text-slate-400">Holat</p>
+          <span class="${statusChip.cls}">${statusChip.text || order.status}</span>
+          ${rejectReason}
         </div>
 
-        <div>
-          <div class="text-xs text-white/50">Jami</div>
-          <div class="font-semibold text-white">${formatPrice(total)} so'm</div>
+        <div class="min-w-[240px]">
+          <p class="text-xs text-slate-400">Manzil</p>
+          <p class="text-sm text-slate-200">${safe(buildAddress(order))}</p>
         </div>
-
-        <div>
-          <div class="text-xs text-white/50">Mahsulotlar soni</div>
-          <div class="font-medium text-white/90">${itemsCount}</div>
-        </div>
-
-        <div>
-          <div class="text-xs text-white/50">To'lov</div>
-          <div class="font-medium text-white/90">${esc(payment)}</div>
-        </div>
-      </div>
-
-      <div class="mt-4 flex flex-wrap items-center gap-2">
-        ${
-          receiptUrl
-            ? `
-            <button data-action="receipt" data-url="${esc(receiptUrl)}"
-              class="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/80 hover:bg-white/10">
-              <img src="${esc(receiptUrl)}" class="h-9 w-9 rounded-xl object-cover border border-white/10" alt="receipt" />
-              Chekni ko‘rish
-            </button>
-          `
-            : `<div class="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/60">Chek yo‘q</div>`
-        }
-
-        <button data-action="approve" data-id="${esc(id)}"
-          class="ml-auto inline-flex items-center justify-center rounded-2xl bg-emerald-500/90 px-4 py-2 text-xs font-semibold text-slate-950 hover:bg-emerald-400">
-          ✅ Qabul
-        </button>
-
-        <button data-action="reject" data-id="${esc(id)}"
-          class="inline-flex items-center justify-center rounded-2xl border border-rose-300/30 bg-rose-500/10 px-4 py-2 text-xs font-semibold text-rose-200 hover:bg-rose-500/15">
-          ❌ Rad
-        </button>
       </div>
 
       ${
-        order?.status === "rejected" && order?.rejectReason
-          ? `<div class="mt-3 rounded-xl border border-rose-300/20 bg-rose-500/10 p-3 text-xs text-rose-100">
-               Sabab: ${esc(order.rejectReason)}
-             </div>`
-          : ""
+        receiptUrl
+          ? `
+        <a href="${receiptUrl}" target="_blank" rel="noreferrer"
+           class="receipt-open mt-3 inline-flex items-center gap-2 rounded-xl glass-soft px-3 py-2 text-xs text-white/80"
+           data-href="${receiptUrl}">
+          <img src="${receiptUrl}" alt="Receipt" class="h-16 w-16 rounded-lg object-cover" />
+          <span>Chekni ko‘rish</span>
+        </a>
+      `
+          : `<p class="mt-3 text-xs text-slate-500">Chek mavjud emas.</p>`
       }
-    </div>
-  `;
-}
 
-function renderOrdersPage() {
-  const pending = __orders.filter((o) => {
-    const s = String(o?.status || "pending");
-    return s === "pending" || s === "pending_verification";
-  });
-
-  const recent = __orders.slice(0, 30);
-
-  view.innerHTML = `
-    <section class="space-y-3">
-      <div class="flex items-center justify-between">
-        <h2 class="text-xl font-semibold text-white">Tekshiruvdagi buyurtmalar</h2>
-        <button id="ordersRefresh" class="rounded-xl border border-white/15 bg-white/5 px-3 py-1 text-xs text-white/80 hover:bg-white/10">
-          Yangilash
+      <div class="mt-4 flex flex-wrap gap-3">
+        <button class="confirm-btn neon-btn rounded-xl px-4 py-2 text-xs font-semibold" data-id="${order.id}">
+          ✅ Qabul
+        </button>
+        <button class="reject-btn rounded-xl border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold text-white hover:border-white/40"
+                data-id="${order.id}">
+          ❌ Rad
         </button>
       </div>
-      <div id="pendingList" class="space-y-4"></div>
-      <div id="pendingEmpty" class="hidden rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/70">
-        Tekshiruvda buyurtma yo‘q.
-      </div>
-    </section>
-
-    <section class="space-y-3">
-      <h2 class="text-lg font-semibold text-white">Oxirgi buyurtmalar</h2>
-      <div id="recentList" class="space-y-3"></div>
-    </section>
+    </article>
   `;
+};
 
-  const pendingList = $("#pendingList");
-  const pendingEmpty = $("#pendingEmpty");
-  const recentList = $("#recentList");
+const renderOrders = async () => {
+  if (!isAdmin) return;
 
-  if (!pending.length) {
-    pendingEmpty.classList.remove("hidden");
-    pendingList.innerHTML = "";
-  } else {
-    pendingEmpty.classList.add("hidden");
-    pendingList.innerHTML = pending.map(orderCardHTML).join("");
-  }
-
-  recentList.innerHTML = recent
-    .map((o) => {
-      const st = statusMeta(o.status);
-      return `
-        <div class="rounded-2xl border border-white/10 bg-white/5 p-3 text-sm">
-          <div class="flex items-center justify-between gap-2">
-            <div class="min-w-0">
-              <div class="text-xs text-white/60">ID</div>
-              <div class="font-semibold text-white break-all">${esc(o.id || o.docId)}</div>
-            </div>
-            <span class="rounded-full border px-3 py-1 text-xs ${st.cls}">${esc(st.text)}</span>
-          </div>
-          <div class="mt-2 text-xs text-white/60">${esc(toDateText(o.createdAt || o.date))}</div>
-        </div>
-      `;
-    })
-    .join("");
-
-  $("#ordersRefresh")?.addEventListener("click", async () => {
-    await bootstrap("orders");
-  });
-
-  // click handlers
-  view.addEventListener("click", async (e) => {
-    const btn = e.target.closest("button[data-action]");
-    if (!btn) return;
-
-    const action = btn.dataset.action;
-
-    if (action === "receipt") {
-      openReceipt(btn.dataset.url);
-      return;
-    }
-
-    const id = btn.dataset.id;
-    const order = __orders.find((o) => String(o.id || o.docId) === String(id));
-    if (!order) return toast("Order topilmadi", "error");
-
-    if (action === "detail") {
-      const items = Array.isArray(order.items) ? order.items : [];
-      const itemsHtml = items
-        .map((it) => {
-          return `<div class="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/80">
-            <span>Product: ${esc(it.id)}</span><span>Qty: ${esc(it.qty || 1)}</span>
-          </div>`;
-        })
-        .join("");
-
-      const link = buildPublicOrderLink(order);
-
-      openOrderModal(`
-        <div class="space-y-3">
-          <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
-            <div class="text-xs text-white/60">ID</div>
-            <div class="text-white font-semibold break-all">${esc(order.id || order.docId)}</div>
-
-            <div class="mt-3 grid grid-cols-2 gap-3 text-sm">
-              <div>
-                <div class="text-xs text-white/60">Status</div>
-                <div class="text-white/90">${esc(statusMeta(order.status).text)}</div>
-              </div>
-              <div>
-                <div class="text-xs text-white/60">Sana</div>
-                <div class="text-white/90">${esc(toDateText(order.createdAt || order.date))}</div>
-              </div>
-              <div>
-                <div class="text-xs text-white/60">Jami</div>
-                <div class="text-white font-semibold">${formatPrice(order.total)} so'm</div>
-              </div>
-              <div>
-                <div class="text-xs text-white/60">To'lov</div>
-                <div class="text-white/90">${esc(order.payment || "—")}</div>
-              </div>
-            </div>
-
-            <div class="mt-4 flex flex-wrap gap-2">
-              <a href="${esc(link)}" target="_blank" class="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs text-white/80 hover:bg-white/10">
-                Public sahifa (searc.html)
-              </a>
-            </div>
-          </div>
-
-          <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
-            <div class="text-sm font-semibold text-white">Items</div>
-            <div class="mt-3 space-y-2">${itemsHtml || `<div class="text-xs text-white/60">Items yo‘q</div>`}</div>
-          </div>
-        </div>
-      `);
-      return;
-    }
-
-    // approve / reject
-    btn.disabled = true;
-    try {
-      if (action === "approve") {
-        await approveOrder(order);
-        toast("Qabul qilindi + Telegramga yuborildi", "success");
-        await bootstrap("orders");
-      } else if (action === "reject") {
-        await rejectOrder(order);
-        toast("Rad qilindi + Telegramga yuborildi", "success");
-        await bootstrap("orders");
-      }
-    } catch (err) {
-      console.error(err);
-      toast("Xatolik: " + (err?.message || err), "error");
-    } finally {
-      btn.disabled = false;
-    }
-  });
-}
-
-/* -------------------- Products page -------------------- */
-function productCardHTML(p) {
-  const title = p.title || p.name || "No title";
-  const price = Number(p.price || 0);
-  const img = p.img || (Array.isArray(p.images) ? p.images[0] : "") || "";
-  return `
-    <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
-      <div class="flex gap-3">
-        <div class="h-16 w-16 overflow-hidden rounded-2xl border border-white/10 bg-white/5">
-          ${img ? `<img src="${esc(img)}" class="h-full w-full object-cover" />` : ""}
-        </div>
-        <div class="min-w-0 flex-1">
-          <div class="font-semibold text-white truncate">${esc(title)}</div>
-          <div class="text-xs text-white/60">${esc(p.category || "")}</div>
-          <div class="mt-1 text-sm text-white">${formatPrice(price)} so'm</div>
-        </div>
-        <div class="flex flex-col gap-2">
-          <button data-paction="edit" data-id="${esc(p.docId)}" class="rounded-xl border border-white/15 bg-white/5 px-3 py-1 text-xs text-white/80 hover:bg-white/10">
-            Edit
-          </button>
-          <button data-paction="delete" data-id="${esc(p.docId)}" class="rounded-xl border border-rose-300/30 bg-rose-500/10 px-3 py-1 text-xs text-rose-200 hover:bg-rose-500/15">
-            Delete
-          </button>
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-function renderProductsPage() {
-  view.innerHTML = `
-    <section class="space-y-3">
-      <div class="flex flex-wrap items-center justify-between gap-2">
-        <h2 class="text-xl font-semibold text-white">Mahsulotlar</h2>
-        <div class="flex flex-wrap gap-2">
-          <button id="prodAdd" class="rounded-xl bg-emerald-500/90 px-4 py-2 text-xs font-semibold text-slate-950 hover:bg-emerald-400">
-            + Mahsulot qo‘shish
-          </button>
-          <button id="prodRefresh" class="rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-xs font-semibold text-white/80 hover:bg-white/10">
-            Yangilash
-          </button>
-        </div>
-      </div>
-
-      <div class="flex flex-wrap gap-2">
-        <input id="prodSearch" placeholder="Qidirish..." class="w-full md:w-80 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none" />
-      </div>
-
-      <div id="prodList" class="grid gap-3 md:grid-cols-2"></div>
-      <div id="prodEmpty" class="hidden rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/70">
-        Mahsulot yo‘q.
-      </div>
-    </section>
-  `;
-
-  const list = $("#prodList");
-  const empty = $("#prodEmpty");
-  const search = $("#prodSearch");
-
-  function draw(items) {
-    if (!items.length) {
-      empty.classList.remove("hidden");
-      list.innerHTML = "";
-      return;
-    }
-    empty.classList.add("hidden");
-    list.innerHTML = items.map(productCardHTML).join("");
-  }
-
-  draw(__products);
-
-  $("#prodAdd")?.addEventListener("click", () => {
-    openProductModal("Mahsulot qo‘shish");
-  });
-
-  $("#prodRefresh")?.addEventListener("click", async () => {
-    await bootstrap("products");
-  });
-
-  search?.addEventListener("input", () => {
-    const q = search.value.trim().toLowerCase();
-    if (!q) return draw(__products);
-    draw(
-      __products.filter((p) =>
-        String(p.title || p.name || "")
-          .toLowerCase()
-          .includes(q)
-      )
-    );
-  });
-
-  // list actions
-  view.addEventListener("click", async (e) => {
-    const btn = e.target.closest("button[data-paction]");
-    if (!btn) return;
-    const action = btn.dataset.paction;
-    const id = btn.dataset.id;
-
-    const product = __products.find((p) => String(p.docId) === String(id));
-    if (!product) return toast("Mahsulot topilmadi", "error");
-
-    if (action === "edit") {
-      // fill form
-      productForm.docId.value = product.docId;
-      productForm.title.value = product.title || product.name || "";
-      productForm.category.value = product.category || "";
-      productForm.price.value = Number(product.price || 0);
-      productForm.discount.value = Number(product.discount || product.sale || 0);
-      productForm.img.value = product.img || (Array.isArray(product.images) ? product.images[0] : "") || "";
-      productForm.desc.value = product.desc || product.description || "";
-      openProductModal("Mahsulotni tahrirlash");
-      return;
-    }
-
-    if (action === "delete") {
-      const ok = confirm("Rostdan ham o‘chirasizmi?");
-      if (!ok) return;
-
-      try {
-        await deleteDoc(doc(db, "products", product.docId));
-        toast("O‘chirildi", "success");
-        await bootstrap("products");
-      } catch (err) {
-        console.error(err);
-        toast("Xatolik: " + (err?.message || err), "error");
-      }
-    }
-  });
-}
-
-// product form submit
-productForm?.addEventListener("submit", async (e) => {
-  e.preventDefault();
-
-  const payload = {
-    title: productForm.title.value.trim(),
-    category: productForm.category.value.trim(),
-    price: Number(productForm.price.value || 0),
-    discount: Number(productForm.discount.value || 0),
-    img: productForm.img.value.trim(),
-    images: productForm.img.value.trim() ? [productForm.img.value.trim()] : [],
-    desc: productForm.desc.value.trim(),
-    updatedAt: nowTs(),
-  };
-
-  const docId = productForm.docId.value.trim();
+  pendingOrdersList.innerHTML = "";
+  pendingEmpty?.classList.add("hidden");
 
   try {
-    if (docId) {
-      await updateDoc(doc(db, "products", docId), payload);
-      toast("Saqlanib yangilandi", "success");
-    } else {
-      payload.createdAt = nowTs();
-      await addDoc(collection(db, "products"), payload);
-      toast("Mahsulot qo‘shildi", "success");
+    const orders = await fetchPendingOrders();
+
+    if (!orders.length) {
+      pendingEmpty?.classList.remove("hidden");
+      pendingOrdersList.innerHTML = "";
+      return;
     }
-    closeProductModal();
-    await bootstrap("products");
-  } catch (err) {
-    console.error(err);
-    toast("Xatolik: " + (err?.message || err), "error");
+
+    pendingEmpty?.classList.add("hidden");
+    pendingOrdersList.innerHTML = orders.map(renderOrderCard).join("");
+  } catch (e) {
+    console.error(e);
+    pendingEmpty?.classList.remove("hidden");
+    pendingOrdersList.innerHTML = "";
+    showToast("Buyurtmalarni yuklashda xatolik", "error");
+  }
+};
+
+const updateOrderStatus = async (orderId, status, rejectReason = null) => {
+  const ref = doc(db, "orders", orderId);
+
+  // ✅ merge qilib, qolgan ma’lumotlarni o‘chirib yubormaydi
+  await setDoc(
+    ref,
+    {
+      status,
+      rejectReason: rejectReason || null,
+      reviewedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
+
+  await renderOrders();
+};
+
+// ====== RECEIPT MODAL + ORDER ACTIONS ======
+adminPanel?.addEventListener("click", async (event) => {
+  const receiptOpen = event.target.closest(".receipt-open");
+  const confirmBtn = event.target.closest(".confirm-btn");
+  const rejectBtn = event.target.closest(".reject-btn");
+
+  if (receiptOpen) {
+    event.preventDefault();
+    const href = receiptOpen.dataset.href || receiptOpen.getAttribute("href");
+    if (!href) return;
+
+    const isImage =
+      /\.(png|jpe?g|webp|gif|bmp|svg)(\?|$)/i.test(href) || href.includes("imgbb.com");
+
+    if (isImage && receiptImage && receiptModal) {
+      receiptImage.src = href;
+      receiptModal.classList.remove("hidden");
+      receiptModal.classList.add("flex");
+    } else {
+      window.open(href, "_blank", "noopener");
+    }
+    return;
+  }
+
+  if (confirmBtn) {
+    const id = confirmBtn.dataset.id;
+    if (!id) return;
+
+    confirmBtn.disabled = true;
+    try {
+      await updateOrderStatus(id, "approved");
+
+      // ✅ Telegramga LINK bilan yuborish
+      const link = buildOrderLink(id);
+      try {
+        await sendTelegram(
+          `✅ Buyurtma qabul qilindi\nID: ${id}\nLink: ${link}`
+        );
+      } catch (e) {
+        console.error(e);
+        showToast("Telegramga yuborilmadi (token/chatId tekshir)", "error");
+      }
+
+      showToast("Buyurtma qabul qilindi");
+    } catch (e) {
+      console.error(e);
+      showToast("Tasdiqlashda xatolik", "error");
+    } finally {
+      confirmBtn.disabled = false;
+    }
+    return;
+  }
+
+  if (rejectBtn) {
+    const id = rejectBtn.dataset.id;
+    if (!id) return;
+
+    const reason = prompt("Rad etish sababi (ixtiyoriy):") || null;
+
+    rejectBtn.disabled = true;
+    try {
+      await updateOrderStatus(id, "rejected", reason);
+
+      const link = buildOrderLink(id);
+      try {
+        await sendTelegram(
+          `❌ Buyurtma rad etildi\nID: ${id}\nSabab: ${reason || "-"}\nLink: ${link}`
+        );
+      } catch (e) {
+        console.error(e);
+        showToast("Telegramga yuborilmadi (token/chatId tekshir)", "error");
+      }
+
+      showToast("Buyurtma rad etildi", "error");
+    } catch (e) {
+      console.error(e);
+      showToast("Rad etishda xatolik", "error");
+    } finally {
+      rejectBtn.disabled = false;
+    }
+    return;
   }
 });
 
-/* -------------------- Comments page -------------------- */
-function commentCardHTML(c) {
-  const name = c.userName || c.name || "Anon";
-  const text = c.text || c.comment || "";
-  return `
-    <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
-      <div class="flex items-start justify-between gap-2">
-        <div class="min-w-0">
-          <div class="font-semibold text-white">${esc(name)}</div>
-          <div class="text-xs text-white/60">${esc(toDateText(c.createdAt))}</div>
+receiptClose?.addEventListener("click", () => {
+  receiptModal?.classList.add("hidden");
+  receiptModal?.classList.remove("flex");
+});
+
+receiptModal?.addEventListener("click", (event) => {
+  if (event.target === receiptModal) {
+    receiptModal.classList.add("hidden");
+    receiptModal.classList.remove("flex");
+  }
+});
+
+// ====== PRODUCTS ======
+const renderAdminProducts = () => {
+  if (!adminProducts.length) {
+    adminProductsEmpty?.classList.remove("hidden");
+    adminProductsList.innerHTML = "";
+    return;
+  }
+
+  adminProductsEmpty?.classList.add("hidden");
+  adminProductsList.innerHTML = adminProducts
+    .map(
+      (product) => `
+      <article class="rounded-2xl border border-slate-700 bg-slate-800/60 p-4 text-sm text-slate-200">
+        <img src="${product.images?.[0] || product.img || ""}"
+             alt="${safe(product.title, "Mahsulot")}"
+             class="h-32 w-full rounded-xl object-cover" />
+        <div class="mt-3 space-y-1">
+          <p class="font-semibold text-white">${safe(product.title, "—")}</p>
+          <p class="text-xs text-slate-400">${safe(product.category, "—")}</p>
         </div>
-        <button data-caction="delete" data-id="${esc(c.docId)}"
-          class="rounded-xl border border-rose-300/30 bg-rose-500/10 px-3 py-1 text-xs text-rose-200 hover:bg-rose-500/15">
-          Delete
+        <div class="mt-3 flex flex-wrap items-center justify-between gap-2">
+          <span class="text-sm font-semibold text-white">${Number(product.price || 0).toLocaleString("uz-UZ")} so'm</span>
+          ${
+            product.discount
+              ? `<span class="text-xs font-semibold text-emerald-200">-${product.discount}%</span>`
+              : ""
+          }
+        </div>
+        <div class="mt-3 flex justify-end gap-2">
+          <button type="button"
+                  class="edit-product-btn rounded-lg border border-slate-600 px-3 py-1 text-xs text-slate-200 hover:border-slate-400"
+                  data-id="${product.id}">
+            ✏️ Edit
+          </button>
+          <button type="button"
+                  class="delete-product-btn rounded-lg border border-rose-500/60 px-3 py-1 text-xs text-rose-200 hover:border-rose-400"
+                  data-id="${product.id}">
+            🗑 Delete
+          </button>
+        </div>
+      </article>
+    `
+    )
+    .join("");
+};
+
+const loadAdminProducts = async () => {
+  const snap = await getDocs(query(collection(db, "products")));
+  adminProducts = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  adminProducts.sort((a, b) => sortByCreatedAtDesc(a, b));
+  renderAdminProducts();
+
+  productsMap = new Map(adminProducts.map((p) => [String(p.id), p]));
+};
+
+const updateImagePreview = () => {
+  if (!imagePreview) return;
+  imagePreview.innerHTML = selectedPreviews
+    .map(
+      (image, index) => `
+      <div class="relative overflow-hidden rounded-xl border border-slate-700 bg-slate-800/60">
+        <img src="${image}" alt="preview" class="h-32 w-full object-cover" />
+        <button type="button"
+                class="remove-image absolute right-2 top-2 rounded-full bg-black/70 px-2 py-1 text-xs text-white"
+                data-index="${index}">
+          ❌
         </button>
       </div>
-      <div class="mt-3 whitespace-pre-wrap text-sm text-white/85">${esc(text)}</div>
-    </div>
-  `;
-}
+    `
+    )
+    .join("");
+};
 
-function renderCommentsPage() {
-  view.innerHTML = `
-    <section class="space-y-3">
-      <div class="flex flex-wrap items-center justify-between gap-2">
-        <h2 class="text-xl font-semibold text-white">Kommentlar</h2>
-        <button id="comRefresh" class="rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-xs font-semibold text-white/80 hover:bg-white/10">
-          Yangilash
-        </button>
-      </div>
+const renderVariants = () => {
+  if (!variantList) return;
 
-      <div class="flex flex-wrap gap-2">
-        <input id="comSearch" placeholder="Qidirish..." class="w-full md:w-80 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none" />
-      </div>
-
-      <div id="comList" class="space-y-3"></div>
-      <div id="comEmpty" class="hidden rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/70">
-        Hozircha izoh yo‘q.
-      </div>
-    </section>
-  `;
-
-  const list = $("#comList");
-  const empty = $("#comEmpty");
-  const search = $("#comSearch");
-
-  function draw(items) {
-    if (!items.length) {
-      empty.classList.remove("hidden");
-      list.innerHTML = "";
-      return;
-    }
-    empty.classList.add("hidden");
-    list.innerHTML = items.map(commentCardHTML).join("");
+  if (!productVariants.length) {
+    variantList.innerHTML =
+      '<p class="text-xs text-white/50">Variantlar qoshilmagan. Narx uchun asosiy price ishlatiladi.</p>';
+    return;
   }
 
-  draw(__comments);
-
-  $("#comRefresh")?.addEventListener("click", async () => {
-    await bootstrap("comments");
-  });
-
-  search?.addEventListener("input", () => {
-    const q = search.value.trim().toLowerCase();
-    if (!q) return draw(__comments);
-    draw(
-      __comments.filter((c) => {
-        const a = String(c.userName || c.name || "").toLowerCase();
-        const b = String(c.text || c.comment || "").toLowerCase();
-        return a.includes(q) || b.includes(q);
-      })
-    );
-  });
-
-  view.addEventListener("click", async (e) => {
-    const btn = e.target.closest("button[data-caction]");
-    if (!btn) return;
-    const id = btn.dataset.id;
-    const ok = confirm("Kommentni o‘chirasizmi?");
-    if (!ok) return;
-
-    try {
-      await deleteDoc(doc(db, "comments", id));
-      toast("O‘chirildi", "success");
-      await bootstrap("comments");
-    } catch (err) {
-      console.error(err);
-      toast("Xatolik: " + (err?.message || err), "error");
-    }
-  });
-}
-
-/* -------------------- Payments page -------------------- */
-function renderPaymentsPage(settings) {
-  const owner = settings?.ownerFullName || "";
-  const cardNumber = settings?.cardNumber || "";
-  const bank = settings?.bank || "";
-
-  view.innerHTML = `
-    <section class="space-y-3">
-      <div class="flex flex-wrap items-center justify-between gap-2">
-        <h2 class="text-xl font-semibold text-white">Payments</h2>
-        <button id="payRefresh" class="rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-xs font-semibold text-white/80 hover:bg-white/10">
-          Yangilash
+  variantList.innerHTML = productVariants
+    .map(
+      (variant, index) => `
+      <div class="flex items-center justify-between rounded-xl border border-slate-700 bg-slate-900/40 px-3 py-2 text-sm">
+        <div>
+          <p class="font-medium text-white">${safe(variant.name)}</p>
+          <p class="text-xs text-white/60">${Number(variant.price).toLocaleString("uz-UZ")} so'm</p>
+        </div>
+        <button type="button"
+                class="remove-variant rounded-lg border border-rose-400/50 px-2 py-1 text-xs text-rose-200"
+                data-index="${index}">
+          ❌
         </button>
       </div>
+    `
+    )
+    .join("");
+};
 
-      <form id="payForm" class="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-3">
-        <label class="block">
-          <div class="mb-1 text-xs text-white/60">Owner (F.I.O)</div>
-          <input name="owner" value="${esc(owner)}" class="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none" />
-        </label>
-
-        <label class="block">
-          <div class="mb-1 text-xs text-white/60">Card number</div>
-          <input name="card" value="${esc(cardNumber)}" class="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none" />
-        </label>
-
-        <label class="block">
-          <div class="mb-1 text-xs text-white/60">Bank</div>
-          <input name="bank" value="${esc(bank)}" class="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none" />
-        </label>
-
-        <button type="submit" class="rounded-xl bg-emerald-500/90 px-4 py-2 text-xs font-semibold text-slate-950 hover:bg-emerald-400">
-          Saqlash
-        </button>
-      </form>
-
-      <div class="rounded-2xl border border-white/10 bg-white/5 p-4 text-xs text-white/70">
-        Eslatma: bu qiymatlar Firestore: <b>settings/payment</b> doc ichiga saqlanadi.
-      </div>
-    </section>
-  `;
-
-  $("#payRefresh")?.addEventListener("click", async () => {
-    await bootstrap("payments");
+const resetProductForm = () => {
+  selectedFiles.forEach((_, index) => {
+    const preview = selectedPreviews[index];
+    if (preview && preview.startsWith("blob:")) URL.revokeObjectURL(preview);
   });
 
-  $("#payForm")?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const fd = new FormData(e.target);
+  selectedFiles = [];
+  selectedPreviews = [];
+  editingId = null;
+  productVariants = [];
+
+  imageLimitError?.classList.add("hidden");
+  updateImagePreview();
+  renderVariants();
+
+  if (productVariantName) productVariantName.value = "";
+  if (productVariantPrice) productVariantPrice.value = "";
+  if (saveButton) saveButton.textContent = "Saqlash";
+
+  productForm?.reset();
+};
+
+productImages?.addEventListener("change", (event) => {
+  const files = Array.from(event.target.files || []);
+  if (!files.length) return;
+
+  if (files.length + selectedFiles.length > 10) {
+    showToast("Maksimum 10 ta rasm yuklash mumkin", "error");
+    imageLimitError?.classList.remove("hidden");
+    productImages.value = "";
+    return;
+  }
+
+  imageLimitError?.classList.add("hidden");
+  files.forEach((file) => {
+    selectedFiles.push(file);
+    selectedPreviews.push(URL.createObjectURL(file));
+  });
+
+  updateImagePreview();
+  productImages.value = "";
+});
+
+imagePreview?.addEventListener("click", (event) => {
+  const removeBtn = event.target.closest(".remove-image");
+  if (!removeBtn) return;
+
+  const index = Number(removeBtn.dataset.index);
+  const [removed] = selectedPreviews.splice(index, 1);
+  if (removed && removed.startsWith("blob:")) URL.revokeObjectURL(removed);
+  selectedFiles.splice(index, 1);
+
+  updateImagePreview();
+});
+
+addVariantBtn?.addEventListener("click", () => {
+  const name = productVariantName?.value.trim();
+  const price = Number(productVariantPrice?.value);
+
+  if (!name) return showToast("Variant nomini kiriting", "error");
+  if (!Number.isFinite(price) || price <= 0)
+    return showToast("Variant narxi musbat bo‘lishi kerak", "error");
+
+  productVariants.push({ name, price });
+  renderVariants();
+
+  if (productVariantName) productVariantName.value = "";
+  if (productVariantPrice) productVariantPrice.value = "";
+});
+
+variantList?.addEventListener("click", (event) => {
+  const removeBtn = event.target.closest(".remove-variant");
+  if (!removeBtn) return;
+
+  const index = Number(removeBtn.dataset.index);
+  productVariants = productVariants.filter((_, idx) => idx !== index);
+  renderVariants();
+});
+
+productForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  if (!selectedFiles.length && !selectedPreviews.length) {
+    showToast("Kamida 1 ta rasm yuklang", "error");
+    return;
+  }
+
+  const title = productTitle.value.trim();
+  const price = Number(productPrice.value);
+  const stock = Number(productStock?.value);
+  const oldPrice = Number(productOldPrice.value);
+  const discount = Number(productDiscount.value);
+  const rating = Number(productRating?.value);
+  const description = productDescription?.value.trim();
+
+  if (!title) return showToast("Mahsulot nomini kiriting", "error");
+
+  try {
     const payload = {
-      ownerFullName: String(fd.get("owner") || ""),
-      cardNumber: String(fd.get("card") || ""),
-      bank: String(fd.get("bank") || ""),
-      updatedAt: nowTs(),
+      title,
+      category: productCategory.value,
+      price: Number.isFinite(price) ? price : 0,
+      stock: Number.isFinite(stock) && stock >= 0 ? stock : null,
+      oldPrice: Number.isFinite(oldPrice) && oldPrice > 0 ? oldPrice : null,
+      discount: Number.isFinite(discount) && discount > 0 ? discount : null,
+      rating: Number.isFinite(rating) && rating >= 0 ? rating : null,
+      desc: description || null,
+      updatedAt: serverTimestamp(),
+      active: true,
+      variants: productVariants,
     };
-    try {
-      await setDoc(doc(db, "settings", "payment"), payload, { merge: true });
-      toast("Payments saqlandi", "success");
-    } catch (err) {
-      console.error(err);
-      toast("Xatolik: " + (err?.message || err), "error");
-    }
-  });
-}
 
-/* -------------------- router & bootstrap -------------------- */
-function setActiveTab() {
-  const hash = (location.hash || "#orders").replace("#", "");
-  document.querySelectorAll(".adminTab").forEach((a) => {
-    const active = a.getAttribute("href") === `#${hash}`;
-    a.classList.toggle("bg-white/10", active);
-    a.classList.toggle("text-white", active);
-    a.classList.toggle("text-white/80", !active);
-  });
-}
+    const imageUrls = selectedFiles.length
+      ? await Promise.all(selectedFiles.map((file) => imgbbUpload(file, IMGBB_API_KEY)))
+      : [...selectedPreviews];
 
-async function bootstrap(route) {
-  const r = route || (location.hash || "#orders").replace("#", "") || "orders";
-  setActiveTab();
-
-  // loader
-  view.innerHTML = `
-    <div class="rounded-2xl border border-white/10 bg-white/5 p-6 text-sm text-white/70">
-      Yuklanmoqda...
-    </div>
-  `;
-
-  try {
-    if (r === "products") {
-      await loadProducts();
-      renderProductsPage();
-      return;
+    if (editingId) {
+      await updateDoc(doc(db, "products", editingId), {
+        ...payload,
+        images: imageUrls,
+      });
+      showToast("Mahsulot yangilandi");
+    } else {
+      await addDoc(collection(db, "products"), {
+        ...payload,
+        images: imageUrls,
+        createdAt: serverTimestamp(),
+      });
+      showToast("Mahsulot muvaffaqiyatli qo‘shildi");
     }
 
-    if (r === "comments") {
-      await loadComments();
-      renderCommentsPage();
-      return;
-    }
-
-    if (r === "payments") {
-      const settings = await loadPaymentSettings();
-      renderPaymentsPage(settings);
-      return;
-    }
-
-    // default orders
-    await loadOrders();
-    renderOrdersPage();
-  } catch (err) {
-    console.error(err);
-    view.innerHTML = `
-      <div class="rounded-2xl border border-rose-300/20 bg-rose-500/10 p-4 text-sm text-rose-100">
-        Xatolik: ${esc(err?.message || err)}
-      </div>
-    `;
+    resetProductForm();
+    await loadAdminProducts();
+  } catch (e) {
+    console.error(e);
+    showToast("Mahsulotni saqlashda xatolik yuz berdi", "error");
   }
-}
+});
 
-window.addEventListener("hashchange", () => bootstrap());
-bootstrap();
+adminProductsList?.addEventListener("click", async (event) => {
+  const editBtn = event.target.closest(".edit-product-btn");
+  const deleteBtn = event.target.closest(".delete-product-btn");
 
-// Auto refresh orders page every 12s (only when on orders tab)
-setInterval(async () => {
-  const r = (location.hash || "#orders").replace("#", "") || "orders";
-  if (r !== "orders") return;
+  if (deleteBtn) {
+    const id = deleteBtn.dataset.id;
+    if (!id) return;
+    if (!window.confirm("Mahsulotni o‘chirishni tasdiqlaysizmi?")) return;
+
+    try {
+      await deleteDoc(doc(db, "products", id));
+      showToast("Mahsulot o‘chirildi");
+      await loadAdminProducts();
+    } catch (e) {
+      console.error(e);
+      showToast("O‘chirishda xatolik yuz berdi", "error");
+    }
+    return;
+  }
+
+  if (!editBtn) return;
+
+  const product = adminProducts.find((p) => String(p.id) === String(editBtn.dataset.id));
+  if (!product) return;
+
+  editingId = product.id;
+  productTitle.value = product.title || "";
+  productCategory.value = product.category || "Telefon";
+  productPrice.value = product.price ?? "";
+  productStock.value = product.stock ?? "";
+  productOldPrice.value = product.oldPrice ?? "";
+  productDiscount.value = product.discount ?? "";
+  if (productRating) productRating.value = product.rating ?? "";
+  if (productDescription) productDescription.value = product.desc || product.description || "";
+
+  selectedFiles = [];
+  selectedPreviews.forEach((preview) => {
+    if (preview.startsWith("blob:")) URL.revokeObjectURL(preview);
+  });
+  selectedPreviews = product.images?.length ? [...product.images] : [];
+  productVariants = Array.isArray(product.variants) ? [...product.variants] : [];
+  renderVariants();
+  updateImagePreview();
+  if (saveButton) saveButton.textContent = "Yangilash";
+});
+
+// ====== COMMENTS (LOCAL STORAGE) ======
+const renderAdminComments = () => {
+  const comments = getProductComments();
+  const entries = Object.values(comments).flat();
+
+  if (!entries.length) {
+    commentsEmpty?.classList.remove("hidden");
+    adminComments.innerHTML = "";
+    return;
+  }
+
+  commentsEmpty?.classList.add("hidden");
+  adminComments.innerHTML = entries
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .map((comment) => {
+      const product = productsMap.get(comment.productId);
+
+      return `
+        <article class="rounded-2xl border border-slate-700 bg-[#0f2f52] p-4 text-sm text-slate-200">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p class="text-xs text-slate-400">Mahsulot</p>
+              <p class="font-semibold text-white">${safe(product?.title, "Noma'lum")} (${comment.productId})</p>
+            </div>
+            <div class="text-xs text-slate-400">${formatDate(comment.createdAt)}</div>
+          </div>
+
+          <p class="mt-2">Kimdan: ${safe(comment.userName)} (${safe(comment.userPhone, "Telefon: N/A")})</p>
+          <p class="mt-2 text-slate-300">${safe(comment.text, "")}</p>
+          ${comment.rating ? `<p class="mt-2 text-xs text-amber-400">Reyting: ${comment.rating}/5</p>` : ""}
+
+          <form class="reply-form mt-3 flex flex-col gap-2" data-id="${comment.id}" data-product-id="${comment.productId}">
+            <textarea rows="2" required class="w-full rounded-xl border border-slate-700 bg-slate-800/60 px-3 py-2 text-xs text-white" placeholder="Javob yozing..."></textarea>
+            <button class="self-start rounded-xl bg-blue-500 px-3 py-1 text-xs font-semibold text-white hover:bg-blue-600">Javob berish</button>
+          </form>
+        </article>
+      `;
+    })
+    .join("");
+};
+
+adminComments?.addEventListener("submit", (event) => {
+  const form = event.target.closest(".reply-form");
+  if (!form) return;
+
+  event.preventDefault();
+  const textarea = form.querySelector("textarea");
+  const text = textarea.value.trim();
+  if (!text) return;
+
+  const productId = form.dataset.productId;
+  const commentId = form.dataset.id;
+
+  const allComments = getProductComments();
+  const list = allComments[productId] || [];
+
+  const updatedList = list.map((comment) => {
+    if (comment.id !== commentId) return comment;
+    return {
+      ...comment,
+      replies: [
+        {
+          id: `r-${Date.now()}`,
+          adminId: currentUser?.id || "admin",
+          adminName: currentUser?.name || "Admin",
+          text,
+          createdAt: new Date().toISOString(),
+        },
+        ...(comment.replies || []),
+      ],
+    };
+  });
+
+  allComments[productId] = updatedList;
+  saveProductComments(allComments);
+  renderAdminComments();
+});
+
+// ====== PAYMENTS (Firestore settings/payment) ======
+const loadPayments = async () => {
+  if (!payOwner || !payCard || !payBank) return; // DOM yo‘q bo‘lsa skip
+
   try {
-    await loadOrders();
-    renderOrdersPage();
-  } catch {}
-}, 12000);
+    const ref = doc(db, "settings", "payment");
+    const snap = await getDoc(ref);
+    const data = snap.exists() ? snap.data() : {};
+
+    payOwner.value = data?.ownerFullName || "";
+    payCard.value = data?.cardNumber || "";
+    payBank.value = data?.bank || "";
+    if (payStatus) payStatus.textContent = "✅ Yuklandi";
+  } catch (e) {
+    console.error(e);
+    if (payStatus) payStatus.textContent = "❌ Yuklashda xatolik";
+  }
+};
+
+const savePayments = async () => {
+  if (!payOwner || !payCard || !payBank) return;
+
+  try {
+    await setDoc(
+      doc(db, "settings", "payment"),
+      {
+        ownerFullName: payOwner.value.trim(),
+        cardNumber: payCard.value.trim(),
+        bank: payBank.value.trim(),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    showToast("Payments saqlandi");
+    if (payStatus) payStatus.textContent = "✅ Saqlandi";
+  } catch (e) {
+    console.error(e);
+    showToast("Payments saqlashda xatolik", "error");
+    if (payStatus) payStatus.textContent = "❌ Saqlashda xatolik";
+  }
+};
+
+paySaveBtn?.addEventListener("click", (e) => {
+  e.preventDefault();
+  savePayments();
+});
+
+// ====== START ======
+const init = async () => {
+  if (!isAdmin) return;
+
+  await loadAdminProducts();     // products.json yo'q => 404 bo'lmaydi
+  await renderOrders();          // indexsiz query
+  renderAdminComments();
+  renderVariants();
+  await loadPayments();          // payments bo‘lsa yuklaydi
+};
+
+init();
