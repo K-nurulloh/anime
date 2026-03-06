@@ -261,10 +261,13 @@ const addToCart = (product) => {
 
   addCartLine({
     productId: String(product.id),
+    id: String(product.id),
     title: product.title || '',
     price: Number(selectedVariant?.price ?? product.price ?? 0),
     image: selectedImageUrl,
+    img: selectedImageUrl,
     selectedImage: selectedImageUrl,
+    selectedImageUrl: selectedImageUrl,
     qty: 1,
     ...(selectedVariant
       ? {
@@ -304,9 +307,11 @@ const initCardActions = (container, products = []) => {
       const foundProduct =
         products.find((item) => String(item.id) === String(cartBtn.dataset.id)) || {
           id: cartBtn.dataset.id,
+          productId: cartBtn.dataset.id,
           title: cartBtn.dataset.title || '',
           price: Number(cartBtn.dataset.price || 0),
           img: cartBtn.dataset.image || '',
+          image: cartBtn.dataset.image || '',
           images: cartBtn.dataset.image ? [cartBtn.dataset.image] : [],
         };
 
@@ -475,8 +480,8 @@ const init = async () => {
           ${adminEditMarkup}
         </div>
 
-        <div class="flex items-center gap-2 text-amber-300">
-          <span>★ ${product.rating ?? 4.8}</span>
+        <div class="flex items-center gap-2">
+          <span><span style="color:#facc15;">★</span> ${product.rating ?? 4.8}</span>
           <span class="text-white/60">(stock: ${product.stock ?? '—'})</span>
         </div>
 
@@ -538,13 +543,20 @@ const init = async () => {
   syncDisplayedPrice();
 
   if (actionCart) {
-    actionCart.addEventListener('click', () => addToCart(product));
+    actionCart.setAttribute('type', 'button');
+    actionCart.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      addToCart(product);
+    });
   }
 
   if (actionBuy) {
-    actionBuy.addEventListener('click', () => {
+    actionBuy.setAttribute('type', 'button');
+    actionBuy.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
       addToCart(product);
-      window.location.href = 'checkout.html';
     });
   }
 
