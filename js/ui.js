@@ -59,16 +59,18 @@ export const renderProductCard = (product) => {
   const adminMode = isAdminUser();
 
   const actionButton = adminMode
-    ? `<button type="button" class="pc-btn edit-btn" data-edit-id="${product.id}">✏️ Edit</button>`
-    : `<a href="detail.html?id=${product.id}" class="pc-btn">${t('details')}</a>`;
+    ? `<button type="button" class="pc-btn edit-btn relative z-30 rounded-[16px] border border-cyan-300/30 bg-white/5 px-3 py-3 text-[15px] font-bold text-white transition hover:bg-white/10" data-edit-id="${product.id}">✏️ Edit</button>`
+    : `<a href="detail.html?id=${product.id}" class="pc-btn relative z-30 rounded-[16px] border border-cyan-300/30 bg-white/5 px-3 py-3 text-center text-[15px] font-bold text-white transition hover:bg-white/10">${t('details')}</a>`;
 
   return `
     <article class="product-card group relative overflow-hidden rounded-[28px] border border-cyan-400/20 bg-[#070b2a] p-[10px] shadow-[0_10px_35px_rgba(0,0,0,0.35)] transition duration-300 hover:-translate-y-1 hover:border-cyan-300/35 hover:shadow-[0_0_0_1px_rgba(103,232,249,0.14),0_20px_50px_rgba(34,211,238,0.12)]">
       
-      <a href="detail.html?id=${product.id}" class="relative block overflow-hidden rounded-[22px]">
+      <a href="detail.html?id=${product.id}" class="absolute inset-0 z-10 rounded-[28px]" aria-label="${product.title}"></a>
+
+      <div class="relative block overflow-hidden rounded-[22px]">
         <div class="absolute inset-0 rounded-[22px] bg-gradient-to-br from-cyan-400/10 via-transparent to-fuchsia-400/10 pointer-events-none z-10"></div>
 
-        <div class="relative flex h-[165px] w-full items-center justify-center overflow-hidden rounded-[22px] border border-cyan-400/20 bg-[#0b1028] sm:h-[185px]">
+        <div class="relative z-[1] flex h-[165px] w-full items-center justify-center overflow-hidden rounded-[22px] border border-cyan-400/20 bg-[#0b1028] sm:h-[185px]">
           <div class="img-skeleton absolute inset-0"></div>
           <img
             src="${image}"
@@ -78,9 +80,9 @@ export const renderProductCard = (product) => {
             class="relative z-[1] block max-h-full max-w-full object-contain transition duration-300 group-hover:scale-[1.04]"
           />
         </div>
-      </a>
+      </div>
 
-      <div class="pc-body px-1 pb-1 pt-3">
+      <div class="pc-body relative z-20 px-1 pb-1 pt-3">
         <p class="pc-cat mb-2 text-[13px] text-slate-300">${product.category || ''}</p>
 
         <h3 class="pc-title min-h-[54px] text-[15px] font-extrabold leading-[1.35] text-white">
@@ -94,17 +96,14 @@ export const renderProductCard = (product) => {
 
         <div class="pc-actions mt-4 grid grid-cols-2 gap-2.5">
           <button
-            class="add-cart-btn pc-btn primary rounded-[16px] bg-gradient-to-r from-cyan-300 via-sky-300 to-violet-300 px-3 py-3 text-[15px] font-bold text-slate-950 shadow-[0_10px_24px_rgba(56,189,248,0.25)] transition hover:brightness-105"
+            class="add-cart-btn pc-btn primary relative z-30 rounded-[16px] bg-gradient-to-r from-cyan-300 via-sky-300 to-violet-300 px-3 py-3 text-[15px] font-bold text-slate-950 shadow-[0_10px_24px_rgba(56,189,248,0.25)] transition hover:brightness-105"
             data-id="${product.id}"
+            type="button"
           >
             ${t('add_to_cart')}
           </button>
 
-          ${
-            adminMode
-              ? `<button type="button" class="pc-btn edit-btn rounded-[16px] border border-cyan-300/30 bg-white/5 px-3 py-3 text-[15px] font-bold text-white transition hover:bg-white/10" data-edit-id="${product.id}">✏️ Edit</button>`
-              : `<a href="detail.html?id=${product.id}" class="pc-btn rounded-[16px] border border-cyan-300/30 bg-white/5 px-3 py-3 text-center text-[15px] font-bold text-white transition hover:bg-white/10">${t('details')}</a>`
-          }
+          ${actionButton}
         </div>
       </div>
     </article>
