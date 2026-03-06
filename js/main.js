@@ -24,8 +24,6 @@ const newDropsDots = document.querySelector('#new-drops-dots');
 const homeSliderTrack = document.querySelector('#homeSliderTrack');
 const homeSliderDots = document.querySelector('#homeSliderDots');
 
-
-
 function getCurrentUserStrict() {
   const keys = ['currentUser', 'CURRENT_USER', 'user', 'USER', 'authUser', 'AUTH_USER'];
   for (const k of keys) {
@@ -85,7 +83,6 @@ let filteredProducts = [];
 let currentIndex = 0;
 const batchSize = 12;
 
-
 const HOME_SLIDES = [
   { img: 'assets/slide1.jpg', href: 'catalog.html?filter=discount', title: 'Yangi chegirma' },
   { img: 'assets/slide2.jpg', href: 'catalog.html?filter=top', title: 'Top to‘plamlar' },
@@ -101,41 +98,57 @@ const initHomeSlider = () => {
     </a>
   `).join('');
 
-  homeSliderDots.innerHTML = HOME_SLIDES.map((_, idx) => `<button type="button" class="dot h-2 w-2 rounded-full ${idx===0?'bg-white':'bg-white/30'}" data-dot="${idx}"></button>`).join('');
+  homeSliderDots.innerHTML = HOME_SLIDES.map((_, idx) =>
+    `<button type="button" class="dot h-2 w-2 rounded-full ${idx === 0 ? 'bg-white' : 'bg-white/30'}"></button>`
+  ).join('');
 
-  let current = 0;
-  let timer = null;
+  let index = 0;
   let startX = 0;
+  let isDragging = false;
+  let timer = null;
 
-  const setSlide = (index) => {
-    current = (index + HOME_SLIDES.length) % HOME_SLIDES.length;
-    homeSliderTrack.style.transform = `translateX(-${current * 100}%)`;
-    homeSliderDots.querySelectorAll('[data-dot]').forEach((dot, i) => {
-      dot.classList.toggle('bg-white', i === current);
-      dot.classList.toggle('bg-white/30', i !== current);
+  const setSlide = (i) => {
+    index = (i + HOME_SLIDES.length) % HOME_SLIDES.length;
+    homeSliderTrack.style.transition = 'transform 0.4s ease';
+    homeSliderTrack.style.transform = `translateX(-${index * 100}%)`;
+
+    homeSliderDots.querySelectorAll('.dot').forEach((dot, j) => {
+      dot.classList.toggle('bg-white', j === index);
+      dot.classList.toggle('bg-white/30', j !== index);
     });
   };
 
   const startAuto = () => {
     clearInterval(timer);
-    timer = setInterval(() => setSlide(current + 1), 4000);
+    timer = setInterval(() => {
+      setSlide(index + 1);
+    }, 4000);
   };
 
-  homeSliderDots.addEventListener('click', (event) => {
-    const dot = event.target.closest('[data-dot]');
-    if (!dot) return;
-    setSlide(Number(dot.dataset.dot));
-    startAuto();
-  });
-
-  homeSliderTrack.addEventListener('touchstart', (event) => {
-    startX = event.touches[0].clientX;
+  homeSliderTrack.addEventListener('touchstart', (e) => {
+    clearInterval(timer);
+    startX = e.touches[0].clientX;
+    isDragging = true;
   }, { passive: true });
 
-  homeSliderTrack.addEventListener('touchend', (event) => {
-    const diff = event.changedTouches[0].clientX - startX;
-    if (Math.abs(diff) > 40) {
-      setSlide(current + (diff < 0 ? 1 : -1));
+  homeSliderTrack.addEventListener('touchend', (e) => {
+    if (!isDragging) return;
+
+    const diff = e.changedTouches[0].clientX - startX;
+
+    if (Math.abs(diff) > 50) {
+      setSlide(index + (diff < 0 ? 1 : -1));
+    }
+
+    isDragging = false;
+    startAuto();
+  }, { passive: true });
+
+  homeSliderDots.addEventListener('click', (e) => {
+    const dots = [...homeSliderDots.children];
+    const clickedIndex = dots.indexOf(e.target.closest('.dot'));
+    if (clickedIndex >= 0) {
+      setSlide(clickedIndex);
       startAuto();
     }
   });
@@ -249,6 +262,7 @@ const applyFilters = () => {
   const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
   const category = categoryFilter ? categoryFilter.value : 'all';
   const sort = priceSort ? priceSort.value : 'default';
+
   filteredProducts = allProducts.filter((product) => {
     const titleText = (product.title || '').toLowerCase();
     const descText = (product.desc || '').toLowerCase();
@@ -396,11 +410,13 @@ const init = async () => {
   if (newDropsRow) {
     newDropsRow.innerHTML = renderCarouselSkeleton(4);
   }
+
   const [{ products, error }, newestProducts, popularProducts] = await Promise.all([
     fetchProductsFromFirestore(),
     fetchNewestProducts(8),
     fetchPopularProducts(48),
   ]);
+
   if (error) {
     errorBox.textContent = error;
     errorBox.classList.remove('hidden');
@@ -410,9 +426,11 @@ const init = async () => {
     }
     return;
   }
+
   allProducts = popularProducts.length ? popularProducts : products;
   filteredProducts = [...allProducts];
   productList.innerHTML = '';
+
   syncCategoryFromQuery();
   applyFilters();
   initFilters();
@@ -433,3 +451,4 @@ window.addEventListener('langChanged', () => {
   renderNewDropsRow(shuffle(allProducts).slice(0, 8));
   initHomeSlider();
 });
+
