@@ -46,7 +46,9 @@ const receiptFilename = document.querySelector('#receipt-filename');
 const receiptSubmit = document.querySelector('#receipt-submit');
 const copyButtons = document.querySelectorAll('.copy-btn');
 const citySelect = document.querySelector('#citySelect');
-const districtSelect = document.querySelector('#districtSelect');
+
+let districtSelect = document.querySelector('#districtSelect');
+let districtInput = null;
 
 const REGIONS = {
   Toshkent: ["Mirzo Ulug‘bek", 'Yunusobod', 'Chilonzor', 'Olmazor'],
@@ -224,7 +226,6 @@ const createOrder = async ({ paymentMethod, receiptUrl = '', contactPhone }) => 
 
   const orderId = uid();
 
-  // ✅ top-level address fields (admin/search uchun oson)
   const region = String(formData.get('city') || '');
   const district = String(formData.get('district') || '');
   const addressText = String(formData.get('address') || '');
@@ -232,31 +233,25 @@ const createOrder = async ({ paymentMethod, receiptUrl = '', contactPhone }) => 
   const items = buildOrderItems(cart);
 
   const payload = {
-    // ids
     id: orderId,
     docId: orderId,
 
-    // times
     date: new Date().toISOString(),
     createdAt: nowTs(),
     updatedAt: nowTs(),
 
-    // user
     userId: currentUser?.id || null,
     userName: String(formData.get('name') || currentUser?.name || 'Guest'),
     userPhone: String(contactPhone || currentUser?.phone || ''),
 
-    // totals
     subtotal,
     totalProductsSum: subtotal,
     total,
 
-    // payment & receipt
-    payment: paymentMethod,            // masalan: 'cash' yoki 'card_transfer' yoki 'receipt'
+    payment: paymentMethod,
     receiptUrl: receiptUrl || '',
     status: 'pending',
 
-    // delivery
     deliveryType: selectedDelivery || null,
     delivery: {
       type: selectedDelivery,
@@ -266,19 +261,16 @@ const createOrder = async ({ paymentMethod, receiptUrl = '', contactPhone }) => 
       weightKg: deliveryMeta.weightKg,
     },
 
-    // ✅ top-level address
     region,
     district,
     address: addressText,
 
-    // ✅ nested address (ham qoladi)
     addressObj: {
       region,
       district,
       homeAddress: addressText,
     },
 
-    // ✅ items full
     items,
   };
 
@@ -302,25 +294,39 @@ const createOrder = async ({ paymentMethod, receiptUrl = '', contactPhone }) => 
   }, 700);
 };
 
-const fillDistricts = (region) => {
+/* =========================
+   TUMANNI SELECTDAN INPUTGA O'ZGARTIRDIK
+========================= */
+const replaceDistrictSelectWithInput = () => {
   if (!districtSelect) return;
-  const districts = REGIONS[region] || [];
-  districtSelect.innerHTML =
-    '<option value="">Tumanni tanlang</option>' +
-    districts.map((item) => `<option value="${item}">${item}</option>`).join('');
-  districtSelect.disabled = districts.length === 0;
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.id = districtSelect.id || 'districtSelect';
+  input.name = districtSelect.name || 'district';
+  input.placeholder = 'Tumanni yozing';
+  input.autocomplete = 'address-level2';
+  input.value = districtSelect.value || '';
+
+  input.className =
+    districtSelect.className ||
+    'w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none';
+
+  // eski select o‘rniga input qo‘yamiz
+  districtSelect.parentNode?.replaceChild(input, districtSelect);
+
+  districtInput = input;
+  districtSelect = null;
 };
 
 const initAddressSelectors = () => {
-  if (!citySelect || !districtSelect) return;
+  if (!citySelect) return;
+
   citySelect.innerHTML =
     '<option value="">Hududni tanlang</option>' +
     Object.keys(REGIONS).map((region) => `<option value="${region}">${region}</option>`).join('');
-  fillDistricts('');
 
-  citySelect.addEventListener('change', () => {
-    fillDistricts(citySelect.value);
-  });
+  replaceDistrictSelectWithInput();
 };
 
 const showReceiptStep = () => {

@@ -20,7 +20,11 @@ export const syncAdminState = (user = null) => {
   localStorage.setItem('isAdmin', isAdmin ? 'true' : 'false');
 
   if (currentUser) {
-    const nextUser = { ...currentUser, isAdmin, role: isAdmin ? 'admin' : currentUser.role || 'user' };
+    const nextUser = {
+      ...currentUser,
+      isAdmin,
+      role: isAdmin ? 'admin' : currentUser.role || 'user',
+    };
     localStorage.setItem('currentUser', JSON.stringify(nextUser));
     return nextUser;
   }
@@ -46,31 +50,59 @@ export const formatPrice = (value) => {
 
 // ====== PRODUCT CARDS ======
 export const renderProductCard = (product) => {
-  const image = product.images?.[0] || product.img || 'https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=800&q=80';
-  const rating = Number(product.rating ?? 4.8).toFixed(1);
+  const image =
+    product.images?.[0] ||
+    product.img ||
+    'https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=800&q=80';
+
   const oldPrice = product.oldPrice && product.oldPrice > product.price ? product.oldPrice : null;
   const adminMode = isAdminUser();
+
   const actionButton = adminMode
     ? `<button type="button" class="pc-btn edit-btn" data-edit-id="${product.id}">✏️ Edit</button>`
     : `<a href="detail.html?id=${product.id}" class="pc-btn">${t('details')}</a>`;
+
   return `
-    <article class="product-card">
-      <a href="detail.html?id=${product.id}" class="pc-media product-card__img">
-        <div class="product-card__badges" aria-hidden="true">
-          <span class="pc-pill badge-pill badge-pill--rating"><span class="badge-star">★</span><span>${rating}</span></span>
+    <article class="product-card group relative overflow-hidden rounded-[28px] border border-cyan-400/20 bg-[#070b2a] p-[10px] shadow-[0_10px_35px_rgba(0,0,0,0.35)] transition duration-300 hover:-translate-y-1 hover:border-cyan-300/35 hover:shadow-[0_0_0_1px_rgba(103,232,249,0.14),0_20px_50px_rgba(34,211,238,0.12)]">
+      
+      <a href="detail.html?id=${product.id}" class="relative block overflow-hidden rounded-[22px]">
+        <div class="absolute inset-0 rounded-[22px] bg-gradient-to-br from-cyan-400/10 via-transparent to-fuchsia-400/10 pointer-events-none z-10"></div>
+
+        <div class="relative flex h-[165px] w-full items-center justify-center overflow-hidden rounded-[22px] border border-cyan-400/20 bg-[#0b1028] p-3 sm:h-[185px]">
+          <img
+            src="${image}"
+            alt="${product.title}"
+            loading="lazy"
+            class="relative z-[1] block max-h-full max-w-full object-contain transition duration-300 group-hover:scale-[1.04]"
+          />
         </div>
-        <img src="${image}" alt="${product.title}" loading="lazy" />
       </a>
-      <div class="pc-body">
-        <p class="pc-cat">${product.category}</p>
-        <h3 class="pc-title">${product.title}</h3>
-        <div class="pc-priceRow">
-          <span class="pc-price">${formatPrice(product.price)} so'm</span>
-          ${oldPrice ? `<span class="pc-old">${formatPrice(oldPrice)} so'm</span>` : ''}
+
+      <div class="pc-body px-1 pb-1 pt-3">
+        <p class="pc-cat mb-2 text-[13px] text-slate-300">${product.category || ''}</p>
+
+        <h3 class="pc-title min-h-[54px] text-[15px] font-extrabold leading-[1.35] text-white">
+          ${product.title}
+        </h3>
+
+        <div class="pc-priceRow mt-2 flex flex-col gap-1">
+          <span class="pc-price text-[18px] font-extrabold tracking-tight text-white">${formatPrice(product.price)} so'm</span>
+          ${oldPrice ? `<span class="pc-old text-[13px] text-slate-400 line-through">${formatPrice(oldPrice)} so'm</span>` : ''}
         </div>
-        <div class="pc-actions">
-          <button class="add-cart-btn pc-btn primary" data-id="${product.id}">${t('add_to_cart')}</button>
-          ${actionButton}
+
+        <div class="pc-actions mt-4 grid grid-cols-2 gap-2.5">
+          <button
+            class="add-cart-btn pc-btn primary rounded-[16px] bg-gradient-to-r from-cyan-300 via-sky-300 to-violet-300 px-3 py-3 text-[15px] font-bold text-slate-950 shadow-[0_10px_24px_rgba(56,189,248,0.25)] transition hover:brightness-105"
+            data-id="${product.id}"
+          >
+            ${t('add_to_cart')}
+          </button>
+
+          ${
+            adminMode
+              ? `<button type="button" class="pc-btn edit-btn rounded-[16px] border border-cyan-300/30 bg-white/5 px-3 py-3 text-[15px] font-bold text-white transition hover:bg-white/10" data-edit-id="${product.id}">✏️ Edit</button>`
+              : `<a href="detail.html?id=${product.id}" class="pc-btn rounded-[16px] border border-cyan-300/30 bg-white/5 px-3 py-3 text-center text-[15px] font-bold text-white transition hover:bg-white/10">${t('details')}</a>`
+          }
         </div>
       </div>
     </article>
@@ -118,6 +150,7 @@ export const showToast = (message, tone = 'success') => {
   }`;
   toast.textContent = message;
   document.body.appendChild(toast);
+
   setTimeout(() => {
     toast.classList.add('opacity-0');
     setTimeout(() => toast.remove(), 400);
@@ -136,11 +169,18 @@ export const updateCartBadge = () => {
 
 // ====== THEME HELPERS ======
 export const statusLabel = (status) => {
-  if (status === 'pending_verification' || status === 'pending')
+  if (status === 'pending_verification' || status === 'pending') {
     return { text: "Ko'rib chiqilyapti", cls: 'status-badge badge-pending' };
-  if (status === 'approved' || status === 'accepted') return { text: 'Qabul qilindi', cls: 'status-badge badge-approved' };
-  if (status === 'rejected') return { text: 'Rad etildi', cls: 'status-badge badge-rejected' };
-  if (status === 'processing') return { text: 'Jarayonda', cls: 'status-badge badge-pending' };
+  }
+  if (status === 'approved' || status === 'accepted') {
+    return { text: 'Qabul qilindi', cls: 'status-badge badge-approved' };
+  }
+  if (status === 'rejected') {
+    return { text: 'Rad etildi', cls: 'status-badge badge-rejected' };
+  }
+  if (status === 'processing') {
+    return { text: 'Jarayonda', cls: 'status-badge badge-pending' };
+  }
   return { text: status || "Noma'lum", cls: 'status-badge' };
 };
 
@@ -194,8 +234,10 @@ export const initAdminEditDelegation = (root = document) => {
     const editBtn = event.target.closest('.edit-btn');
     if (!editBtn) return;
     if (!isAdminUser()) return;
+
     event.preventDefault();
     event.stopPropagation();
+
     const editId = editBtn.dataset.editId;
     if (editId) {
       window.location.href = `admin.html?editId=${editId}`;

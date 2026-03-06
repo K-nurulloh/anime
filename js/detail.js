@@ -1,5 +1,6 @@
 import { db, collection, getDocs, query, orderBy, doc, getDoc } from './firebase.js';
 import {
+  addToCart as addCartLine,
   ensureSeedData,
   getWishlist,
   saveWishlist,
@@ -34,8 +35,6 @@ const variantSelect = document.querySelector('#variantSelect');
 
 const params = new URLSearchParams(window.location.search);
 const productId = params.get('id');
-
-
 
 function getCurrentUserStrict() {
   const keys = ['currentUser', 'CURRENT_USER', 'user', 'USER', 'authUser', 'AUTH_USER'];
@@ -96,7 +95,41 @@ let selectedImage = '';
 let selectedImageIndex = 0;
 let galleryImages = [];
 
-const formatLocalPrice = (value) => `${Number(value || 0).toLocaleString(getLang() === 'ru' ? 'ru-RU' : 'uz-UZ')} so'm`;
+const syncSafeBottomSpace = () => {
+  const main = document.querySelector('main');
+  const actionBar = document.querySelector('#detail-action-bar');
+  const bottomNav = document.querySelector('.bottom-nav, nav.bottom-nav, nav.fixed.bottom-0');
+
+  if (!main) return;
+
+  const isMobile = window.innerWidth < 768;
+  const actionBarHeight = actionBar ? actionBar.offsetHeight : 0;
+  const bottomNavHeight = isMobile && bottomNav ? bottomNav.offsetHeight : 0;
+
+  const safeSpace = isMobile
+    ? actionBarHeight + bottomNavHeight + 40
+    : actionBarHeight + 32;
+
+  main.style.paddingBottom = `${safeSpace}px`;
+
+  if (actionBar) {
+    actionBar.style.bottom = isMobile ? `${bottomNavHeight + 12}px` : '24px';
+    actionBar.style.zIndex = '40';
+  }
+
+  if (similarList) {
+    similarList.style.paddingBottom = '0px';
+    similarList.style.marginBottom = '0px';
+  }
+
+  if (moreList) {
+    moreList.style.paddingBottom = '0px';
+    moreList.style.marginBottom = '0px';
+  }
+};
+
+const formatLocalPrice = (value) =>
+  `${Number(value || 0).toLocaleString(getLang() === 'ru' ? 'ru-RU' : 'uz-UZ')} so'm`;
 
 const getProductVariants = (product) => {
   if (!Array.isArray(product?.variants)) return [];
@@ -115,7 +148,6 @@ const getActiveUnitPrice = (product) => {
   return Number(product?.price || 0);
 };
 
-
 const fetchProductsFromFirestore = async () => {
   const cached = getCachedProducts();
   if (cached?.length) {
@@ -132,6 +164,7 @@ const fetchProductsFromFirestore = async () => {
     } catch (orderError) {
       snapshot = await getDocs(collection(db, 'products'));
     }
+
     const products = snapshot.docs.map((docSnap) => {
       const data = docSnap.data() || {};
       const images = Array.isArray(data.images)
@@ -147,6 +180,7 @@ const fetchProductsFromFirestore = async () => {
         img: data.img || images[0] || '',
       };
     });
+
     setCachedProducts(products);
     return { products, error: null };
   } catch (error) {
@@ -157,7 +191,6 @@ const fetchProductsFromFirestore = async () => {
     };
   }
 };
-
 
 const detailSkeletonHTML = `
   <div class="grid gap-6 lg:grid-cols-[1.1fr_1fr]">
@@ -178,6 +211,7 @@ const renderGallery = (images, title) => {
     ? images
     : ['https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=800&q=80'];
   const thumbnails = unique.slice(0, 10);
+
   return `
     <div class="space-y-3">
       <div class="overflow-hidden rounded-2xl bg-white/5">
@@ -201,6 +235,7 @@ const renderGallery = (images, title) => {
 const handleWishlist = (productId) => {
   const wishlist = getWishlist();
   const index = wishlist.findIndex((item) => item.id === productId);
+
   if (index >= 0) {
     wishlist.splice(index, 1);
     showToast(t('wishlist_removed'));
@@ -208,7 +243,9 @@ const handleWishlist = (productId) => {
     wishlist.push({ id: productId });
     showToast(t('wishlist_added'));
   }
+
   saveWishlist(wishlist);
+
   document.querySelectorAll(`[data-id="${productId}"]`).forEach((button) => {
     button.textContent = index >= 0 ? '🤍' : '❤️';
   });
@@ -219,58 +256,67 @@ const addToCart = (product) => {
   const user = requireAuthOrRedirect();
   if (!user) return;
 
-  const cart = readUserCart();
-  const baseItem = {
-    id: String(product.id),
+  const selectedImageUrl =
+    selectedImage || galleryImages[selectedImageIndex] || product.images?.[0] || product.img || '';
+
+  addCartLine({
+    productId: String(product.id),
     title: product.title || '',
-    price: Number(product.price || 0),
-    img: selectedImage || galleryImages[selectedImageIndex] || product.images?.[0] || product.img || '',
-    selectedImage: selectedImage || galleryImages[selectedImageIndex] || product.images?.[0] || product.img || '',
-    selectedImageUrl: selectedImage || galleryImages[selectedImageIndex] || product.images?.[0] || product.img || '',
+    price: Number(selectedVariant?.price ?? product.price ?? 0),
+    image: selectedImageUrl,
+    selectedImage: selectedImageUrl,
     qty: 1,
-  };
-  const itemPayload = selectedVariant
-    ? {
-        ...baseItem,
-        variantName: selectedVariant.name,
-        variantPrice: Number(selectedVariant.price),
-      }
-    : baseItem;
-  const existing = cart.find(
-    (item) =>
-      String(item.id) === String(itemPayload.id) &&
-      String(item.selectedImageUrl || item.selectedImage || item.img || '') === String(itemPayload.selectedImageUrl || itemPayload.selectedImage || itemPayload.img || '') &&
-      String(item.variantName || '') === String(itemPayload.variantName || '')
-  );
-  if (existing) {
-    existing.qty += 1;
-  } else {
-    cart.push(itemPayload);
-  }
-  writeUserCart(cart);
+    ...(selectedVariant
+      ? {
+          variantName: selectedVariant.name,
+          variantPrice: Number(selectedVariant.price),
+        }
+      : {}),
+  });
+
   updateCartBadge();
   showToast('Savatga qo‘shildi');
 };
 
 // ====== CARD ACTIONS ======
-const initCardActions = (container) => {
+const initCardActions = (container, products = []) => {
+  if (!container) return;
+
   container.addEventListener('click', (event) => {
     const editBtn = event.target.closest('.edit-btn');
     const cartBtn = event.target.closest('.add-cart-btn');
     const wishlistBtn = event.target.closest('.wishlist-btn');
+
     if (editBtn) {
       event.preventDefault();
       event.stopPropagation();
-      const productId = editBtn.dataset.editId;
-      if (productId) {
-        window.location.href = `admin.html?editId=${productId}`;
+      const nextProductId = editBtn.dataset.editId;
+      if (nextProductId) {
+        window.location.href = `admin.html?editId=${nextProductId}`;
       }
       return;
     }
+
     if (cartBtn) {
-      addToCart({ id: cartBtn.dataset.id, price: 0 });
+      event.preventDefault();
+      event.stopPropagation();
+
+      const foundProduct =
+        products.find((item) => String(item.id) === String(cartBtn.dataset.id)) || {
+          id: cartBtn.dataset.id,
+          title: cartBtn.dataset.title || '',
+          price: Number(cartBtn.dataset.price || 0),
+          img: cartBtn.dataset.image || '',
+          images: cartBtn.dataset.image ? [cartBtn.dataset.image] : [],
+        };
+
+      addToCart(foundProduct);
+      return;
     }
+
     if (wishlistBtn) {
+      event.preventDefault();
+      event.stopPropagation();
       handleWishlist(wishlistBtn.dataset.id);
     }
   });
@@ -286,11 +332,13 @@ const renderComments = () => {
   const comments = getCommentsForProduct().sort(
     (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
   );
+
   if (!comments.length) {
     commentsEmpty.classList.remove('hidden');
     commentsList.innerHTML = '';
     return;
   }
+
   commentsEmpty.classList.add('hidden');
   commentsList.innerHTML = comments
     .map(
@@ -341,6 +389,7 @@ const init = async () => {
   }
 
   let product = null;
+
   try {
     const snap = await getDoc(doc(db, 'products', productId));
     if (snap.exists()) {
@@ -350,6 +399,7 @@ const init = async () => {
         : data.img
           ? [data.img]
           : [];
+
       product = {
         id: snap.id,
         docId: snap.id,
@@ -363,6 +413,7 @@ const init = async () => {
   }
 
   const { products: firestoreProducts } = await fetchProductsFromFirestore();
+
   if (!product) {
     const firestoreMatch = firestoreProducts.find(
       (item) => String(item.id) === String(productId) || String(item.docId || '') === String(productId)
@@ -371,6 +422,7 @@ const init = async () => {
       product = firestoreMatch;
     }
   }
+
   if (!product) {
     const { products: jsonProducts = [] } = await fetchProducts();
     const jsonMatch = jsonProducts.find((item) => String(item.id) === String(productId));
@@ -395,6 +447,7 @@ const init = async () => {
   galleryImages = images;
   selectedImage = images[0] || product.img || '';
   selectedImageIndex = 0;
+
   const oldPrice = Number(product.oldPrice);
   const hasOldPrice = Number.isFinite(oldPrice) && oldPrice > Number(product.price);
   const discount = Number(product.discount ?? product.discountPercent);
@@ -403,6 +456,7 @@ const init = async () => {
   const descriptionMarkup = description
     ? `<p id="dDesc" class="text-white/70">${description}</p>`
     : `<p id="dDesc" class="hidden"></p>`;
+
   const currentUser = syncAdminState(getCurrentUser()) || getCurrentUser();
   const isAdmin = isAdminUser(currentUser);
   const adminEditMarkup = isAdmin
@@ -420,16 +474,20 @@ const init = async () => {
           </div>
           ${adminEditMarkup}
         </div>
+
         <div class="flex items-center gap-2 text-amber-300">
           <span>★ ${product.rating ?? 4.8}</span>
           <span class="text-white/60">(stock: ${product.stock ?? '—'})</span>
         </div>
+
         ${descriptionMarkup}
+
         <div class="flex items-center gap-3">
           <span id="detail-main-price" class="text-2xl font-bold text-white">${formatLocalPrice(product.price || 0)}</span>
           ${hasOldPrice ? `<span class="text-sm text-slate-400 line-through">${oldPrice.toLocaleString(getLang() === 'ru' ? 'ru-RU' : 'uz-UZ')} so'm</span>` : ''}
           ${hasDiscount ? `<span class="rounded-full bg-emerald-500/20 px-2 py-1 text-xs text-emerald-200">-${discount}%</span>` : ''}
         </div>
+
         <div class="rounded-2xl bg-white/5 p-4 text-sm text-white/70">
           <p>${t('delivery_note')}</p>
           <p>${t('warranty_note')}</p>
@@ -437,6 +495,8 @@ const init = async () => {
       </div>
     </div>
   `;
+
+  setTimeout(syncSafeBottomSpace, 0);
 
   const isSaved = getWishlist().some((item) => item.id === product.id);
   const wishlistBtn = document.querySelector('[data-wishlist-toggle]');
@@ -474,16 +534,23 @@ const init = async () => {
       variantSelect.innerHTML = '';
     }
   }
+
   syncDisplayedPrice();
-  if (actionCart) actionCart.addEventListener('click', () => addToCart(product));
+
+  if (actionCart) {
+    actionCart.addEventListener('click', () => addToCart(product));
+  }
+
   if (actionBuy) {
     actionBuy.addEventListener('click', () => {
       addToCart(product);
       window.location.href = 'checkout.html';
     });
   }
-  if (wishlistBtn) wishlistBtn.addEventListener('click', () => handleWishlist(product.id));
 
+  if (wishlistBtn) {
+    wishlistBtn.addEventListener('click', () => handleWishlist(product.id));
+  }
 
   const similar = products.filter((item) => item.category === product.category && String(item.id) !== String(product.id));
   similarList.innerHTML = similar.slice(0, 8).map(renderProductCard).join('');
@@ -494,9 +561,14 @@ const init = async () => {
     .map(renderProductCard)
     .join('');
 
-  initCardActions(similarList);
-  initCardActions(moreList);
+  initCardActions(similarList, similar);
+  initCardActions(
+    moreList,
+    products.filter((item) => String(item.id) !== String(product.id))
+  );
+
   renderComments();
+
   if (!currentUser) {
     commentForm.classList.add('hidden');
     commentsLoginNote.classList.remove('hidden');
@@ -511,27 +583,35 @@ const init = async () => {
       window.location.href = `admin.html?editId=${product.id}`;
     });
   }
+
+  setTimeout(syncSafeBottomSpace, 50);
 };
 
 init();
 
+window.addEventListener('resize', syncSafeBottomSpace);
+window.addEventListener('orientationchange', syncSafeBottomSpace);
+
 window.addEventListener('langChanged', () => {
   init();
+  setTimeout(syncSafeBottomSpace, 50);
 });
-
-
 
 commentForm?.addEventListener('submit', (event) => {
   event.preventDefault();
+
   const currentUser = getCurrentUser();
   if (!currentUser) {
     commentsLoginNote.classList.remove('hidden');
     return;
   }
+
   const text = commentText.value.trim();
   if (!text) return;
+
   const rating = commentRating.value ? Number(commentRating.value) : null;
   const comments = getProductComments();
+
   const newComment = {
     id: `c-${Date.now()}`,
     productId,
@@ -543,6 +623,7 @@ commentForm?.addEventListener('submit', (event) => {
     createdAt: new Date().toISOString(),
     replies: [],
   };
+
   const list = comments[productId] || [];
   comments[productId] = [newComment, ...list];
   saveProductComments(comments);
@@ -550,8 +631,6 @@ commentForm?.addEventListener('submit', (event) => {
   commentRating.value = '';
   renderComments();
 });
-
-
 
 (() => {
   const viewer = document.querySelector('#img-viewer');
@@ -592,6 +671,7 @@ commentForm?.addEventListener('submit', (event) => {
 
   const setActiveImage = (index) => {
     if (!images.length) return;
+
     selectedImageIndex = ((index % images.length) + images.length) % images.length;
     selectedImage = images[selectedImageIndex];
 
@@ -667,10 +747,12 @@ commentForm?.addEventListener('submit', (event) => {
   });
 
   viewerImg.addEventListener('click', (e) => e.stopPropagation());
+
   btnPrev.addEventListener('click', (e) => {
     e.stopPropagation();
     showPrev();
   });
+
   btnNext.addEventListener('click', (e) => {
     e.stopPropagation();
     showNext();
@@ -685,24 +767,33 @@ commentForm?.addEventListener('submit', (event) => {
 
   let startX = 0;
   let startY = 0;
-  viewer.addEventListener('touchstart', (e) => {
-    if (viewer.classList.contains('hidden')) return;
-    const touch = e.touches?.[0];
-    if (!touch) return;
-    startX = touch.clientX;
-    startY = touch.clientY;
-  }, { passive: true });
 
-  viewer.addEventListener('touchend', (e) => {
-    if (viewer.classList.contains('hidden')) return;
-    const touch = e.changedTouches?.[0];
-    if (!touch) return;
-    const dx = touch.clientX - startX;
-    const dy = touch.clientY - startY;
-    if (Math.abs(dy) > Math.abs(dx)) return;
-    if (dx < -40) showNext();
-    if (dx > 40) showPrev();
-  }, { passive: true });
+  viewer.addEventListener(
+    'touchstart',
+    (e) => {
+      if (viewer.classList.contains('hidden')) return;
+      const touch = e.touches?.[0];
+      if (!touch) return;
+      startX = touch.clientX;
+      startY = touch.clientY;
+    },
+    { passive: true }
+  );
+
+  viewer.addEventListener(
+    'touchend',
+    (e) => {
+      if (viewer.classList.contains('hidden')) return;
+      const touch = e.changedTouches?.[0];
+      if (!touch) return;
+      const dx = touch.clientX - startX;
+      const dy = touch.clientY - startY;
+      if (Math.abs(dy) > Math.abs(dx)) return;
+      if (dx < -40) showNext();
+      if (dx > 40) showPrev();
+    },
+    { passive: true }
+  );
 
   const attachHandlers = () => {
     rebuildImages();
@@ -736,10 +827,13 @@ commentForm?.addEventListener('submit', (event) => {
 
   attachHandlers();
   window.addEventListener('langChanged', () => setTimeout(attachHandlers, 0));
+
   const root = document.querySelector('#detail-wrapper');
   if (root) {
-    const observer = new MutationObserver(() => attachHandlers());
+    const observer = new MutationObserver(() => {
+      attachHandlers();
+      setTimeout(syncSafeBottomSpace, 0);
+    });
     observer.observe(root, { childList: true, subtree: true });
   }
 })();
-

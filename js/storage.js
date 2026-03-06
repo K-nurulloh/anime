@@ -120,66 +120,90 @@ export const getUserCartKey = (user) => {
   return keyPart ? `CART_${keyPart}` : null;
 };
 
+const CART_KEY = 'CART';
+
 export const getCart = () => {
-  const currentUser = getCurrentUser();
-  if (!currentUser) return [];
-  const cartKey = getUserCartKey(currentUser);
-  if (!cartKey) return [];
-  return readStorage(cartKey, []);
+  const cart = readStorage(CART_KEY, []);
+  return Array.isArray(cart) ? cart : [];
 };
 
 export const setCart = (items) => {
-  const currentUser = getCurrentUser();
-  if (!currentUser) return [];
-  const cartKey = getUserCartKey(currentUser);
-  if (!cartKey) return [];
-
   const normalized = Array.isArray(items)
     ? items
-        .filter((item) => item && item.id != null)
-        .map((item) => {
-          const normalizedItem = {
-            id: String(item.id),
-            qty: Math.max(1, Number(item.qty) || 1),
-          };
-          if (item.variantName) normalizedItem.variantName = String(item.variantName);
-          if (Number.isFinite(Number(item.variantPrice))) normalizedItem.variantPrice = Number(item.variantPrice);
-          return normalizedItem;
-        })
+        .filter((item) => item && (item.cartItemId || item.productId || item.id))
+        .map((item) => ({
+          cartItemId: String(item.cartItemId || ''),
+          productId: String(item.productId || item.id || ''),
+          title: String(item.title || ''),
+          price: Number(item.price || 0),
+          image: String(item.image || item.selectedImage || item.selectedImageUrl || item.img || ''),
+          qty: Math.max(1, Number(item.qty) || 1),
+          ...(item.variantName ? { variantName: String(item.variantName) } : {}),
+          ...(Number.isFinite(Number(item.variantPrice)) ? { variantPrice: Number(item.variantPrice) } : {}),
+        }))
+        .filter((item) => item.productId)
     : [];
 
-  writeStorage(cartKey, normalized);
+  writeStorage(CART_KEY, normalized);
   return normalized;
 };
 
 export const saveCart = (cart) => setCart(cart);
 
 export const clearCart = () => {
-  const currentUser = getCurrentUser();
-  const cartKey = getUserCartKey(currentUser);
-  if (!cartKey) return;
-  localStorage.removeItem(cartKey);
+  localStorage.removeItem(CART_KEY);
 };
 
-export const addToCart = (productId, qty = 1, options = {}) => {
-  const id = String(productId);
-  const amount = Math.max(1, Number(qty) || 1);
-  const variantName = options?.variantName ? String(options.variantName) : '';
-  const variantPrice = Number.isFinite(Number(options?.variantPrice)) ? Number(options.variantPrice) : null;
+const buildCartItemId = (productId, selectedImage = '') =>
+  `${productId}__${selectedImage || ''}__${Date.now()}__${Math.random().toString(16).slice(2)}`;
+
+export const addToCart = (payload = {}) => {
+  const productId = String(payload.productId || payload.id || '');
+  if (!productId) return getCart();
+
+  const selectedImage = String(payload.selectedImage || payload.selectedImageUrl || payload.image || payload.img || '');
+  const qtyToAdd = Math.max(1, Number(payload.qty) || 1);
+  const variantName = payload.variantName ? String(payload.variantName) : '';
+
   const cart = getCart();
   const existing = cart.find(
-    (item) => String(item.id) === id && String(item.variantName || '') === variantName
+    (item) =>
+      String(item.productId) === productId &&
+      String(item.image || '') === selectedImage &&
+      String(item.variantName || '') === variantName
   );
+
   if (existing) {
-    existing.qty += amount;
+    existing.qty += qtyToAdd;
   } else {
-    const payload = { id, qty: amount };
-    if (variantName) payload.variantName = variantName;
-    if (variantPrice != null) payload.variantPrice = variantPrice;
-    cart.push(payload);
+    cart.push({
+      cartItemId: buildCartItemId(productId, selectedImage),
+      productId,
+      title: String(payload.title || ''),
+      price: Number(payload.price || 0),
+      image: selectedImage,
+      qty: qtyToAdd,
+      ...(variantName ? { variantName } : {}),
+      ...(Number.isFinite(Number(payload.variantPrice)) ? { variantPrice: Number(payload.variantPrice) } : {}),
+    });
   }
-  saveCart(cart);
-  return cart;
+
+  return setCart(cart);
+};
+
+export const removeCartItem = (cartItemId) => {
+  const filtered = getCart().filter((item) => String(item.cartItemId) !== String(cartItemId));
+  return setCart(filtered);
+};
+
+export const updateQty = (cartItemId, qty) => {
+  const nextQty = Math.max(1, Number(qty) || 1);
+  const cart = getCart().map((item) =>
+    String(item.cartItemId) === String(cartItemId)
+      ? { ...item, qty: nextQty }
+      : item
+  );
+  return setCart(cart);
 };
 
 export const getWishlist = () => {

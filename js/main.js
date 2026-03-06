@@ -1,5 +1,5 @@
 import { db, collection, getDocs, query, orderBy, limit } from './firebase.js';
-import { ensureSeedData, getWishlist, saveWishlist, getCachedProducts, setCachedProducts } from './storage.js';
+import { addToCart, ensureSeedData, getCachedProducts, getWishlist, saveWishlist, setCachedProducts } from './storage.js';
 import { initAdminEditDelegation, isAdminUser, renderCarouselSkeleton, renderProductCard, renderSkeleton, showToast, updateCartBadge } from './ui.js';
 import { applyTranslations, initLangSwitcher, t } from './i18n.js';
 import { initAutoCarousel } from './slider.js';
@@ -316,21 +316,16 @@ const handleAddToCart = (productId) => {
   const user = requireAuthOrRedirect();
   if (!user) return;
 
-  const cart = readUserCart();
-  const existing = cart.find((item) => String(item.id) === String(productId));
-  if (existing) {
-    existing.qty += 1;
-  } else {
-    const source = allProducts.find((item) => String(item.id) === String(productId)) || {};
-    cart.push({
-      id: String(productId),
-      title: source.title || '',
-      price: Number(source.price || 0),
-      img: source.images?.[0] || source.img || '',
-      qty: 1,
-    });
-  }
-  writeUserCart(cart);
+  const source = allProducts.find((item) => String(item.id) === String(productId)) || {};
+  const selectedImage = source.images?.[0] || source.img || '';
+  addToCart({
+    productId: String(productId),
+    title: source.title || '',
+    price: Number(source.price || 0),
+    image: selectedImage,
+    selectedImage,
+    qty: 1,
+  });
   updateCartBadge();
   showToast('Savatga qo‘shildi');
 };

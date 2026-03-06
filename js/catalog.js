@@ -1,5 +1,5 @@
 import { fetchProducts } from './api.js';
-import { ensureSeedData, getWishlist, saveWishlist } from './storage.js';
+import { addToCart, ensureSeedData, getWishlist, saveWishlist } from './storage.js';
 import { initAdminEditDelegation, renderProductCard, renderSkeleton, showToast, updateCartBadge } from './ui.js';
 import { applyTranslations, initLangSwitcher, t } from './i18n.js';
 
@@ -16,7 +16,6 @@ const searchInput = document.querySelector('#searchInputCatalog');
 const searchClearBtn = document.querySelector('#searchClearCatalog');
 const errorBox = document.querySelector('#error-box');
 const categoryChips = document.querySelectorAll('.category-chip');
-
 
 function getCurrentUserStrict() {
   const keys = ['currentUser', 'CURRENT_USER', 'user', 'USER', 'authUser', 'AUTH_USER'];
@@ -150,21 +149,18 @@ const handleAddToCart = (productId) => {
   const user = requireAuthOrRedirect();
   if (!user) return;
 
-  const cart = readUserCart();
-  const existing = cart.find((item) => String(item.id) === String(productId));
-  if (existing) {
-    existing.qty += 1;
-  } else {
-    const source = ALL_PRODUCTS.find((item) => String(item.id) === String(productId)) || {};
-    cart.push({
-      id: String(productId),
-      title: source.title || '',
-      price: Number(source.price || 0),
-      img: source.images?.[0] || source.img || '',
-      qty: 1,
-    });
-  }
-  writeUserCart(cart);
+  const source = ALL_PRODUCTS.find((item) => String(item.id) === String(productId)) || {};
+  const selectedImage = source.images?.[0] || source.img || '';
+
+  addToCart({
+    productId: String(productId),
+    title: source.title || '',
+    price: Number(source.price || 0),
+    image: selectedImage,
+    selectedImage,
+    qty: 1,
+  });
+
   updateCartBadge();
   showToast('Savatga qo‘shildi');
 };
@@ -172,6 +168,7 @@ const handleAddToCart = (productId) => {
 const handleWishlist = (productId) => {
   const wishlist = getWishlist();
   const index = wishlist.findIndex((item) => String(item.id) === String(productId));
+
   if (index >= 0) {
     wishlist.splice(index, 1);
     showToast(t('wishlist_removed'));
@@ -179,7 +176,9 @@ const handleWishlist = (productId) => {
     wishlist.push({ id: String(productId) });
     showToast(t('wishlist_added'));
   }
+
   saveWishlist(wishlist);
+
   document.querySelectorAll(`[data-id="${CSS.escape(String(productId))}"]`).forEach((button) => {
     if (button.classList.contains('wishlist-btn')) {
       button.textContent = index >= 0 ? '🤍' : '❤️';
@@ -191,7 +190,13 @@ const initListActions = () => {
   productList.addEventListener('click', (event) => {
     const cartBtn = event.target.closest('.add-cart-btn');
     const wishlistBtn = event.target.closest('.wishlist-btn');
-    if (cartBtn) handleAddToCart(cartBtn.dataset.id);
+
+    if (cartBtn) {
+      event.preventDefault();
+      event.stopPropagation();
+      handleAddToCart(cartBtn.dataset.id);
+    }
+
     if (wishlistBtn) {
       event.preventDefault();
       event.stopPropagation();
@@ -242,6 +247,8 @@ const init = async () => {
   filteredProducts = [...ALL_PRODUCTS];
 
   productList.innerHTML = '';
+  productList.classList.add('pb-28', 'md:pb-0');
+
   setActiveChip(null);
   applyFilters();
   initFilters();
