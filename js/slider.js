@@ -26,13 +26,9 @@ export const initAutoCarousel = (trackSelector, dotsSelector, speed = 18) => {
   createDots(dots, slides.length);
 
   let index = 0;
-  let isPaused = false;
   let isDragging = false;
   let startX = 0;
   let startScroll = 0;
-  let rafId = null;
-  let lastTime = null;
-  let timer = null;
   let activePointerId = null;
 
   const updateActiveDot = () => {
@@ -51,18 +47,6 @@ export const initAutoCarousel = (trackSelector, dotsSelector, speed = 18) => {
     setActiveDot(dots, index);
   };
 
-  const clearTimer = () => {
-    if (timer) {
-      clearInterval(timer);
-      timer = null;
-    }
-  };
-
-  const pause = () => {
-    isPaused = true;
-    clearTimer();
-  };
-
   const scrollToIndex = (nextIndex) => {
     const normalizedIndex = ((nextIndex % slides.length) + slides.length) % slides.length;
     const slide = slides[normalizedIndex];
@@ -79,51 +63,9 @@ export const initAutoCarousel = (trackSelector, dotsSelector, speed = 18) => {
     setActiveDot(dots, index);
   };
 
-  const startInterval = () => {
-    clearTimer();
-    const interval = Number(track.dataset.interval) || 4000;
-
-    timer = setInterval(() => {
-      if (isPaused || isDragging) return;
-      scrollToIndex(index + 1);
-    }, interval);
-  };
-
-  const resume = () => {
-    isPaused = false;
-    lastTime = null;
-
-    if (track.dataset.carousel === 'interval') {
-      startInterval();
-    }
-  };
-
-  track.addEventListener('mouseenter', pause);
-  track.addEventListener('mouseleave', () => {
-    if (!isDragging) resume();
-  });
-
-  track.addEventListener(
-    'touchstart',
-    () => {
-      pause();
-    },
-    { passive: true }
-  );
-
-  track.addEventListener(
-    'touchend',
-    () => {
-      if (!isDragging) resume();
-    },
-    { passive: true }
-  );
-
   track.addEventListener('pointerdown', (event) => {
     isDragging = true;
     activePointerId = event.pointerId;
-    pause();
-
     startX = event.clientX;
     startScroll = track.scrollLeft;
 
@@ -154,10 +96,7 @@ export const initAutoCarousel = (trackSelector, dotsSelector, speed = 18) => {
 
     activePointerId = null;
     updateActiveDot();
-
-    setTimeout(() => {
-      resume();
-    }, 120);
+    scrollToIndex(index);
   };
 
   track.addEventListener('pointerup', endDrag);
@@ -165,43 +104,26 @@ export const initAutoCarousel = (trackSelector, dotsSelector, speed = 18) => {
 
   track.addEventListener('lostpointercapture', () => {
     if (!isDragging) return;
-
     isDragging = false;
     activePointerId = null;
     updateActiveDot();
-
-    setTimeout(() => {
-      resume();
-    }, 120);
+    scrollToIndex(index);
   });
 
   track.addEventListener('scroll', updateActiveDot);
 
-  if (track.dataset.carousel === 'interval') {
-    scrollToIndex(0);
-    updateActiveDot();
-    startInterval();
-    return;
+  if (dots) {
+    dots.addEventListener('click', (event) => {
+      const clickedDot = event.target.closest('.dot');
+      if (!clickedDot) return;
+
+      const dotList = [...dots.querySelectorAll('.dot')];
+      const clickedIndex = dotList.indexOf(clickedDot);
+      if (clickedIndex >= 0) {
+        scrollToIndex(clickedIndex);
+      }
+    });
   }
 
-  const animate = (time) => {
-    if (!lastTime) lastTime = time;
-    const delta = (time - lastTime) / 1000;
-    lastTime = time;
-
-    if (!isPaused && !isDragging) {
-      track.scrollLeft += speed * delta;
-
-      const maxScroll = track.scrollWidth - track.clientWidth;
-      if (track.scrollLeft >= maxScroll - 1) {
-        track.scrollLeft = 0;
-      }
-    }
-
-    updateActiveDot();
-    rafId = requestAnimationFrame(animate);
-  };
-
-  if (rafId) cancelAnimationFrame(rafId);
-  rafId = requestAnimationFrame(animate);
+  scrollToIndex(0);
 };
