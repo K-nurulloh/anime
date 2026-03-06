@@ -68,11 +68,13 @@ export const renderProductCard = (product) => {
       <a href="detail.html?id=${product.id}" class="relative block overflow-hidden rounded-[22px]">
         <div class="absolute inset-0 rounded-[22px] bg-gradient-to-br from-cyan-400/10 via-transparent to-fuchsia-400/10 pointer-events-none z-10"></div>
 
-        <div class="relative flex h-[165px] w-full items-center justify-center overflow-hidden rounded-[22px] border border-cyan-400/20 bg-[#0b1028] p-3 sm:h-[185px]">
+        <div class="relative flex h-[165px] w-full items-center justify-center overflow-hidden rounded-[22px] border border-cyan-400/20 bg-[#0b1028] sm:h-[185px]">
+          <div class="img-skeleton absolute inset-0"></div>
           <img
             src="${image}"
             alt="${product.title}"
             loading="lazy"
+            onload="this.previousElementSibling.style.display='none'"
             class="relative z-[1] block max-h-full max-w-full object-contain transition duration-300 group-hover:scale-[1.04]"
           />
         </div>
