@@ -75,7 +75,7 @@ let ALL_PRODUCTS = [];
 let filteredProducts = [];
 let currentIndex = 0;
 let activeCategory = 'all';
-const batchSize = 12;
+const batchSize = 6;
 
 const setActiveChip = (category) => {
   categoryChips.forEach((chip) => {

@@ -81,7 +81,7 @@ function requireAuthOrRedirect() {
 let allProducts = [];
 let filteredProducts = [];
 let currentIndex = 0;
-const batchSize = 12;
+const batchSize = 6;
 
 const HOME_SLIDES = [
   { img: 'assets/slide1.jpg', href: 'catalog.html?filter=discount', title: 'Yangi chegirma' },

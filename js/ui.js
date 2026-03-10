@@ -60,7 +60,7 @@ export const renderProductCard = (product) => {
 
   return `
     <article
-      class="product-card group relative overflow-hidden rounded-[28px] border border-cyan-400/20 bg-[#070b2a] p-[10px] shadow-[0_10px_35px_rgba(0,0,0,0.35)] transition duration-300 hover:-translate-y-1 hover:border-cyan-300/35 hover:shadow-[0_0_0_1px_rgba(103,232,249,0.14),0_20px_50px_rgba(34,211,238,0.12)] cursor-pointer"
+      class="product-card self-start group relative overflow-hidden rounded-[28px] border border-cyan-400/20 bg-[#070b2a] p-[10px] shadow-[0_10px_35px_rgba(0,0,0,0.35)] transition duration-300 hover:-translate-y-1 hover:border-cyan-300/35 hover:shadow-[0_0_0_1px_rgba(103,232,249,0.14),0_20px_50px_rgba(34,211,238,0.12)] cursor-pointer"
       onclick="if(event.target.closest('.pc-actions')) return; window.location.href='detail.html?id=${product.id}'"
     >
       <div class="relative block overflow-hidden rounded-[22px]">
@@ -72,13 +72,14 @@ export const renderProductCard = (product) => {
             src="${image}"
             alt="${product.title}"
             loading="lazy"
+            decoding="async"
             onload="this.previousElementSibling.style.display='none'"
             class="relative z-[1] block max-h-full max-w-full object-contain transition duration-300 group-hover:scale-[1.04]"
           />
         </div>
       </div>
 
-      <div class="pc-body px-1 pb-1 pt-3">
+      <div class="pc-body flex flex-col px-1 pb-1 pt-3">
         <p class="pc-cat mb-2 text-[13px] text-slate-300">${product.category || ''}</p>
 
         <h3 class="pc-title min-h-[54px] text-[15px] font-extrabold leading-[1.35] text-white">
