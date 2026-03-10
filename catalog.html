@@ -89,7 +89,13 @@
 
       <section id="catalog" class="space-y-6">
         <div id="error-box" class="hidden rounded-2xl bg-rose-500/10 px-4 py-3 text-sm text-rose-200"></div>
-        <div id="product-list" class="products-grid grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4"></div>
+
+        <div
+          id="product-list"
+          class="products-grid grid grid-cols-2 items-start gap-4 md:grid-cols-3 lg:grid-cols-4"
+          style="grid-auto-rows: max-content;"
+        ></div>
+
         <div id="loader" class="flex justify-center">
           <div class="h-10 w-10 animate-spin rounded-full border-4 border-slate-800 border-t-slate-200"></div>
         </div>
