@@ -143,9 +143,10 @@ const fetchProductsFromFirestore = async () => {
 const calculateSummary = () => {
   const cart = getCart();
   const subtotal = cart.reduce((sum, item) => {
-    const product = productsMap.get(String(item.id));
-    if (!product) return sum;
-    return sum + Number(product.price || 0) * (Number(item.qty) || 1);
+    const itemKey = String(item.productId || item.id || '');
+    const product = productsMap.get(itemKey);
+    const unitPrice = Number(item.variantPrice ?? item.price ?? product?.price ?? 0);
+    return sum + unitPrice * (Number(item.qty) || 1);
   }, 0);
 
   const deliveryMeta = DELIVERY_OPTIONS[selectedDelivery];
@@ -199,12 +200,14 @@ const prependOrderToLocalStorage = (orderPayload) => {
  */
 const buildOrderItems = (cart) => {
   return cart.map((item) => {
-    const p = productsMap.get(String(item.id));
-    const price = Number(p?.price || item.price || 0);
-    const img = p?.images?.[0] || p?.img || item.img || '';
-    const title = p?.title || item.title || 'Mahsulot';
+    const itemKey = String(item.productId || item.id || '');
+    const p = productsMap.get(itemKey);
+    const price = Number(item.variantPrice ?? p?.price ?? item.price ?? 0);
+    const img = item.image || item.selectedImage || item.selectedImageUrl || p?.images?.[0] || p?.img || item.img || '';
+    const title = item.title || p?.title || 'Mahsulot';
+
     return {
-      id: String(item.id),
+      id: itemKey,
       qty: Number(item.qty) || 1,
       price,
       title,
@@ -312,7 +315,6 @@ const replaceDistrictSelectWithInput = () => {
     districtSelect.className ||
     'w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none';
 
-  // eski select o‘rniga input qo‘yamiz
   districtSelect.parentNode?.replaceChild(input, districtSelect);
 
   districtInput = input;
@@ -456,4 +458,4 @@ copyButtons.forEach((button) => {
   });
 });
 
-init();a
+init();
