@@ -10,6 +10,8 @@ import { imgbbUpload } from "./imgbb.js";
 
 import {
   db,
+  auth,
+  onAuthStateChanged,
   collection,
   addDoc,
   query,
@@ -61,8 +63,6 @@ const commentsEmpty = document.querySelector("#comments-empty");
 const adminComments = document.querySelector("#admin-comments");
 
 // ====== PAYMENTS (OPTIONAL DOM) ======
-// Agar admin.html'da payments inputlar bo‘lsa shular ishlaydi.
-// Bo‘lmasa, hech narsa qilmaydi.
 const payOwner = document.querySelector("#pay-owner");
 const payCard = document.querySelector("#pay-card");
 const payBank = document.querySelector("#pay-bank");
@@ -70,7 +70,7 @@ const paySaveBtn = document.querySelector("#pay-save");
 const payStatus = document.querySelector("#pay-status");
 
 // ====== ADMIN CHECK ======
-const readCurrentUser = () => {
+const readLocalUser = () => {
   const raw = localStorage.getItem("currentUser");
   if (!raw) return null;
   try {
@@ -80,16 +80,31 @@ const readCurrentUser = () => {
   }
 };
 
-const currentUser = readCurrentUser();
-const isAdmin = currentUser?.isAdmin === true;
+let currentUser = readLocalUser();
+let isAdmin = false;
 
-if (!isAdmin) {
+const showDenied = () => {
   accessDenied?.classList.remove("hidden");
   adminPanel?.classList.add("hidden");
-} else {
+};
+
+const showAllowed = () => {
   accessDenied?.classList.add("hidden");
   adminPanel?.classList.remove("hidden");
-}
+};
+
+const checkAdminRole = async (user) => {
+  if (!user?.uid) return false;
+
+  try {
+    const adminRef = doc(db, "admins", user.uid);
+    const adminSnap = await getDoc(adminRef);
+    return adminSnap.exists();
+  } catch (e) {
+    console.error("Admin tekshiruvda xatolik:", e);
+    return false;
+  }
+};
 
 // ====== HELPERS ======
 const formatDate = (value) => {
@@ -139,8 +154,6 @@ const buildTotal = (order) => {
   return Number.isFinite(n) ? n : 0;
 };
 
-// ✅ BUYURTMA LINK (Telegramga shu ketadi)
-// Sen aytgandek searc.html ochilsin
 const buildOrderLink = (orderId) => {
   const origin = window.location.origin;
   return `${origin}/searc.html?id=${encodeURIComponent(orderId)}`;
@@ -148,7 +161,6 @@ const buildOrderLink = (orderId) => {
 
 // ====== TELEGRAM (SERVER API via /api/telegram) ======
 async function sendTelegram(text) {
-  // Vercel serverless: /api/telegram -> env token/chatId ishlaydi
   const res = await fetch("/api/telegram", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -169,13 +181,12 @@ let selectedPreviews = [];
 let adminProducts = [];
 let editingId = null;
 let productVariants = [];
-let productsMap = new Map(); // comments uchun
+let productsMap = new Map();
 
 // ====== ORDERS (FIRESTORE) ======
 const fetchPendingOrders = async () => {
   if (!isAdmin) return [];
 
-  // ✅ index talab qilmasligi uchun orderBy ishlatmaymiz
   const q = query(
     collection(db, "orders"),
     where("status", "in", ["pending", "pending_verification"])
@@ -184,7 +195,6 @@ const fetchPendingOrders = async () => {
   const snap = await getDocs(q);
   const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
-  // ✅ client-side sort
   items.sort(sortByCreatedAtDesc);
   return items;
 };
@@ -295,7 +305,6 @@ const renderOrders = async () => {
 const updateOrderStatus = async (orderId, status, rejectReason = null) => {
   const ref = doc(db, "orders", orderId);
 
-  // ✅ merge qilib, qolgan ma’lumotlarni o‘chirib yubormaydi
   await setDoc(
     ref,
     {
@@ -342,7 +351,6 @@ adminPanel?.addEventListener("click", async (event) => {
     try {
       await updateOrderStatus(id, "approved");
 
-      // ✅ Telegramga LINK bilan yuborish
       const link = buildOrderLink(id);
       try {
         await sendTelegram(
@@ -772,7 +780,7 @@ adminComments?.addEventListener("submit", (event) => {
 
 // ====== PAYMENTS (Firestore settings/payment) ======
 const loadPayments = async () => {
-  if (!payOwner || !payCard || !payBank) return; // DOM yo‘q bo‘lsa skip
+  if (!payOwner || !payCard || !payBank) return;
 
   try {
     const ref = doc(db, "settings", "payment");
@@ -822,11 +830,36 @@ paySaveBtn?.addEventListener("click", (e) => {
 const init = async () => {
   if (!isAdmin) return;
 
-  await loadAdminProducts();     // products.json yo'q => 404 bo'lmaydi
-  await renderOrders();          // indexsiz query
+  await loadAdminProducts();
+  await renderOrders();
   renderAdminComments();
   renderVariants();
-  await loadPayments();          // payments bo‘lsa yuklaydi
+  await loadPayments();
 };
 
-init();
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    isAdmin = false;
+    showDenied();
+    return;
+  }
+
+  const localUser = readLocalUser();
+
+  currentUser = {
+    ...(localUser || {}),
+    id: user.uid,
+    name: user.displayName || localUser?.name || "Admin",
+    email: user.email || localUser?.email || "",
+  };
+
+  isAdmin = await checkAdminRole(user);
+
+  if (!isAdmin) {
+    showDenied();
+    return;
+  }
+
+  showAllowed();
+  await init();
+});
