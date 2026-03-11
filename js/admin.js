@@ -25,12 +25,31 @@ import {
   deleteDoc,
 } from "./firebase.js";
 
+import {
+  signInWithEmailAndPassword,
+  signOut,
+  setPersistence,
+  browserLocalPersistence,
+} from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
+
 // ====== INIT ======
 ensureSeedData();
 
 // ====== DOM ======
 const accessDenied = document.querySelector("#access-denied");
 const adminPanel = document.querySelector("#admin-panel");
+
+const loginBox = document.querySelector("#admin-login-box");
+const loginBtn = document.querySelector("#admin-login-btn");
+const loginEmail = document.querySelector("#admin-email");
+const loginPassword = document.querySelector("#admin-password");
+const loginError = document.querySelector("#admin-login-error");
+
+const logoutDesktopBtn = document.querySelector("#admin-logout-desktop");
+const logoutMobileBtn = document.querySelector("#admin-logout-mobile");
+
+const adminEmailView = document.querySelector("#admin-email-view");
+const adminNameView = document.querySelector("#admin-name-view");
 
 const pendingOrdersList = document.querySelector("#pending-orders");
 const pendingEmpty = document.querySelector("#pending-empty");
@@ -82,15 +101,57 @@ const readLocalUser = () => {
 
 let currentUser = readLocalUser();
 let isAdmin = false;
+let hasInitialized = false;
+
+const showLogin = () => {
+  loginBox?.classList.remove("hidden");
+  if (loginBox) loginBox.style.display = "block";
+
+  accessDenied?.classList.add("hidden");
+  if (accessDenied) accessDenied.style.display = "none";
+
+  adminPanel?.classList.add("hidden");
+  if (adminPanel) adminPanel.style.display = "none";
+
+  logoutDesktopBtn?.classList.add("hidden");
+  logoutMobileBtn?.classList.add("hidden");
+
+  if (logoutDesktopBtn) logoutDesktopBtn.style.display = "none";
+  if (logoutMobileBtn) logoutMobileBtn.style.display = "none";
+};
 
 const showDenied = () => {
+  loginBox?.classList.add("hidden");
+  if (loginBox) loginBox.style.display = "none";
+
   accessDenied?.classList.remove("hidden");
+  if (accessDenied) accessDenied.style.display = "block";
+
   adminPanel?.classList.add("hidden");
+  if (adminPanel) adminPanel.style.display = "none";
+
+  logoutDesktopBtn?.classList.add("hidden");
+  logoutMobileBtn?.classList.add("hidden");
+
+  if (logoutDesktopBtn) logoutDesktopBtn.style.display = "none";
+  if (logoutMobileBtn) logoutMobileBtn.style.display = "none";
 };
 
 const showAllowed = () => {
+  loginBox?.classList.add("hidden");
+  if (loginBox) loginBox.style.display = "none";
+
   accessDenied?.classList.add("hidden");
+  if (accessDenied) accessDenied.style.display = "none";
+
   adminPanel?.classList.remove("hidden");
+  if (adminPanel) adminPanel.style.display = "block";
+
+  logoutDesktopBtn?.classList.remove("hidden");
+  logoutMobileBtn?.classList.remove("hidden");
+
+  if (logoutDesktopBtn) logoutDesktopBtn.style.display = "inline-flex";
+  if (logoutMobileBtn) logoutMobileBtn.style.display = "inline-flex";
 };
 
 const checkAdminRole = async (user) => {
@@ -99,11 +160,18 @@ const checkAdminRole = async (user) => {
   try {
     const adminRef = doc(db, "admins", user.uid);
     const adminSnap = await getDoc(adminRef);
+    console.log("LOGIN USER:", user.email, user.uid);
+    console.log("ADMIN EXISTS:", adminSnap.exists());
     return adminSnap.exists();
   } catch (e) {
     console.error("Admin tekshiruvda xatolik:", e);
     return false;
   }
+};
+
+const setAdminProfile = (user) => {
+  if (adminEmailView) adminEmailView.textContent = user?.email || "—";
+  if (adminNameView) adminNameView.textContent = user?.displayName || currentUser?.name || "Admin";
 };
 
 // ====== HELPERS ======
@@ -182,6 +250,47 @@ let adminProducts = [];
 let editingId = null;
 let productVariants = [];
 let productsMap = new Map();
+
+// ====== LOGIN ======
+loginBtn?.addEventListener("click", async () => {
+  const email = loginEmail?.value.trim();
+  const password = loginPassword?.value.trim();
+
+  if (!email || !password) {
+    if (loginError) loginError.textContent = "Email va parolni kiriting.";
+    return;
+  }
+
+  if (loginError) loginError.textContent = "";
+  loginBtn.disabled = true;
+
+  try {
+    await setPersistence(auth, browserLocalPersistence);
+    await signInWithEmailAndPassword(auth, email, password);
+  } catch (err) {
+    console.error(err);
+    if (loginError) loginError.textContent = "Email yoki parol noto‘g‘ri.";
+  } finally {
+    loginBtn.disabled = false;
+  }
+});
+
+const logoutAdmin = async () => {
+  try {
+    await signOut(auth);
+    isAdmin = false;
+    hasInitialized = false;
+    if (loginError) loginError.textContent = "";
+    showLogin();
+    showToast("Admin tizimdan chiqdi");
+  } catch (e) {
+    console.error(e);
+    showToast("Logoutda xatolik", "error");
+  }
+};
+
+logoutDesktopBtn?.addEventListener("click", logoutAdmin);
+logoutMobileBtn?.addEventListener("click", logoutAdmin);
 
 // ====== ORDERS (FIRESTORE) ======
 const fetchPendingOrders = async () => {
@@ -837,29 +946,56 @@ const init = async () => {
   await loadPayments();
 };
 
+// ====== AUTH OBSERVER ======
 onAuthStateChanged(auth, async (user) => {
-  if (!user) {
-    isAdmin = false;
-    showDenied();
-    return;
+  try {
+    if (!user) {
+      isAdmin = false;
+      currentUser = readLocalUser();
+      hasInitialized = false;
+      if (loginError) loginError.textContent = "";
+      showLogin();
+      return;
+    }
+
+    const localUser = readLocalUser();
+
+    currentUser = {
+      ...(localUser || {}),
+      id: user.uid,
+      name: user.displayName || localUser?.name || "Admin",
+      email: user.email || localUser?.email || "",
+    };
+
+    isAdmin = await checkAdminRole(user);
+
+    if (!isAdmin) {
+      console.warn("Bu user admin emas:", user.email, user.uid);
+
+      await signOut(auth);
+      isAdmin = false;
+      hasInitialized = false;
+
+      if (loginError) {
+        loginError.textContent = "Bu account admin emas yoki admins collectionda UID noto‘g‘ri.";
+      }
+
+      showLogin();
+      return;
+    }
+
+    setAdminProfile(user);
+    if (loginError) loginError.textContent = "";
+    showAllowed();
+
+    if (!hasInitialized) {
+      hasInitialized = true;
+      await init();
+    }
+  } catch (e) {
+    console.error("Auth tekshiruvda xatolik:", e);
+    hasInitialized = false;
+    if (loginError) loginError.textContent = "Auth tekshiruvda xatolik yuz berdi.";
+    showLogin();
   }
-
-  const localUser = readLocalUser();
-
-  currentUser = {
-    ...(localUser || {}),
-    id: user.uid,
-    name: user.displayName || localUser?.name || "Admin",
-    email: user.email || localUser?.email || "",
-  };
-
-  isAdmin = await checkAdminRole(user);
-
-  if (!isAdmin) {
-    showDenied();
-    return;
-  }
-
-  showAllowed();
-  await init();
 });

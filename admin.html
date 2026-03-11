@@ -9,21 +9,76 @@
   </head>
   <body class="theme-bg text-white">
     <!-- ====== NAVBAR ====== -->
-    <header class="fixed top-0 z-50 flex h-14 w-full items-center border-b border-slate-700 bg-[#0f2f52] px-4 md:hidden">
+    <header class="fixed top-0 z-50 flex h-14 w-full items-center justify-between border-b border-slate-700 bg-[#0f2f52] px-4 md:hidden">
       <a href="index.html" class="text-lg font-semibold text-white">Uzum Market</a>
+      <button
+        id="admin-logout-mobile"
+        class="hidden rounded-lg border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold text-white hover:border-white/40"
+      >
+        Logout
+      </button>
     </header>
+
     <header class="hidden border-b border-slate-700 bg-[#0f2f52] md:block">
       <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
         <a href="index.html" class="text-xl font-bold text-white">Uzum Market Admin</a>
         <nav class="flex items-center gap-3 text-sm">
           <a href="index.html" class="text-slate-200 hover:text-white">Home</a>
           <a href="orders.html" class="text-slate-200 hover:text-white">Orders</a>
+          <button
+            id="admin-logout-desktop"
+            class="hidden rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs font-semibold text-white hover:border-white/40"
+          >
+            Logout
+          </button>
         </nav>
       </div>
     </header>
 
     <!-- ====== ADMIN CHECK ====== -->
     <main class="mx-auto max-w-6xl space-y-10 px-4 pb-24 pt-14 md:pt-16">
+      <!-- LOGIN BOX -->
+      <div
+        id="admin-login-box"
+        class="hidden mx-auto max-w-md rounded-2xl border border-slate-700 bg-slate-800/60 p-6 shadow-lg"
+      >
+        <h2 class="text-xl font-semibold text-white">Admin login</h2>
+        <p class="mt-2 text-sm text-slate-300">
+          Admin panelga kirish uchun email va parolni kiriting.
+        </p>
+
+        <div class="mt-5 space-y-4">
+          <label class="block space-y-2 text-sm text-white/70">
+            <span>Email</span>
+            <input
+              id="admin-email"
+              type="email"
+              placeholder="Admin email"
+              class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-white outline-none"
+            />
+          </label>
+
+          <label class="block space-y-2 text-sm text-white/70">
+            <span>Parol</span>
+            <input
+              id="admin-password"
+              type="password"
+              placeholder="Parol"
+              class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-white outline-none"
+            />
+          </label>
+
+          <button
+            id="admin-login-btn"
+            class="w-full rounded-xl bg-blue-500 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-600"
+          >
+            Kirish
+          </button>
+
+          <p id="admin-login-error" class="text-sm text-rose-300"></p>
+        </div>
+      </div>
+
       <div id="access-denied" class="hidden rounded-2xl border border-rose-400/40 bg-rose-900/30 p-6 text-center text-sm text-rose-100">
         Kechirasiz, bu bo‘lim faqat admin email bilan kirgan foydalanuvchilar uchun.
       </div>
@@ -35,11 +90,11 @@
             <div class="grid gap-4 text-sm text-white/80 md:grid-cols-2">
               <div>
                 <p class="text-xs uppercase tracking-wide text-white/50">Email</p>
-                <p class="mt-1 text-sm font-semibold text-white">nurullohkomilov163@gmail.com</p>
+                <p id="admin-email-view" class="mt-1 text-sm font-semibold text-white">nurullohkomilov163@gmail.com</p>
               </div>
               <div>
                 <p class="text-xs uppercase tracking-wide text-white/50">Ism</p>
-                <p class="mt-1 text-sm text-white/80">—</p>
+                <p id="admin-name-view" class="mt-1 text-sm text-white/80">—</p>
               </div>
               <div>
                 <p class="text-xs uppercase tracking-wide text-white/50">Telefon</p>
@@ -218,3 +273,4 @@
     <script type="module" src="js/admin.js"></script>
   </body>
 </html>
+
