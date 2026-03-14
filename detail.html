@@ -34,70 +34,71 @@
       </div>
     </header>
 
-    <main class="bottom-safe-lg mx-auto max-w-6xl space-y-10 px-4 pt-14 md:pt-20">
-      <div id="error-box" class="hidden rounded-2xl bg-rose-500/10 px-4 py-3 text-sm text-rose-200"></div>
-      <section id="detail-wrapper">
-        <p id="dDesc" class="hidden"></p>
-      </section>
-      <section id="variant-block" class="hidden section -mt-4">
-        <label for="variantSelect" class="mb-2 block text-sm text-white/70">Variant / Size</label>
-        <select id="variantSelect" class="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-2 text-sm text-white"></select>
-      </section>
+   <main class="bottom-safe-lg mx-auto w-full max-w-6xl space-y-8 px-3 pt-14 md:px-4 md:pt-20">
+  <div id="error-box" class="hidden rounded-2xl bg-rose-500/10 px-4 py-3 text-sm text-rose-200"></div>
 
-      <section id="comments-section" class="space-y-4">
-        <h2 class="text-lg font-semibold text-white">Izohlar / Comments</h2>
-        <div id="comments-login-note" class="hidden rounded-2xl glass p-6 text-center text-sm text-white/70">
-          <p>Izoh yozish uchun login qiling</p>
-          <a href="account.html" class="mt-3 inline-flex items-center justify-center rounded-xl bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-100">
-            Accountga o‘tish
-          </a>
-        </div>
-        <form id="comment-form" class="space-y-3 rounded-2xl glass p-4">
-          <textarea id="comment-text" required rows="3" class="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-2 text-sm text-white" placeholder="Izoh yozing..."></textarea>
-          <div class="flex flex-wrap items-center gap-3 text-sm text-white/70">
-            <label class="flex items-center gap-2">
-              <span>Reyting</span>
-              <select id="comment-rating" class="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white">
-                <option value="">Tanlang</option>
-                <option value="1">1</option>
-                <option value="2">2</option>
-                <option value="3">3</option>
-                <option value="4">4</option>
-                <option value="5">5</option>
-              </select>
-            </label>
-            <button class="ml-auto rounded-xl bg-white px-4 py-2 text-sm font-semibold text-slate-900">Yuborish</button>
-          </div>
-        </form>
-        <div id="comments-empty" class="hidden rounded-2xl glass p-4 text-sm text-slate-400">
-          Hozircha izoh yo‘q
-        </div>
-        <div id="comments-list" class="space-y-4"></div>
-      </section>
+  <section id="detail-wrapper" class="w-full">
+    <p id="dDesc" class="hidden"></p>
+  </section>
 
-      <section class="space-y-4">
-        <h2 class="text-lg font-semibold text-white" data-i18n="similar"></h2>
-        <div id="similar-list" class="similar-grid"></div>
-      </section>
+  <section id="variant-block" class="hidden section -mt-2">
+    <label for="variantSelect" class="mb-2 block text-sm text-white/70">Variant / Size</label>
+    <select id="variantSelect" class="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-2 text-sm text-white"></select>
+  </section>
 
-      <section class="space-y-4">
-        <h2 class="text-lg font-semibold text-white" data-i18n="more"></h2>
-        <div id="more-list" class="similar-grid"></div>
-      </section>
-    </main>
-
-    <div id="detail-action-bar" class="detail-action-bar fixed left-0 right-0 z-40 mx-auto max-w-6xl px-4">
-      <div class="section flex items-center justify-between gap-3">
-        <div>
-          <p class="text-xs text-white/60">Narx</p>
-          <p id="detail-action-price" class="text-lg font-bold text-white">0 so'm</p>
-        </div>
-        <div class="flex gap-2">
-          <button id="detail-action-buy" class="pill-btn text-sm">Sotib olish</button>
-          <button id="detail-action-cart" class="rounded-full border border-white/20 px-4 py-2 text-sm text-white/80">Savatga</button>
-        </div>
-      </div>
+  <section id="comments-section" class="space-y-4">
+    <h2 class="text-lg font-semibold text-white">Izohlar / Comments</h2>
+    <div id="comments-login-note" class="hidden rounded-2xl glass p-6 text-center text-sm text-white/70">
+      <p>Izoh yozish uchun login qiling</p>
+      <a href="account.html" class="mt-3 inline-flex items-center justify-center rounded-xl bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-100">
+        Accountga o‘tish
+      </a>
     </div>
+    <form id="comment-form" class="space-y-3 rounded-2xl glass p-4">
+      <textarea id="comment-text" required rows="3" class="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-2 text-sm text-white" placeholder="Izoh yozing..."></textarea>
+      <div class="flex flex-wrap items-center gap-3 text-sm text-white/70">
+        <label class="flex items-center gap-2">
+          <span>Reyting</span>
+          <select id="comment-rating" class="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white">
+            <option value="">Tanlang</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+          </select>
+        </label>
+        <button class="ml-auto rounded-xl bg-white px-4 py-2 text-sm font-semibold text-slate-900">Yuborish</button>
+      </div>
+    </form>
+    <div id="comments-empty" class="hidden rounded-2xl glass p-4 text-sm text-slate-400">
+      Hozircha izoh yo‘q
+    </div>
+    <div id="comments-list" class="space-y-4"></div>
+  </section>
+
+  <section class="space-y-4">
+    <h2 class="text-lg font-semibold text-white" data-i18n="similar"></h2>
+    <div id="similar-list" class="similar-grid"></div>
+  </section>
+
+  <section class="space-y-4">
+    <h2 class="text-lg font-semibold text-white" data-i18n="more"></h2>
+    <div id="more-list" class="similar-grid"></div>
+  </section>
+</main>
+
+<div id="detail-action-bar">
+  <div class="detail-bar-inner">
+    <div class="detail-price-box">
+      <p class="detail-price-label">Narx</p>
+      <p id="detail-action-price" class="detail-price-value">0 so'm</p>
+    </div>
+
+    <button id="detail-action-buy" class="detail-buy-btn">Sotib ol</button>
+    <button id="detail-action-cart" class="detail-cart-btn">Savatga</button>
+  </div>
+</div>
 
       <!-- ====== BOTTOM NAV ====== -->
     <nav class="bottom-nav fixed bottom-0 left-0 right-0 z-50 border border-white/10 glass-soft md:hidden">

@@ -107,15 +107,10 @@ const syncSafeBottomSpace = () => {
   const bottomNavHeight = isMobile && bottomNav ? bottomNav.offsetHeight : 0;
 
   const safeSpace = isMobile
-    ? actionBarHeight + bottomNavHeight + 40
-    : actionBarHeight + 32;
+    ? actionBarHeight + bottomNavHeight + 28
+    : actionBarHeight + 24;
 
   main.style.paddingBottom = `${safeSpace}px`;
-
-  if (actionBar) {
-    actionBar.style.bottom = isMobile ? `${bottomNavHeight + 12}px` : '24px';
-    actionBar.style.zIndex = '40';
-  }
 
   if (similarList) {
     similarList.style.paddingBottom = '0px';
@@ -193,9 +188,17 @@ const fetchProductsFromFirestore = async () => {
 };
 
 const detailSkeletonHTML = `
-  <div class="grid gap-6 lg:grid-cols-[1.1fr_1fr]">
-    <div class="detail-skeleton shimmer h-72 rounded-2xl"></div>
-    <div class="section space-y-3">
+  <div class="grid gap-4 lg:grid-cols-[1.08fr_0.92fr]">
+    <div class="min-w-0">
+      <div class="detail-skeleton shimmer aspect-square w-full rounded-[22px]"></div>
+      <div class="mt-3 flex gap-2 overflow-x-auto">
+        <div class="detail-skeleton shimmer h-14 w-14 rounded-[14px] flex-shrink-0"></div>
+        <div class="detail-skeleton shimmer h-14 w-14 rounded-[14px] flex-shrink-0"></div>
+        <div class="detail-skeleton shimmer h-14 w-14 rounded-[14px] flex-shrink-0"></div>
+        <div class="detail-skeleton shimmer h-14 w-14 rounded-[14px] flex-shrink-0"></div>
+      </div>
+    </div>
+    <div class="section min-w-0 space-y-3">
       <div class="detail-skeleton shimmer h-5 w-1/3 rounded"></div>
       <div class="detail-skeleton shimmer h-8 w-4/5 rounded"></div>
       <div class="detail-skeleton shimmer h-4 w-1/2 rounded"></div>
@@ -208,22 +211,44 @@ const detailSkeletonHTML = `
 // ====== GALLERY ======
 const renderGallery = (images, title) => {
   const unique = images.length
-    ? images
+    ? [...new Set(images.filter(Boolean))]
     : ['https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=800&q=80'];
+
   const thumbnails = unique.slice(0, 10);
+  const firstImage = thumbnails[0];
 
   return `
-    <div class="space-y-3">
-      <div class="overflow-hidden rounded-2xl bg-white/5">
-        <img id="main-img" src="${thumbnails[0]}" alt="${title}" class="h-56 w-full object-cover" />
+    <div class="min-w-0">
+      <div class="product-media">
+        <img
+          id="main-image"
+          src="${firstImage}"
+          alt="${title}"
+          loading="eager"
+          decoding="async"
+        />
       </div>
-      <div id="thumbs" class="flex gap-3 overflow-x-auto">
+
+      <div id="thumbs" class="pc-strip">
         ${thumbnails
           .map(
             (image, index) => `
-          <button class="gallery-thumb flex-shrink-0 overflow-hidden rounded-xl border border-white/10" type="button" data-gallery-thumb data-idx="${index}" data-image="${image}">
-            <img src="${image}" alt="${title} thumbnail ${index + 1}" class="h-14 w-14 object-cover" />
-          </button>`
+          <button
+            class="${index === 0 ? 'active' : ''}"
+            type="button"
+            data-gallery-thumb
+            data-idx="${index}"
+            data-image="${image}"
+            aria-label="${title} thumbnail ${index + 1}"
+          >
+            <img
+              src="${image}"
+              alt="${title} thumbnail ${index + 1}"
+              loading="lazy"
+              decoding="async"
+            />
+          </button>
+        `
           )
           .join('')}
       </div>
@@ -469,28 +494,37 @@ const init = async () => {
     : '';
 
   detailWrapper.innerHTML = `
-    <div class="grid gap-6 lg:grid-cols-[1.1fr_1fr]">
+    <div class="grid gap-4 lg:grid-cols-[1.08fr_0.92fr]">
       ${renderGallery(images, product.title)}
-      <div class="section flex flex-col gap-4">
+
+      <div class="section min-w-0 flex flex-col gap-4">
         <div class="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p class="text-sm text-white/70">${product.category}</p>
-            <h1 class="text-3xl font-bold text-white">${product.title}</h1>
+          <div class="min-w-0 flex-1">
+            <p class="text-sm text-white/70">${product.category || ''}</p>
+            <h1 class="font-bold text-white">${product.title || ''}</h1>
           </div>
           ${adminEditMarkup}
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="flex flex-wrap items-center gap-2">
           <span><span style="color:#facc15;">★</span> ${product.rating ?? 4.8}</span>
           <span class="text-white/60">(stock: ${product.stock ?? '—'})</span>
         </div>
 
         ${descriptionMarkup}
 
-        <div class="flex items-center gap-3">
-          <span id="detail-main-price" class="text-2xl font-bold text-white">${formatLocalPrice(product.price || 0)}</span>
-          ${hasOldPrice ? `<span class="text-sm text-slate-400 line-through">${oldPrice.toLocaleString(getLang() === 'ru' ? 'ru-RU' : 'uz-UZ')} so'm</span>` : ''}
-          ${hasDiscount ? `<span class="rounded-full bg-emerald-500/20 px-2 py-1 text-xs text-emerald-200">-${discount}%</span>` : ''}
+        <div class="price-row flex items-center gap-3">
+          <span id="detail-main-price" class="product-price font-bold text-white">${formatLocalPrice(product.price || 0)}</span>
+          ${
+            hasOldPrice
+              ? `<span class="text-sm text-slate-400 line-through">${oldPrice.toLocaleString(getLang() === 'ru' ? 'ru-RU' : 'uz-UZ')} so'm</span>`
+              : ''
+          }
+          ${
+            hasDiscount
+              ? `<span class="rounded-full bg-emerald-500/20 px-2 py-1 text-xs text-emerald-200">-${discount}%</span>`
+              : ''
+          }
         </div>
 
         <div class="rounded-2xl bg-white/5 p-4 text-sm text-white/70">
@@ -651,7 +685,11 @@ commentForm?.addEventListener('submit', (event) => {
   const btnNext = document.querySelector('.img-viewer__nav--next');
   if (!viewer || !viewerImg || !btnPrev || !btnNext) return;
 
-  const getMainImg = () => document.querySelector('#main-img') || document.querySelector('#detail-wrapper img');
+  const getMainImg = () =>
+    document.querySelector('#main-image') ||
+    document.querySelector('#main-img') ||
+    document.querySelector('#detail-wrapper img');
+
   const getThumbButtons = () => Array.from(document.querySelectorAll('#thumbs [data-idx], [data-gallery-thumb][data-idx]'));
 
   const getThumbSource = (thumbBtn) => {
@@ -695,8 +733,7 @@ commentForm?.addEventListener('submit', (event) => {
 
     getThumbButtons().forEach((btn) => {
       const isActive = Number(btn.dataset.idx) === selectedImageIndex;
-      btn.classList.toggle('border-white/70', isActive);
-      btn.classList.toggle('border-white/10', !isActive);
+      btn.classList.toggle('active', isActive);
     });
   };
 
