@@ -981,6 +981,7 @@ a.border {
   padding: 0.85rem 1rem !important;
 }
 
+/* ===== CART / SUMMARY / ADMIN CARDS ===== */
 #cart-list > *,
 #checkout-summary,
 #summary-box,
@@ -989,8 +990,8 @@ a.border {
 #admin-comments > article {
   border-radius: 26px !important;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015)),
-    linear-gradient(180deg, rgba(26, 16, 56, 0.72), rgba(8, 10, 25, 0.94)) !important;
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.01)),
+    linear-gradient(180deg, rgba(18, 14, 42, 0.94), rgba(5, 7, 20, 0.99)) !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
   box-shadow: var(--shadow-lg);
 }
@@ -1332,4 +1333,68 @@ nav.fixed.bottom-0.left-0.right-0.z-50 .mx-auto {
   .detail-thumbs button img {
     border-radius: 10px !important;
   }
+}
+
+
+
+/* ===== CART PAGE DARK BACKGROUND FIX ===== */
+body.theme-bg:has(#cart-list) main,
+body.theme-bg:has(#checkout-summary) main,
+body.theme-bg:has(#summary-box) main {
+  background:
+    radial-gradient(700px 380px at 10% 0%, rgba(168, 85, 247, 0.10), transparent 58%),
+    radial-gradient(520px 320px at 100% 10%, rgba(244, 114, 182, 0.05), transparent 52%),
+    linear-gradient(180deg, #08101f 0%, #081427 38%, #081225 68%, #070d1a 100%) !important;
+}
+
+/* cart ichidagi bo'sh holat va promo blok ham bir xil qoraroq chiqsin */
+body.theme-bg:has(#cart-list) #empty-state,
+body.theme-bg:has(#cart-list) #checkout-summary,
+body.theme-bg:has(#cart-list) #summary-box,
+body.theme-bg:has(#cart-list) #cart-list > * {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.01)),
+    linear-gradient(180deg, rgba(18, 14, 42, 0.94), rgba(5, 7, 20, 0.99)) !important;
+}
+
+/* promo input atrofi ham ko'k bo'lib qolmasin */
+body.theme-bg:has(#cart-list) #promo-code,
+body.theme-bg:has(#cart-list) #apply-promo {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.015)),
+    rgba(8, 10, 25, 0.90) !important;
+}
+
+/* ===== CART PAGE UNIFIED DARK BACKGROUND FIX ===== */
+body.theme-bg:has(#cart-list),
+body.theme-bg:has(#checkout-summary),
+body.theme-bg:has(#summary-box) {
+  background: #08101f !important;
+}
+
+body.theme-bg:has(#cart-list)::before,
+body.theme-bg:has(#checkout-summary)::before,
+body.theme-bg:has(#summary-box)::before {
+  display: none !important;
+}
+
+body.theme-bg:has(#cart-list) main,
+body.theme-bg:has(#checkout-summary) main,
+body.theme-bg:has(#summary-box) main {
+  background:
+    radial-gradient(700px 380px at 10% 0%, rgba(168, 85, 247, 0.10), transparent 58%),
+    radial-gradient(520px 320px at 100% 10%, rgba(244, 114, 182, 0.05), transparent 52%),
+    linear-gradient(180deg, #08101f 0%, #08101f 38%, #08101f 68%, #08101f 100%) !important;
+  min-height: calc(100vh - 120px) !important;
+}
+
+body.theme-bg:has(#cart-list) .bottom-nav,
+body.theme-bg:has(#checkout-summary) .bottom-nav,
+body.theme-bg:has(#summary-box) .bottom-nav,
+body.theme-bg:has(#cart-list) nav.fixed.bottom-0.left-0.right-0.z-50,
+body.theme-bg:has(#checkout-summary) nav.fixed.bottom-0.left-0.right-0.z-50,
+body.theme-bg:has(#summary-box) nav.fixed.bottom-0.left-0.right-0.z-50 {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.015)),
+    rgba(8, 10, 25, 0.92) !important;
 }

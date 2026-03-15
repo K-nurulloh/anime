@@ -50,7 +50,16 @@
             <h2 class="text-lg font-semibold text-white" data-i18n="contact_step"></h2>
             <div class="mt-4 grid gap-4 sm:grid-cols-2">
               <input name="name" required data-i18n-placeholder="name" class="rounded-xl border border-slate-800 bg-slate-950 px-4 py-2 text-sm text-white" />
-              <input name="phone" required data-i18n-placeholder="phone" class="rounded-xl border border-slate-800 bg-slate-950 px-4 py-2 text-sm text-white" />
+<input
+  id="phoneInput"
+  name="phone"
+  type="tel"
+  required
+  inputmode="numeric"
+  maxlength="17"
+  value="+998 "
+  class="rounded-xl border border-slate-800 bg-slate-950 px-4 py-2 text-sm text-white"
+/>
             </div>
           </div>
 

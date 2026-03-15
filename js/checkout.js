@@ -46,6 +46,7 @@ const receiptFilename = document.querySelector('#receipt-filename');
 const receiptSubmit = document.querySelector('#receipt-submit');
 const copyButtons = document.querySelectorAll('.copy-btn');
 const citySelect = document.querySelector('#citySelect');
+const phoneInput = document.querySelector('#phoneInput');
 
 let districtSelect = document.querySelector('#districtSelect');
 let districtInput = null;
@@ -85,21 +86,33 @@ let receiptFile = null;
 let receiptPreviewUrl = null;
 let selectedDelivery = 'standard';
 
-const normalizePhone = (value) => (value || '').toString().replace(/\D/g, '');
-const isValidPhone = (value) => value.length === 9 || (value.length === 12 && value.startsWith('998'));
+const normalizePhone = (value) => {
+  const digits = (value || '').toString().replace(/\D/g, '');
+
+  if (digits.startsWith('998')) {
+    return digits.slice(0, 12);
+  }
+
+  return `998${digits}`.slice(0, 12);
+};
+
+const isValidPhone = (value) => /^\d{12}$/.test(value) && value.startsWith('998');
 
 const getValidatedPhone = () => {
   const formData = new FormData(form);
   const phone = normalizePhone(formData.get('phone'));
-  if (!phone) {
+
+  if (!phone || phone === '998') {
     showToast('Telefon raqamingizni kiriting', 'error');
     return null;
   }
+
   if (!isValidPhone(phone)) {
     showToast('Telefon raqami noto‘g‘ri', 'error');
     return null;
   }
-  return phone;
+
+  return `+${phone}`;
 };
 
 const setButtonLoading = (button, loadingText, isLoading) => {
@@ -112,6 +125,45 @@ const setButtonLoading = (button, loadingText, isLoading) => {
     button.textContent = button.dataset.originalText || button.textContent;
     button.disabled = false;
   }
+};
+
+const initPhoneMask = () => {
+  if (!phoneInput) return;
+
+  const formatPhone = (value) => {
+    let digits = value.replace(/\D/g, '');
+
+    if (digits.startsWith('998')) {
+      digits = digits.slice(3);
+    }
+
+    digits = digits.slice(0, 9);
+
+    let result = '+998';
+
+    if (digits.length > 0) result += ' ' + digits.slice(0, 2);
+    if (digits.length >= 3) result += ' ' + digits.slice(2, 5);
+    if (digits.length >= 6) result += ' ' + digits.slice(5, 7);
+    if (digits.length >= 8) result += ' ' + digits.slice(7, 9);
+
+    return result;
+  };
+
+  phoneInput.addEventListener('input', () => {
+    phoneInput.value = formatPhone(phoneInput.value);
+  });
+
+  phoneInput.addEventListener('focus', () => {
+    if (!phoneInput.value) {
+      phoneInput.value = '+998 ';
+    }
+  });
+
+  phoneInput.addEventListener('keydown', (e) => {
+    if (phoneInput.selectionStart <= 4 && (e.key === 'Backspace' || e.key === 'Delete')) {
+      e.preventDefault();
+    }
+  });
 };
 
 const fetchProductsFromFirestore = async () => {
@@ -354,6 +406,7 @@ const init = async () => {
   if (bank) bank.textContent = STORE_PAYMENT.bank;
 
   initAddressSelectors();
+  initPhoneMask();
   setDeliveryType('standard');
 
   form?.querySelectorAll('input[name="shipping"]').forEach((radio) => {
