@@ -218,8 +218,8 @@ const renderGallery = (images, title) => {
   const firstImage = thumbnails[0];
 
   return `
-    <div class="min-w-0">
-      <div class="product-media">
+    <div class="detail-gallery-wrap min-w-0 w-full">
+      <div class="detail-main-media">
         <img
           id="main-image"
           src="${firstImage}"
@@ -229,12 +229,12 @@ const renderGallery = (images, title) => {
         />
       </div>
 
-      <div id="thumbs" class="pc-strip">
+      <div id="thumbs" class="detail-thumbs">
         ${thumbnails
           .map(
             (image, index) => `
           <button
-            class="${index === 0 ? 'active' : ''}"
+            class="detail-thumb ${index === 0 ? 'active' : ''}"
             type="button"
             data-gallery-thumb
             data-idx="${index}"
@@ -688,9 +688,11 @@ commentForm?.addEventListener('submit', (event) => {
   const getMainImg = () =>
     document.querySelector('#main-image') ||
     document.querySelector('#main-img') ||
+    document.querySelector('.detail-main-media img') ||
     document.querySelector('#detail-wrapper img');
 
-  const getThumbButtons = () => Array.from(document.querySelectorAll('#thumbs [data-idx], [data-gallery-thumb][data-idx]'));
+  const getThumbButtons = () =>
+    Array.from(document.querySelectorAll('#thumbs [data-idx], [data-gallery-thumb][data-idx]'));
 
   const getThumbSource = (thumbBtn) => {
     const img = thumbBtn?.querySelector('img');
