@@ -24,8 +24,6 @@ applyTranslations();
 initLangSwitcher();
 updateCartBadge();
 
-const googleProvider = new GoogleAuthProvider();
-
 const authSection = document.querySelector('#auth-section');
 const profileSection = document.querySelector('#profile-section');
 const loginForm = document.querySelector('#login-form');
@@ -49,10 +47,18 @@ const ADMIN_EMAIL = 'nurullohkomilov163@gmail.com';
 const ADMIN_PASSWORD = 'nur123mm';
 
 // ====== HELPERS ======
-const normalizePhone = (value) => (value || '').toString().replace(/\D/g, '');
-
 const persistCurrentUser = (user) => {
   localStorage.setItem('currentUser', JSON.stringify(user));
+};
+
+const clearCurrentUserStorage = () => {
+  localStorage.removeItem('currentUser');
+  localStorage.removeItem('CURRENT_USER');
+  localStorage.removeItem('user');
+  localStorage.removeItem('USER');
+  localStorage.removeItem('authUser');
+  localStorage.removeItem('AUTH_USER');
+  localStorage.setItem('isAdmin', 'false');
 };
 
 const showLogin = () => {
@@ -116,9 +122,23 @@ const saveAndLoginUser = (user) => {
   return normalizedUser;
 };
 
+const createGoogleProvider = () => {
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({
+    prompt: 'select_account',
+  });
+  return provider;
+};
+
 const loginWithGoogle = async () => {
   try {
-    const result = await signInWithPopup(auth, googleProvider);
+    // oldingi sessiyani tozalab, account tanlashni majbur qilamiz
+    try {
+      await signOut(auth);
+    } catch (_) {}
+
+    const provider = createGoogleProvider();
+    const result = await signInWithPopup(auth, provider);
     const firebaseUser = result.user;
 
     const savedUser = saveAndLoginUser({
@@ -134,6 +154,11 @@ const loginWithGoogle = async () => {
     window.location.href = savedUser.isAdmin ? 'admin.html' : 'index.html';
   } catch (error) {
     console.error('Google login error:', error);
+
+    if (error?.code === 'auth/popup-closed-by-user' || error?.code === 'auth/cancelled-popup-request') {
+      return;
+    }
+
     showToast('Google orqali kirishda xatolik', 'error');
   }
 };
@@ -296,14 +321,7 @@ googleRegisterBtn?.addEventListener('click', loginWithGoogle);
 logoutBtn?.addEventListener('click', async () => {
   clearCart();
   setCurrentUserId(null);
-
-  localStorage.removeItem('currentUser');
-  localStorage.removeItem('CURRENT_USER');
-  localStorage.removeItem('user');
-  localStorage.removeItem('USER');
-  localStorage.removeItem('authUser');
-  localStorage.removeItem('AUTH_USER');
-  localStorage.setItem('isAdmin', 'false');
+  clearCurrentUserStorage();
 
   try {
     await signOut(auth);
