@@ -81,7 +81,7 @@ function requireAuthOrRedirect() {
 let allProducts = [];
 let filteredProducts = [];
 let currentIndex = 0;
-const batchSize = 6;
+const batchSize = 4;
 
 // ====== PROMO SLIDER ======
 const initPromoSlider = () => {
