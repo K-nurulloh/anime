@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-   <html lang="uz" class="scroll-smooth">
+<html lang="uz" class="scroll-smooth">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -12,15 +12,18 @@
     <header class="fixed top-0 z-50 flex h-14 w-full items-center glass-soft px-4 md:hidden">
       <a href="index.html" class="text-lg font-semibold text-white">Anime Shop</a>
     </header>
+
     <header class="sticky top-0 z-50 hidden glass-soft backdrop-blur md:block">
       <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4">
         <a href="index.html" class="text-xl font-bold text-white">Anime Shop</a>
+
         <nav class="flex flex-1 flex-wrap items-center gap-3">
           <a href="index.html" class="text-sm text-slate-200 hover:text-white" data-i18n="home"></a>
           <a href="catalog.html" class="text-sm text-slate-200 hover:text-white" data-i18n="catalog"></a>
           <a href="seller.html" class="text-sm text-slate-200 hover:text-white" data-i18n="seller_panel"></a>
           <a href="about.html" class="text-sm text-slate-200 hover:text-white" data-i18n="about"></a>
         </nav>
+
         <div class="flex flex-1 flex-wrap items-center gap-3">
           <input
             id="searchInputIndex"
@@ -47,6 +50,7 @@
             <option value="desc" data-i18n="sort_desc"></option>
           </select>
         </div>
+
         <div class="flex items-center gap-4 text-sm">
           <a href="cart.html" class="relative">
             🛒
@@ -63,8 +67,7 @@
           </select>
         </div>
       </div>
-
-      </header>
+    </header>
 
     <main class="bottom-safe mx-auto max-w-6xl space-y-10 px-4 pt-14 md:pt-20">
       <section class="space-y-4">
@@ -85,29 +88,36 @@
         </div>
 
         <div class="space-y-3">
-          <div class="overflow-x-auto snap-x snap-mandatory rounded-2xl border border-white/10 bg-slate-900/60 p-2 shadow-sm">
-            <div id="promo-track" class="track flex gap-3">
-              <div class="slide min-w-full snap-center overflow-hidden rounded-xl">
-                <img src="./assets/slide-1.jpg" alt="Bosh banner 1" class="h-44 w-full object-cover md:h-56" />
-              </div>
-              <div class="slide min-w-full snap-center overflow-hidden rounded-xl">
-                <img src="./assets/slide-2.jpg" alt="Bosh banner 2" class="h-44 w-full object-cover md:h-56" />
-              </div>
-              <div class="slide min-w-full snap-center overflow-hidden rounded-xl">
-                <img src="./assets/slide-3.jpg" alt="Bosh banner 3" class="h-44 w-full object-cover md:h-56" />
-              </div>
-            </div>
-          </div>
-          <div id="promo-dots" class="dots"></div>
-        </div>
-      </section>
+  <div class="promo-shell">
+    <div id="promo-track" class="flex w-full">
+      <div class="promo-slide">
+  <a href="catalog.html" class="promo-link">
+    <img src="a.png" alt="Bosh banner 1" class="promo-banner-img" />
+  </a>
+</div>
+<div class="promo-slide">
+  <a href="catalog.html" class="promo-link">
+    <img src="b.png" alt="Bosh banner 2" class="promo-banner-img" />
+  </a>
+</div>
+<div class="promo-slide">
+  <a href="catalog.html" class="promo-link">
+    <img src="anime.png" alt="Bosh banner 3" class="promo-banner-img" />
+  </a>
+</div>
+    </div>
+  </div>
+  <div id="promo-dots" class="dots"></div>
+</div>
 
+      </section>
 
       <section class="space-y-4">
         <div class="flex items-center justify-between">
           <h2 class="heading-lg" data-i18n="categories_title"></h2>
           <a href="catalog.html" class="text-sm text-white/70 hover:text-white" data-i18n="catalog"></a>
         </div>
+
         <div class="cat-grid">
           <a href="catalog.html?category=Telefon" class="cat-pill">
             <span class="cat-label" data-i18n="category_phone"></span>
@@ -149,6 +159,7 @@
           <h2 class="heading-lg">🔥 Ommabop</h2>
           <p class="text-sm text-white/70" data-i18n="catalog_subtitle"></p>
         </div>
+
         <div id="error-box" class="hidden rounded-2xl bg-rose-500/10 px-4 py-3 text-sm text-rose-200"></div>
         <div id="product-list" class="products-grid"></div>
         <div id="loader" class="flex justify-center">
@@ -158,8 +169,7 @@
       </section>
     </main>
 
-
-     <footer class="border-t border-slate-800 py-8 text-center text-sm text-white/70">
+    <footer class="border-t border-slate-800 py-8 text-center text-sm text-white/70">
       <p data-i18n="footer_note"></p>
       <a href="about.html" class="text-white/70 hover:text-white" data-i18n="about"></a>
     </footer>
@@ -187,6 +197,6 @@
       </div>
     </nav>
 
-     <script type="module" src="js/main.js"></script>
+    <script type="module" src="js/main.js"></script>
   </body>
 </html>

@@ -1,6 +1,6 @@
 import { db, collection, getDocs, query, orderBy, limit } from './firebase.js';
 import { addToCart, ensureSeedData, getCachedProducts, getWishlist, saveWishlist, setCachedProducts } from './storage.js';
-import { initAdminEditDelegation, isAdminUser, renderCarouselSkeleton, renderProductCard, renderSkeleton, showToast, updateCartBadge } from './ui.js';
+import { initAdminEditDelegation, renderCarouselSkeleton, renderProductCard, renderSkeleton, showToast, updateCartBadge } from './ui.js';
 import { applyTranslations, initLangSwitcher, t } from './i18n.js';
 import { initAutoCarousel } from './slider.js';
 
@@ -21,8 +21,8 @@ const errorBox = document.querySelector('#error-box');
 const categoryChips = document.querySelectorAll('.category-chip');
 const newDropsRow = document.querySelector('#new-drops-row');
 const newDropsDots = document.querySelector('#new-drops-dots');
-const homeSliderTrack = document.querySelector('#homeSliderTrack');
-const homeSliderDots = document.querySelector('#homeSliderDots');
+const promoTrack = document.querySelector('#promo-track');
+const promoDots = document.querySelector('#promo-dots');
 
 function getCurrentUserStrict() {
   const keys = ['currentUser', 'CURRENT_USER', 'user', 'USER', 'authUser', 'AUTH_USER'];
@@ -83,38 +83,32 @@ let filteredProducts = [];
 let currentIndex = 0;
 const batchSize = 6;
 
-const HOME_SLIDES = [
-  { img: 'assets/slide1.jpg', href: 'catalog.html?filter=discount', title: 'Yangi chegirma' },
-  { img: 'assets/slide2.jpg', href: 'catalog.html?filter=top', title: 'Top to‘plamlar' },
-  { img: 'assets/slide3.jpg', href: 'catalog.html?filter=limited', title: 'Cheklangan taklif' },
-];
+// ====== PROMO SLIDER ======
+const initPromoSlider = () => {
+  if (!promoTrack || !promoDots) return;
 
-const initHomeSlider = () => {
-  if (!homeSliderTrack || !homeSliderDots) return;
-
-  homeSliderTrack.innerHTML = HOME_SLIDES.map((slide) => `
-    <a href="${slide.href}" class="min-w-full">
-      <img src="${slide.img}" alt="${slide.title}" class="h-44 w-full rounded-xl object-cover md:h-56" loading="lazy" />
-    </a>
-  `).join('');
-
-  homeSliderDots.innerHTML = HOME_SLIDES.map((_, idx) =>
-    `<button type="button" class="dot h-2 w-2 rounded-full ${idx === 0 ? 'bg-white' : 'bg-white/30'}"></button>`
-  ).join('');
+  const slides = Array.from(promoTrack.querySelectorAll('.promo-slide'));
+  if (!slides.length) return;
 
   let index = 0;
-  let startX = 0;
-  let isDragging = false;
   let timer = null;
+  let startX = 0;
 
-  const setSlide = (i) => {
-    index = (i + HOME_SLIDES.length) % HOME_SLIDES.length;
-    homeSliderTrack.style.transition = 'transform 0.4s ease';
-    homeSliderTrack.style.transform = `translateX(-${index * 100}%)`;
+  promoTrack.style.transition = 'transform 0.45s ease';
+  promoTrack.style.transform = 'translate3d(0, 0, 0)';
 
-    homeSliderDots.querySelectorAll('.dot').forEach((dot, j) => {
-      dot.classList.toggle('bg-white', j === index);
-      dot.classList.toggle('bg-white/30', j !== index);
+  promoDots.innerHTML = slides
+    .map((_, i) => `<button type="button" class="dot ${i === 0 ? 'active' : ''}"></button>`)
+    .join('');
+
+  const dots = Array.from(promoDots.querySelectorAll('.dot'));
+
+  const setSlide = (nextIndex) => {
+    index = (nextIndex + slides.length) % slides.length;
+    promoTrack.style.transform = `translate3d(-${index * 100}%, 0, 0)`;
+
+    dots.forEach((dot, i) => {
+      dot.classList.toggle('active', i === index);
     });
   };
 
@@ -122,33 +116,43 @@ const initHomeSlider = () => {
     clearInterval(timer);
     timer = setInterval(() => {
       setSlide(index + 1);
-    }, 4000);
+    }, 3500);
   };
 
-  homeSliderTrack.addEventListener('touchstart', (e) => {
-    clearInterval(timer);
-    startX = e.touches[0].clientX;
-    isDragging = true;
-  }, { passive: true });
+  promoTrack.addEventListener(
+    'touchstart',
+    (e) => {
+      clearInterval(timer);
+      startX = e.touches[0].clientX;
+    },
+    { passive: true }
+  );
 
-  homeSliderTrack.addEventListener('touchend', (e) => {
-    if (!isDragging) return;
+  promoTrack.addEventListener(
+    'touchend',
+    (e) => {
+      const diff = e.changedTouches[0].clientX - startX;
 
-    const diff = e.changedTouches[0].clientX - startX;
+      if (Math.abs(diff) > 50) {
+        if (diff < 0) {
+          setSlide(index + 1);
+        } else {
+          setSlide(index - 1);
+        }
+      }
 
-    if (Math.abs(diff) > 50) {
-      setSlide(index + (diff < 0 ? 1 : -1));
-    }
+      startAuto();
+    },
+    { passive: true }
+  );
 
-    isDragging = false;
-    startAuto();
-  }, { passive: true });
+  promoDots.addEventListener('click', (e) => {
+    const dot = e.target.closest('.dot');
+    if (!dot) return;
 
-  homeSliderDots.addEventListener('click', (e) => {
-    const dots = [...homeSliderDots.children];
-    const clickedIndex = dots.indexOf(e.target.closest('.dot'));
-    if (clickedIndex >= 0) {
-      setSlide(clickedIndex);
+    const dotIndex = dots.indexOf(dot);
+    if (dotIndex >= 0) {
+      setSlide(dotIndex);
       startAuto();
     }
   });
@@ -198,6 +202,7 @@ const fetchProductsFromFirestore = async () => {
     } catch (orderError) {
       snapshot = await getDocs(collection(db, 'products'));
     }
+
     const products = snapshot.docs.map(mapDocToProduct);
     setCachedProducts(products);
     return { products, error: null };
@@ -259,14 +264,14 @@ const resetList = () => {
 
 // ====== FILTERS ======
 const applyFilters = () => {
-  const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
+  const queryText = searchInput ? searchInput.value.trim().toLowerCase() : '';
   const category = categoryFilter ? categoryFilter.value : 'all';
   const sort = priceSort ? priceSort.value : 'default';
 
   filteredProducts = allProducts.filter((product) => {
     const titleText = (product.title || '').toLowerCase();
     const descText = (product.desc || '').toLowerCase();
-    const matchesQuery = titleText.includes(query) || descText.includes(query);
+    const matchesQuery = titleText.includes(queryText) || descText.includes(queryText);
     const matchesCategory = category === 'all' || product.category === category;
     return matchesQuery && matchesCategory;
   });
@@ -274,6 +279,7 @@ const applyFilters = () => {
   if (sort === 'asc') {
     filteredProducts.sort((a, b) => a.price - b.price);
   }
+
   if (sort === 'desc') {
     filteredProducts.sort((a, b) => b.price - a.price);
   }
@@ -287,6 +293,7 @@ const initFilters = () => {
     element.addEventListener('input', applyFilters);
     element.addEventListener('change', applyFilters);
   });
+
   if (categoryFilter) {
     categoryFilter.addEventListener('change', () => updateQueryCategory(categoryFilter.value));
   }
@@ -332,6 +339,7 @@ const handleAddToCart = (productId) => {
 
   const source = allProducts.find((item) => String(item.id) === String(productId)) || {};
   const selectedImage = source.images?.[0] || source.img || '';
+
   addToCart({
     productId: String(productId),
     title: source.title || '',
@@ -340,6 +348,7 @@ const handleAddToCart = (productId) => {
     selectedImage,
     qty: 1,
   });
+
   updateCartBadge();
   showToast('Savatga qo‘shildi');
 };
@@ -347,6 +356,7 @@ const handleAddToCart = (productId) => {
 const handleWishlist = (productId) => {
   const wishlist = getWishlist();
   const index = wishlist.findIndex((item) => item.id === productId);
+
   if (index >= 0) {
     wishlist.splice(index, 1);
     showToast(t('wishlist_removed'));
@@ -354,7 +364,9 @@ const handleWishlist = (productId) => {
     wishlist.push({ id: productId });
     showToast(t('wishlist_added'));
   }
+
   saveWishlist(wishlist);
+
   document.querySelectorAll(`[data-id="${productId}"]`).forEach((button) => {
     button.textContent = index >= 0 ? '🤍' : '❤️';
   });
@@ -362,12 +374,15 @@ const handleWishlist = (productId) => {
 
 const initListActions = (container) => {
   if (!container) return;
+
   container.addEventListener('click', (event) => {
     const cartBtn = event.target.closest('.add-cart-btn');
     const wishlistBtn = event.target.closest('.wishlist-btn');
+
     if (cartBtn) {
       handleAddToCart(cartBtn.dataset.id);
     }
+
     if (wishlistBtn) {
       event.preventDefault();
       event.stopPropagation();
@@ -378,6 +393,7 @@ const initListActions = (container) => {
 
 const initInfiniteScroll = () => {
   if (!sentinel) return;
+
   const observer = new IntersectionObserver((entries) => {
     entries.forEach((entry) => {
       if (entry.isIntersecting) {
@@ -385,6 +401,7 @@ const initInfiniteScroll = () => {
       }
     });
   });
+
   observer.observe(sentinel);
 };
 
@@ -406,7 +423,9 @@ const renderNewDropsRow = (items) => {
 // ====== DATA BOOTSTRAP ======
 const init = async () => {
   if (!productList) return;
+
   productList.innerHTML = renderSkeleton(4);
+
   if (newDropsRow) {
     newDropsRow.innerHTML = renderCarouselSkeleton(4);
   }
@@ -421,9 +440,11 @@ const init = async () => {
     errorBox.textContent = error;
     errorBox.classList.remove('hidden');
     productList.innerHTML = '';
+
     if (newDropsRow) {
       newDropsRow.innerHTML = offlineBlockHTML('Internet yo‘q', 'Yangi mahsulotlar yuklanmadi.');
     }
+
     return;
   }
 
@@ -439,8 +460,8 @@ const init = async () => {
   initAdminEditDelegation();
   initInfiniteScroll();
   renderRecommended();
-  renderNewDropsRow((newestProducts.length ? newestProducts : shuffle(products).slice(0, 8)));
-  initHomeSlider();
+  renderNewDropsRow(newestProducts.length ? newestProducts : shuffle(products).slice(0, 8));
+  initPromoSlider();
 };
 
 init();
@@ -449,6 +470,5 @@ window.addEventListener('langChanged', () => {
   applyFilters();
   renderRecommended();
   renderNewDropsRow(shuffle(allProducts).slice(0, 8));
-  initHomeSlider();
+  initPromoSlider();
 });
-
