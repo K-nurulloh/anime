@@ -30,8 +30,13 @@ const commentRating = document.querySelector('#comment-rating');
 const commentsList = document.querySelector('#comments-list');
 const commentsEmpty = document.querySelector('#comments-empty');
 const commentsLoginNote = document.querySelector('#comments-login-note');
+const commentsToggle = document.querySelector('#comments-toggle');
+const commentsModal = document.querySelector('#comments-modal');
+const commentsModalList = document.querySelector('#comments-modal-list');
 const variantBlock = document.querySelector('#variant-block');
 const variantSelect = document.querySelector('#variantSelect');
+
+const COMMENTS_VISIBLE_COUNT = 3;
 
 const params = new URLSearchParams(window.location.search);
 const productId = params.get('id');
@@ -353,12 +358,82 @@ const initCardActions = (container, products = []) => {
 };
 
 // ====== COMMENTS ======
+const escapeHtml = (value = '') =>
+  String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+
+const getStrictUserId = () => {
+  const currentUser = getCurrentUserStrict();
+  return getUserId(currentUser);
+};
+
 const getCommentsForProduct = () => {
   const comments = getProductComments();
   return comments[productId] || [];
 };
 
+const buildCommentCard = (comment, currentUserId) => {
+  const isOwner = String(comment.userId || '') === String(currentUserId || '');
+
+  return `
+    <article class="rounded-2xl border border-slate-800 bg-slate-900 p-4 text-sm text-slate-200">
+      <div class="flex flex-wrap items-start justify-between gap-2">
+        <div class="min-w-0 flex-1">
+          <p class="font-semibold text-white">${escapeHtml(comment.userName)} (${escapeHtml(comment.userPhone || 'Telefon: N/A')})</p>
+          <span class="mt-1 block text-xs text-slate-400">${new Date(comment.createdAt).toLocaleString(getLang() === 'ru' ? 'ru-RU' : 'uz-UZ')}</span>
+        </div>
+
+        ${
+          isOwner
+            ? `
+          <button
+            type="button"
+            class="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-xs font-semibold text-rose-300 hover:bg-rose-500/20"
+            data-comment-delete="${comment.id}"
+          >
+            O‘chirish
+          </button>
+        `
+            : ''
+        }
+      </div>
+
+      ${comment.rating ? `<p class="mt-2 text-xs text-amber-400">Reyting: ${comment.rating}/5</p>` : ''}
+
+      <p class="mt-2 whitespace-pre-line break-words text-slate-300">${escapeHtml(comment.text)}</p>
+
+      ${
+        comment.replies?.length
+          ? `
+        <div class="mt-3 space-y-2 border-t border-slate-800 pt-3">
+          ${comment.replies
+            .map(
+              (reply) => `
+            <div class="rounded-xl border border-slate-800 bg-slate-950 p-3 text-xs text-slate-200">
+              <p class="font-semibold text-white">${escapeHtml(reply.adminName)}</p>
+              <p class="mt-1 whitespace-pre-line break-words text-slate-300">${escapeHtml(reply.text)}</p>
+              <span class="mt-2 block text-[10px] text-slate-400">${new Date(reply.createdAt).toLocaleString(
+                getLang() === 'ru' ? 'ru-RU' : 'uz-UZ'
+              )}</span>
+            </div>
+          `
+            )
+            .join('')}
+        </div>
+      `
+          : ''
+      }
+    </article>
+  `;
+};
+
 const renderComments = () => {
+  const currentUserId = getStrictUserId();
+
   const comments = getCommentsForProduct().sort(
     (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
   );
@@ -366,45 +441,49 @@ const renderComments = () => {
   if (!comments.length) {
     commentsEmpty.classList.remove('hidden');
     commentsList.innerHTML = '';
+    if (commentsModalList) commentsModalList.innerHTML = '';
+    commentsToggle?.classList.add('hidden');
     return;
   }
 
   commentsEmpty.classList.add('hidden');
-  commentsList.innerHTML = comments
-    .map(
-      (comment) => `
-      <article class="rounded-2xl border border-slate-800 bg-slate-900 p-4 text-sm text-slate-200">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <p class="font-semibold text-white">${comment.userName} (${comment.userPhone || 'Telefon: N/A'})</p>
-          <span class="text-xs text-slate-400">${new Date(comment.createdAt).toLocaleString(getLang() === 'ru' ? 'ru-RU' : 'uz-UZ')}</span>
-        </div>
-        ${comment.rating ? `<p class="mt-1 text-xs text-amber-400">Reyting: ${comment.rating}/5</p>` : ''}
-        <p class="mt-2 text-slate-300">${comment.text}</p>
-        ${
-          comment.replies?.length
-            ? `
-          <div class="mt-3 space-y-2 border-t border-slate-800 pt-3">
-            ${comment.replies
-              .map(
-                (reply) => `
-              <div class="rounded-xl border border-slate-800 bg-slate-950 p-3 text-xs text-slate-200">
-                <p class="font-semibold text-white">${reply.adminName}</p>
-                <p class="mt-1 text-slate-300">${reply.text}</p>
-                <span class="mt-2 block text-[10px] text-slate-400">${new Date(reply.createdAt).toLocaleString(
-                  getLang() === 'ru' ? 'ru-RU' : 'uz-UZ'
-                )}</span>
-              </div>
-            `
-              )
-              .join('')}
-          </div>
-        `
-            : ''
-        }
-      </article>
-    `
-    )
+
+  const previewComments = comments.slice(0, COMMENTS_VISIBLE_COUNT);
+
+  commentsList.innerHTML = previewComments
+    .map((comment) => buildCommentCard(comment, currentUserId))
     .join('');
+
+  if (commentsModalList) {
+    commentsModalList.innerHTML = comments
+      .map((comment) => buildCommentCard(comment, currentUserId))
+      .join('');
+  }
+
+  if (commentsToggle) {
+    if (comments.length > COMMENTS_VISIBLE_COUNT) {
+      commentsToggle.classList.remove('hidden');
+      commentsToggle.textContent = `Barcha izohlarni ko‘rish (${comments.length})`;
+    } else {
+      commentsToggle.classList.add('hidden');
+    }
+  }
+};
+
+const openCommentsModal = () => {
+  if (!commentsModal) return;
+  commentsModal.classList.remove('hidden');
+  commentsModal.setAttribute('aria-hidden', 'false');
+  document.body.dataset.commentsPrevOverflow = document.body.style.overflow || '';
+  document.body.style.overflow = 'hidden';
+};
+
+const closeCommentsModal = () => {
+  if (!commentsModal) return;
+  commentsModal.classList.add('hidden');
+  commentsModal.setAttribute('aria-hidden', 'true');
+  document.body.style.overflow = document.body.dataset.commentsPrevOverflow || '';
+  delete document.body.dataset.commentsPrevOverflow;
 };
 
 // ====== DATA BOOTSTRAP ======
@@ -676,6 +755,48 @@ commentForm?.addEventListener('submit', (event) => {
   commentText.value = '';
   commentRating.value = '';
   renderComments();
+});
+
+commentsToggle?.addEventListener('click', () => {
+  openCommentsModal();
+});
+
+commentsList?.addEventListener('click', handleCommentDelete);
+commentsModalList?.addEventListener('click', handleCommentDelete);
+
+function handleCommentDelete(event) {
+  const deleteBtn = event.target.closest('[data-comment-delete]');
+  if (!deleteBtn) return;
+
+  const commentId = deleteBtn.dataset.commentDelete;
+  const currentUserId = getStrictUserId();
+  if (!currentUserId) return;
+
+  const comments = getProductComments();
+  const list = comments[productId] || [];
+  const targetComment = list.find((item) => String(item.id) === String(commentId));
+
+  if (!targetComment) return;
+  if (String(targetComment.userId || '') !== String(currentUserId)) return;
+
+  comments[productId] = list.filter((item) => String(item.id) !== String(commentId));
+  saveProductComments(comments);
+
+  renderComments();
+  showToast('Izoh o‘chirildi');
+}
+
+commentsModal?.addEventListener('click', (event) => {
+  const closeTarget = event.target.closest('[data-comments-close]');
+  if (closeTarget) {
+    closeCommentsModal();
+  }
+});
+
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && commentsModal && !commentsModal.classList.contains('hidden')) {
+    closeCommentsModal();
+  }
 });
 
 (() => {
