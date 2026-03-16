@@ -86,12 +86,21 @@ async function load() {
         const one = Number(p?.price || it.price || 0);
         const sum = one * qty;
 
+        // Variant/size ko'rsatish
+        let variantText = "";
+        if (it.variant) variantText = it.variant;
+        else if (it.option) variantText = it.option;
+        else if (it.size) variantText = it.size;
+
         return `
           <div style="display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid #eee;">
             ${img ? `<img src="${esc(img)}" style="width:60px;height:60px;object-fit:cover;border-radius:10px;">` : ""}
             <div style="flex:1">
               <div style="font-weight:700">${esc(title)}</div>
-              <div style="color:#555;font-size:14px;">${qty} x ${price(one)} so'm</div>
+              <div style="color:#555;font-size:14px;">
+                ${qty} x ${price(one)} so'm
+                ${variantText ? ` — <b>${esc(variantText)}</b>` : ""}
+              </div>
             </div>
             <div style="font-weight:700">${price(sum)} so'm</div>
           </div>`;
