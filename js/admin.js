@@ -452,33 +452,51 @@ adminPanel?.addEventListener("click", async (event) => {
     return;
   }
 
-  if (confirmBtn) {
-    const id = confirmBtn.dataset.id;
-    if (!id) return;
+ if (confirmBtn) {
+  const id = confirmBtn.dataset.id;
+  if (!id) return;
 
-    confirmBtn.disabled = true;
+  confirmBtn.disabled = true;
+  try {
+    await updateOrderStatus(id, "approved");
+
+    const link = buildOrderLink(id);
+
+    // ====== BUYURTMANING ITEMLARI VA VARIANTINI OLISH ======
+    const orderSnap = await getDoc(doc(db, "orders", id));
+    const orderData = orderSnap.data();
+
+    let itemsText = "";
+    if (Array.isArray(orderData.items) && orderData.items.length) {
+      itemsText = orderData.items
+        .map((item) => {
+          const variant = item.variant ? ` (${item.variant})` : "";
+          return `• ${item.title || item.name || "Mahsulot"}${variant} x${item.qty || 1}`;
+        })
+        .join("\n");
+    } else {
+      itemsText = "Mahsulotlar ma'lumotlari mavjud emas.";
+    }
+
+    // ====== TELEGRAMGA XABAR YUBORISH ======
     try {
-      await updateOrderStatus(id, "approved");
-
-      const link = buildOrderLink(id);
-      try {
-        await sendTelegram(
-          `✅ Buyurtma qabul qilindi\nID: ${id}\nLink: ${link}`
-        );
-      } catch (e) {
-        console.error(e);
-        showToast("Telegramga yuborilmadi (token/chatId tekshir)", "error");
-      }
-
-      showToast("Buyurtma qabul qilindi");
+      await sendTelegram(
+        `✅ Buyurtma qabul qilindi\n\nID: ${id}\n\n🛍 Mahsulotlar:\n${itemsText}\n\nLink: ${link}`
+      );
     } catch (e) {
       console.error(e);
-      showToast("Tasdiqlashda xatolik", "error");
-    } finally {
-      confirmBtn.disabled = false;
+      showToast("Telegramga yuborilmadi (token/chatId tekshir)", "error");
     }
-    return;
+
+    showToast("Buyurtma qabul qilindi");
+  } catch (e) {
+    console.error(e);
+    showToast("Tasdiqlashda xatolik", "error");
+  } finally {
+    confirmBtn.disabled = false;
   }
+  return;
+}
 
   if (rejectBtn) {
     const id = rejectBtn.dataset.id;
