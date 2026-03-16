@@ -86,11 +86,19 @@ async function load() {
         const one = Number(p?.price || it.price || 0);
         const sum = one * qty;
 
-        // Variant/size ko'rsatish
+        // Variant/razmer ko'rsatish - barcha mumkin maydonlarni tekshiradi
         let variantText = "";
-        if (it.variant) variantText = it.variant;
-        else if (it.option) variantText = it.option;
-        else if (it.size) variantText = it.size;
+        const fields = ["variant", "option", "size", "selected", "attributes"];
+        for (let f of fields) {
+          if (it[f]) {
+            if (typeof it[f] === "object") {
+              variantText = Object.values(it[f]).join(", ");
+            } else {
+              variantText = it[f];
+            }
+            break; // birinchi topilgan maydonni oladi
+          }
+        }
 
         return `
           <div style="display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid #eee;">
