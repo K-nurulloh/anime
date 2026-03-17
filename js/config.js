@@ -1,6 +1,6 @@
 export const STORE_PAYMENT = {
   ownerFullName: 'Nurulloh Komilov',
-  cardNumber: '8600 1234 5678 9012',
+  cardNumber: '5614 6818 1714 6446',
   bank: 'UZCARD',
 };
 
