@@ -264,6 +264,7 @@ const buildOrderItems = (cart) => {
       price,
       title,
       img,
+      variant: item.variant || item.variantName || "" // 🔥 SHUNI QO‘SH
     };
   });
 };
