@@ -300,11 +300,11 @@ const addToCart = (product) => {
     selectedImageUrl: selectedImageUrl,
     qty: 1,
     ...(selectedVariant
-      ? {
-          variantName: selectedVariant.name,
-          variantPrice: Number(selectedVariant.price),
-        }
-      : {}),
+  ? {
+      variant: selectedVariant.name,   // 🔥 ENG MUHIM
+      variantPrice: Number(selectedVariant.price),
+    }
+  : {}),
   });
 
   updateCartBadge();
