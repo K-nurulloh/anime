@@ -199,7 +199,9 @@ const openModal = (docId) => {
               const qty = Number(item.qty || 1);
               return `
                 <div class="flex items-center justify-between text-sm text-slate-300 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-                  <span class="truncate pr-2">${title}</span>
+                  <span class="truncate pr-2">
+                     ${title} ${item.variant ? `(${item.variant})` : ""}
+                  </span>
                   <span class="shrink-0">${qty}x</span>
                 </div>
               `;
