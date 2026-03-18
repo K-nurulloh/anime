@@ -66,7 +66,17 @@ async function load() {
         const p = productsMap.get(pid);
 
         const title = it.title || p?.title || "Mahsulot";
-        const variant = it.variant || it.variantName || it.size || it.selectedVariant || "";
+
+        // --- YANGILANDI: variant/size/options birlashtirish ---
+        const variant =
+          it.variant ||
+          it.variantName ||
+          it.size ||
+          it.selectedVariant ||
+          it.selectedOption || 
+          (Array.isArray(it.options) ? it.options.join(", ") : "") || 
+          "";
+
         const img = (p?.images && p.images[0]) || p?.img || "";
         const qty = Number(it.qty || 1);
         const one = Number(it.variantPrice ?? it.price ?? p?.price ?? 0);
