@@ -122,8 +122,8 @@ const renderCart = () => {
           <div class="flex-1">
             <h3 class="text-sm font-semibold text-white">${title}</h3>
             <p class="text-xs text-slate-300">${category}</p>
-            ${item.variantName ? `<p class="mt-1 text-xs text-white/60">Variant: ${item.variantName}</p>` : ''}
-          </div>
+            ${(item.variantName || item.variant)  ? `<p class="mt-1 text-xs text-white/60">Variant: ${item.variantName || item.variant}</p>` : ''}
+            </div>
 
           <div class="text-sm font-semibold text-white">${formatPrice(price)} so'm</div>
 
