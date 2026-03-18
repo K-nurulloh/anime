@@ -77,48 +77,39 @@
 
     const items = Array.isArray(order.items) ? order.items : [];
     const itemsHtml = items.length
-      ? items.map((it) => {
-          const pid = String(it.id ?? it.productId ?? "");
-          const p = productsMap.get(pid);
-          const variant =
-                 item.variant ||
-                 item.variantName ||
-                 item.size ||
-                 item.selectedVariant ||
-              "";
-          const img = (p?.images && p.images[0]) || p?.img || "";
-          const qty = Number(it.qty || 1);
-          const one = Number(p?.price || it.price || 0);
-          const sum = one * qty;
+  ? items.map((it) => {
+      const pid = String(it.id ?? it.productId ?? "");
+      const p = productsMap.get(pid);
 
-          // Variant/razmer ko'rsatish - barcha mumkin maydonlarni tekshiradi
-          let variantText = "";
-          const fields = ["variant", "option", "size", "selected", "attributes"];
-          for (let f of fields) {
-            if (it[f]) {
-              if (typeof it[f] === "object") {
-                variantText = Object.values(it[f]).join(", ");
-              } else {
-                variantText = it[f];
-              }
-              break; // birinchi topilgan maydonni oladi
-            }
-          }
+      const title = it.title || p?.title || "Mahsulot";
 
-          return `
-            <div style="display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid #eee;">
-              ${img ? `<img src="${esc(img)}" style="width:60px;height:60px;object-fit:cover;border-radius:10px;">` : ""}
-              <div style="flex:1">
-                <div style="font-weight:700">${esc(title)}</div>
-                <div style="color:#555;font-size:14px;">
-                  ${qty} x ${price(one)} so'm
-                  ${variantText ? ` — <b>${esc(variantText)}</b>` : ""}
-                </div>
-              </div>
-              <div style="font-weight:700">${price(sum)} so'm</div>
-            </div>`;
-        }).join("")
-      : `<p>—</p>`;
+      const variant =
+        it.variant ||
+        it.variantName ||
+        it.size ||
+        it.selectedVariant ||
+        "";
+
+      const img = (p?.images && p.images[0]) || p?.img || "";
+      const qty = Number(it.qty || 1);
+      const one = Number(p?.price || it.price || 0);
+      const sum = one * qty;
+
+      return `
+        <div style="display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid #eee;">
+          ${img ? `<img src="${esc(img)}" style="width:60px;height:60px;object-fit:cover;border-radius:10px;">` : ""}
+          <div style="flex:1">
+            <div style="font-weight:700">
+              ${esc(title)} ${variant ? `(${esc(variant)})` : ""}
+            </div>
+            <div style="color:#555;font-size:14px;">
+              ${qty} x ${price(one)} so'm
+            </div>
+          </div>
+          <div style="font-weight:700">${price(sum)} so'm</div>
+        </div>`;
+    }).join("")
+  : `<p>—</p>`;
 
     const userName = order.userName || order.user?.name || "—";
     const userPhone = order.userPhone || order.user?.phone || "—";
