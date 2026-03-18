@@ -104,12 +104,14 @@ const getItemTitle = (item) => {
     item.productTitle ||
     (item.id ? `Product #${item.id}` : "Product");
 
-  const variant =
-    item.variant ||
-    item.variantName ||
-    item.size ||
-    item.selectedVariant ||
-    "";
+  const variantParts = []; 
+if (it.variant) variantParts.push(it.variant);
+if (it.variantName) variantParts.push(it.variantName);
+if (it.size) variantParts.push(it.size);
+if (it.selectedVariant) variantParts.push(it.selectedVariant);
+if (it.selectedOptions?.size) variantParts.push(it.selectedOptions.size);
+
+const variant = variantParts.join(", ");
 
   return variant ? `${base} (${variant})` : base;
 };
