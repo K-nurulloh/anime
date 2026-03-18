@@ -80,7 +80,12 @@
       ? items.map((it) => {
           const pid = String(it.id ?? it.productId ?? "");
           const p = productsMap.get(pid);
-          const title = p?.title || p?.name || `Mahsulot #${pid}`;
+          const variant =
+                 item.variant ||
+                 item.variantName ||
+                 item.size ||
+                 item.selectedVariant ||
+              "";
           const img = (p?.images && p.images[0]) || p?.img || "";
           const qty = Number(it.qty || 1);
           const one = Number(p?.price || it.price || 0);

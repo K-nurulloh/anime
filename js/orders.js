@@ -97,13 +97,22 @@ const renderReceiptThumb = (order, size = "h-8 w-8") => {
 // product title chiqishi uchun item ichida title bo‘lsa ishlatamiz, bo‘lmasa `Product #id`
 const getItemTitle = (item) => {
   if (!item) return "—";
-  if (item.title) return item.title;
-  if (item.name) return item.name;
-  if (item.productTitle) return item.productTitle;
-  if (item.id) return `Product #${item.id}`;
-  return "Product";
-};
 
+  const base =
+    item.title ||
+    item.name ||
+    item.productTitle ||
+    (item.id ? `Product #${item.id}` : "Product");
+
+  const variant =
+    item.variant ||
+    item.variantName ||
+    item.size ||
+    item.selectedVariant ||
+    "";
+
+  return variant ? `${base} (${variant})` : base;
+};
 // ====== RENDER ======
 const renderOrders = () => {
   const data = window.__orders || [];

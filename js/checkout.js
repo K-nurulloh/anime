@@ -266,8 +266,7 @@ const buildOrderItems = (cart) => {
   img,
 
   // 🔥 ENG MUHIM QISM
-  variant: item.variant || "",
-  size: item.size || "",
+  variant: item.variantName || item.variant || item.size || item.selectedVariant || "",
     };
   });
 };
