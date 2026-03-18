@@ -99,19 +99,9 @@ const normalizePhone = (value) => {
 const isValidPhone = (value) => /^\d{12}$/.test(value) && value.startsWith('998');
 
 const getValidatedPhone = () => {
-  const formData = new FormData(form);
-  const phone = normalizePhone(formData.get('phone'));
-
-  if (!phone || phone === '998') {
-    showToast('Telefon raqamingizni kiriting', 'error');
-    return null;
-  }
-
-  if (!isValidPhone(phone)) {
-    showToast('Telefon raqami noto‘g‘ri', 'error');
-    return null;
-  }
-
+  const phone = normalizePhone(phoneInput.value); // oldingi FormData o‘rniga input value
+  if (!phone || phone === '998') { showToast('Telefon raqamingizni kiriting', 'error'); return null; }
+  if (!isValidPhone(phone)) { showToast('Telefon raqami noto‘g‘ri', 'error'); return null; }
   return `+${phone}`;
 };
 
@@ -273,69 +263,34 @@ const buildOrderItems = (cart) => {
 
 const createOrder = async ({ paymentMethod, receiptUrl = '', contactPhone }) => {
   const cart = getCart();
-  if (!cart.length) {
-    showToast(t('cart_empty'), 'error');
-    return;
-  }
+  if (!cart.length) { showToast(t('cart_empty'), 'error'); return; }
 
-  const formData = new FormData(form);
   const { total, subtotal, deliveryMeta } = calculateSummary();
   const currentUser = getCurrentUser();
-
   const orderId = uid();
-
-  const region = String(formData.get('city') || '');
-  const district = String(formData.get('district') || '');
-  const addressText = String(formData.get('address') || '');
-
   const items = buildOrderItems(cart);
 
   const payload = {
     id: orderId,
     docId: orderId,
-
     date: new Date().toISOString(),
     createdAt: nowTs(),
     updatedAt: nowTs(),
-
     userId: currentUser?.id || null,
-    userName: String(formData.get('name') || currentUser?.name || 'Guest'),
+    userName: String(currentUser?.name || 'Guest'),
     userPhone: String(contactPhone || currentUser?.phone || ''),
-
     subtotal,
     totalProductsSum: subtotal,
     total,
-
     payment: paymentMethod,
-    receiptUrl: receiptUrl || '',
+    receiptUrl,
     status: 'pending',
-
     deliveryType: selectedDelivery || null,
-    delivery: {
-      type: selectedDelivery,
-      label: deliveryMeta.label,
-      price: deliveryMeta.price,
-      perKgUsd: deliveryMeta.perKgUsd,
-      weightKg: deliveryMeta.weightKg,
-    },
-
-    region,
-    district,
-    address: addressText,
-
-    addressObj: {
-      region,
-      district,
-      homeAddress: addressText,
-    },
-
-    items,
+    delivery: { type: selectedDelivery, ...deliveryMeta },
+    items
   };
 
   await setDoc(doc(db, 'orders', orderId), payload, { merge: true });
-
-  prependOrderToLocalStorage(payload);
-
   saveCart([]);
   updateCartBadge();
   showToast(paymentMethod === 'card_transfer' ? 'Chek yuborildi. Tekshirilmoqda...' : 'Buyurtma yuborildi!');
@@ -347,9 +302,7 @@ const createOrder = async ({ paymentMethod, receiptUrl = '', contactPhone }) => 
   receiptPreview.innerHTML = t('receipt_preview');
   receiptFilename.textContent = 'Fayl tanlanmagan';
 
-  setTimeout(() => {
-    window.location.href = 'orders.html';
-  }, 700);
+  setTimeout(() => { window.location.href = 'orders.html'; }, 700);
 };
 
 /* =========================
@@ -460,41 +413,16 @@ receiptInput?.addEventListener('change', () => {
 });
 
 receiptSubmit?.addEventListener('click', async () => {
-  const phone = getValidatedPhone();
-  if (!phone) return;
-
-  const currentUser = getCurrentUser();
-  if (!currentUser) {
-    showToast('Iltimos, avval akkauntga kiring', 'error');
-    return;
-  }
-
-  const cart = getCart();
-  if (!cart.length) {
-    showToast(t('cart_empty'), 'error');
-    return;
-  }
-
-  if (!receiptFile) {
-    showToast('Chek faylini tanlang', 'error');
-    return;
-  }
+  const phone = getValidatedPhone(); if (!phone) return;
+  if (!receiptFile) { showToast('Chek faylini tanlang', 'error'); return; }
 
   try {
     setButtonLoading(receiptSubmit, 'Yuborilmoqda...', true);
     const imageUrl = await imgbbUpload(receiptFile, API_KEY);
-
-    await createOrder({
-      paymentMethod: 'receipt',
-      receiptUrl: imageUrl,
-      contactPhone: phone,
-    });
-
+    await createOrder({ paymentMethod: 'receipt', receiptUrl: imageUrl, contactPhone: phone });
     showToast('Tekshiruvga yuborildi');
   } catch (error) {
-    console.error(error);
-    const message = String(error?.message || 'Chekni yuborishda xatolik');
-    showToast(message, 'error');
+    showToast(String(error?.message || 'Chekni yuborishda xatolik'), 'error');
   } finally {
     setButtonLoading(receiptSubmit, '', false);
   }
