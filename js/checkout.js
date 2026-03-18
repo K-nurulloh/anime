@@ -259,12 +259,15 @@ const buildOrderItems = (cart) => {
     const title = item.title || p?.title || 'Mahsulot';
 
     return {
-      id: itemKey,
-      qty: Number(item.qty) || 1,
-      price,
-      title,
-      img,
-      variant: item.variant || item.variantName || "" // 🔥 SHUNI QO‘SH
+  id: itemKey,
+  qty: Number(item.qty) || 1,
+  price,
+  title,
+  img,
+
+  // 🔥 ENG MUHIM QISM
+  variant: item.variant || "",
+  size: item.size || "",
     };
   });
 };
