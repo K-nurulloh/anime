@@ -152,14 +152,23 @@ const handleAddToCart = (productId) => {
   const source = ALL_PRODUCTS.find((item) => String(item.id) === String(productId)) || {};
   const selectedImage = source.images?.[0] || source.img || '';
 
-  addToCart({
-    productId: String(productId),
-    title: source.title || '',
-    price: Number(source.price || 0),
-    image: selectedImage,
-    selectedImage,
-    qty: 1,
-  });
+const variantSelect = document.querySelector('#variantSelect'); // yoki select iding
+
+const selectedVariant = variantSelect ? variantSelect.value : "";
+
+addToCart({
+  productId: String(productId),
+  title: source.title || '',
+  price: Number(source.price || 0),
+  image: selectedImage,
+  selectedImage,
+  qty: 1,
+
+  // 🔥 TO‘G‘RI
+  variant: selectedVariant || "",
+  variantName: selectedVariant || "",
+  variantText: selectedVariant || "",
+});
 
   updateCartBadge();
   showToast('Savatga qo‘shildi');
