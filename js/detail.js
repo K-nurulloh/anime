@@ -624,38 +624,55 @@ const init = async () => {
     wishlistBtn.textContent = isSaved ? `❤️ ${t('wishlist')}` : `🤍 ${t('wishlist')}`;
   }
 
-  const actionPrice = document.querySelector('#detail-action-price');
-  const actionCart = document.querySelector('#detail-action-cart');
-  const actionBuy = document.querySelector('#detail-action-buy');
-  const mainPrice = document.querySelector('#detail-main-price');
-  const variants = getProductVariants(product);
-  selectedVariant = variants.length ? variants[0] : null;
+const actionPrice = document.querySelector('#detail-action-price');
+const actionCart = document.querySelector('#detail-action-cart');
+const actionBuy = document.querySelector('#detail-action-buy');
+const mainPrice = document.querySelector('#detail-main-price');
 
-  const syncDisplayedPrice = () => {
-    const unitPrice = getActiveUnitPrice(product);
-    if (mainPrice) mainPrice.textContent = formatLocalPrice(unitPrice);
-    if (actionPrice) actionPrice.textContent = formatLocalPrice(unitPrice);
-  };
+const variants = getProductVariants(product);
 
-  if (variantBlock && variantSelect) {
-    if (variants.length) {
-      variantBlock.classList.remove('hidden');
-      variantSelect.innerHTML = variants
-        .map((variant, index) => `<option value="${index}">${variant.name} — ${formatLocalPrice(variant.price)}</option>`)
-        .join('');
-      variantSelect.value = '0';
-      variantSelect.onchange = (event) => {
-        const selectedIndex = Number(event.target.value);
-        selectedVariant = variants[selectedIndex] || variants[0] || null;
-        syncDisplayedPrice();
-      };
-    } else {
-      variantBlock.classList.add('hidden');
-      variantSelect.innerHTML = '';
-    }
+// ✅ DEFAULT VARIANT
+selectedVariant = variants.length ? variants[0] : null;
+
+// ✅ PRICE UPDATE
+const syncDisplayedPrice = () => {
+  const unitPrice = getActiveUnitPrice(product);
+  if (mainPrice) mainPrice.textContent = formatLocalPrice(unitPrice);
+  if (actionPrice) actionPrice.textContent = formatLocalPrice(unitPrice);
+};
+
+// ✅ VARIANT SELECT
+if (variantBlock && variantSelect) {
+  if (variants.length) {
+    variantBlock.classList.remove('hidden');
+
+    variantSelect.innerHTML = variants
+      .map((variant, index) => `
+        <option value="${index}">
+          ${variant.name} — ${formatLocalPrice(variant.price)}
+        </option>
+      `)
+      .join('');
+
+    variantSelect.value = '0';
+
+    // 🔥 ENG MUHIM JOY
+    variantSelect.addEventListener('change', () => {
+      const index = Number(variantSelect.value) || 0;
+      selectedVariant = variants[index] || null;
+
+      console.log("SELECTED VARIANT:", selectedVariant); // test
+      syncDisplayedPrice();
+    });
+
+  } else {
+    variantBlock.classList.add('hidden');
+    variantSelect.innerHTML = '';
   }
+}
 
-  syncDisplayedPrice();
+// ✅ INITIAL PRICE
+syncDisplayedPrice();
 
   if (actionCart) {
     actionCart.setAttribute('type', 'button');

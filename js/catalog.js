@@ -153,13 +153,12 @@ const handleAddToCart = (productId) => {
   const selectedImage = source.images?.[0] || source.img || '';
 
 addToCart({
-  productId: String(productId),
-  id: String(productId),
-  title: source.title || '',
-  price: Number(source.price || 0),
+  productId: product.id,
+  title: product.title,
+  price: selectedVariant?.price || product.price,
   image: selectedImage,
-  selectedImage,
   qty: 1,
+  variant: selectedVariant?.name || "", // shu qatorda chiqadi
 });
 
   updateCartBadge();

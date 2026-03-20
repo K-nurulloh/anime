@@ -25,7 +25,7 @@ export const ensureSeedData = () => {
         wishlist: [],
         orders: [],
         role: 'user',
-        email: 'nurullohkomilov163@gmail.com',
+        email: '',
       },
       {
         id: 's-2001',
@@ -41,13 +41,13 @@ export const ensureSeedData = () => {
       {
         id: 'a-3001',
         name: 'Site Owner',
-        phone: '908557475',
-        password: 'nur123mm',
+        phone: '',
+        password: '',
         cart: [],
         wishlist: [],
         orders: [],
         role: 'user',
-        email: 'nurullohkomilov163@gmail.com',
+        email: '',
       },
     ]);
   }
