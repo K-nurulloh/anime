@@ -244,3 +244,5 @@ export const setCachedProducts = (products) => {
   if (!Array.isArray(products)) return;
   writeStorage(PRODUCTS_CACHE_KEY, { ts: Date.now(), items: products });
 };
+
+window.getCart = getCart;

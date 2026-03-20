@@ -289,6 +289,8 @@ const addToCart = (product) => {
   const selectedImageUrl =
     selectedImage || galleryImages[selectedImageIndex] || product.images?.[0] || product.img || '';
 
+    console.log("VARIANT TEST:", selectedVariant);
+
   addCartLine({
     productId: String(product.id),
     id: String(product.id),
