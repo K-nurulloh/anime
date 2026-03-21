@@ -163,7 +163,11 @@ export const addToCart = (payload = {}) => {
 
   const selectedImage = String(payload.selectedImage || payload.selectedImageUrl || payload.image || payload.img || '');
   const qtyToAdd = Math.max(1, Number(payload.qty) || 1);
-  const variantName = payload.variantName ? String(payload.variantName) : '';
+  const variantName = payload.variantName
+  ? String(payload.variantName)
+  : payload.variant
+  ? String(payload.variant)
+  : '';
 
   const cart = getCart();
   const existing = cart.find(
