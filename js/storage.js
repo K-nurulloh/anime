@@ -187,7 +187,10 @@ export const addToCart = (payload = {}) => {
       price: Number(payload.price || 0),
       image: selectedImage,
       qty: qtyToAdd,
-      ...(variantName ? { variantName } : {}),
+      ...(variantName ? { 
+          variantName,
+          variant: variantName   // 🔥 SHUNI QO‘SH
+          } : {}),
       ...(Number.isFinite(Number(payload.variantPrice)) ? { variantPrice: Number(payload.variantPrice) } : {}),
     });
   }

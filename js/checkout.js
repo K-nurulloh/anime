@@ -155,15 +155,7 @@ const setDeliveryType = (type)=>{
   calculateSummary();
 };
 
-/* ===== BUILD ITEMS ===== */
-const buildOrderItems = (cart) => cart.map(item=>{
-  const itemKey = String(item.productId||item.id||'');
-  const p = productsMap.get(itemKey);
-  const price = Number(item.variantPrice??p?.price??item.price??0);
-  const img = item.image || item.selectedImage || item.selectedImageUrl || p?.images?.[0] || p?.img || item.img || '';
-  const title = item.title || p?.title || 'Mahsulot';
-  return { id:itemKey, qty:Number(item.qty)||1, price, title, img,
-  variant:
+  const variantValue =
   item.variantName ||
   item.variant ||
   item.size ||
@@ -172,8 +164,16 @@ const buildOrderItems = (cart) => cart.map(item=>{
   item.option ||
   item.variantText ||
   (Array.isArray(item.options) ? item.options.join(", ") : "") ||
-  "", };
-});
+  "";
+
+return {
+  id: itemKey,
+  qty: Number(item.qty) || 1,
+  price,
+  title,
+  img,
+  variant: String(variantValue),
+};
 
 /* ===== CREATE ORDER ===== */
 const createOrder = async ({ paymentMethod, receiptUrl='', contactPhone })=>{

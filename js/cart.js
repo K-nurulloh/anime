@@ -122,7 +122,16 @@ const renderCart = () => {
           <div class="flex-1">
             <h3 class="text-sm font-semibold text-white">${title}</h3>
             <p class="text-xs text-slate-300">${category}</p>
-            ${(item.variantName || item.variant)  ? `<p class="mt-1 text-xs text-white/60">Variant: ${item.variantName || item.variant}</p>` : ''}
+            const variantText =
+            item.variantName ||
+            item.variant ||
+            item.size ||
+            item.selectedVariant ||
+            item.selectedOption ||
+            item.option ||
+            '';
+
+           ${variantText ? `<p class="mt-1 text-xs text-white/60">Variant: ${variantText}</p>` : ''}
             </div>
 
           <div class="text-sm font-semibold text-white">${formatPrice(price)} so'm</div>

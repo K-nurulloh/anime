@@ -104,14 +104,13 @@ const getItemTitle = (item) => {
     item.productTitle ||
     (item.id ? `Product #${item.id}` : "Product");
 
-  const variantParts = []; 
-if (it.variant) variantParts.push(it.variant);
-if (it.variantName) variantParts.push(it.variantName);
-if (it.size) variantParts.push(it.size);
-if (it.selectedVariant) variantParts.push(it.selectedVariant);
-if (it.selectedOptions?.size) variantParts.push(it.selectedOptions.size);
-
-const variant = variantParts.join(", ");
+  const variant =
+    item.variant ||
+    item.variantName ||
+    item.size ||
+    item.selectedVariant ||
+    item.selectedOptions?.size ||
+    "";
 
   return variant ? `${base} (${variant})` : base;
 };
@@ -211,7 +210,7 @@ const openModal = (docId) => {
               return `
                 <div class="flex items-center justify-between text-sm text-slate-300 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
                   <span class="truncate pr-2">
-                     ${title} ${item.variant ? `(${item.variant})` : ""}
+                     ${title}
                   </span>
                   <span class="shrink-0">${qty}x</span>
                 </div>
