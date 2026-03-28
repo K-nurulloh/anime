@@ -107,44 +107,57 @@ const renderCart = () => {
       if (!product && item.productId == null && item.id == null) return '';
 
       return `
-        <div class="flex flex-col gap-4 rounded-2xl glass p-4 shadow-sm md:flex-row md:items-center cart-item">
-          <div class="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-2 backdrop-blur-sm">
-            <img
-              src="${image}"
-              alt="${title}"
-              class="h-full w-full rounded-xl object-contain"
-              width="112"
-              height="112"
-              loading="lazy"
-            />
-          </div>
+  <div class="flex flex-col gap-4 rounded-2xl glass p-4 shadow-sm md:flex-row md:items-center cart-item">
+    <div class="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-2 backdrop-blur-sm">
+      <img
+        src="${image}"
+        alt="${title}"
+        class="h-full w-full rounded-xl object-contain"
+        width="112"
+        height="112"
+        loading="lazy"
+      />
+    </div>
 
-          <div class="flex-1">
-            <h3 class="text-sm font-semibold text-white">${title}</h3>
-            <p class="text-xs text-slate-300">${category}</p>
-            const variantText =
-            item.variantName ||
-            item.variant ||
-            item.size ||
-            item.selectedVariant ||
-            item.selectedOption ||
-            item.option ||
-            '';
+    <div class="flex-1">
+      <h3 class="text-sm font-semibold text-white">${title}</h3>
+      <p class="text-xs text-slate-300">${category}</p>
 
-          ${variantText ? `<p class="mt-1 text-xs text-white/60">Variant: ${variantText}</p>` : ''}
-            </div>
+      ${
+        (item.variantName ||
+        item.variant ||
+        item.size ||
+        item.selectedVariant ||
+        item.selectedOption ||
+        item.option)
+        ? `<p class="mt-1 text-xs text-white/60">
+            Variant: ${
+              item.variantName ||
+              item.variant ||
+              item.size ||
+              item.selectedVariant ||
+              item.selectedOption ||
+              item.option
+            }
+          </p>`
+        : ''
+      }
 
-          <div class="text-sm font-semibold text-white">${formatPrice(price)} so'm</div>
+    </div>
 
-          <div class="flex items-center gap-2">
-            <button class="qty-btn h-8 w-8 rounded-lg border border-slate-700 text-slate-200" data-qty-minus="${item.cartItemId}">-</button>
-            <span class="min-w-[24px] text-center">${item.qty || 1}</span>
-            <button class="qty-btn h-8 w-8 rounded-lg border border-slate-700 text-slate-200" data-qty-plus="${item.cartItemId}">+</button>
-          </div>
+    <div class="text-sm font-semibold text-white">${formatPrice(price)} so'm</div>
 
-          <button class="remove-btn text-sm text-rose-400" data-remove-cart="${item.cartItemId}">${t('delete')}</button>
-        </div>
-      `;
+    <div class="flex items-center gap-2">
+      <button class="qty-btn h-8 w-8 rounded-lg border border-slate-700 text-slate-200" data-qty-minus="${item.cartItemId}">-</button>
+      <span class="min-w-[24px] text-center">${item.qty || 1}</span>
+      <button class="qty-btn h-8 w-8 rounded-lg border border-slate-700 text-slate-200" data-qty-plus="${item.cartItemId}">+</button>
+    </div>
+
+    <button class="remove-btn text-sm text-rose-400" data-remove-cart="${item.cartItemId}">
+      ${t('delete')}
+    </button>
+  </div>
+`;
     })
     .join('');
 
