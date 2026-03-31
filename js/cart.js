@@ -197,7 +197,7 @@ cartList?.addEventListener('click', (event) => {
 
 promoButton?.addEventListener('click', () => {
   const code = promoInput.value.trim().toUpperCase();
-  if (code === 'UZUM10') {
+  if (code === 'Anime10') {
     discountPercent = 10;
     showToast(t('promo_success'));
   } else {
