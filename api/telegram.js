@@ -1,4 +1,6 @@
 // api/telegram.js
+import * as functions from "firebase-functions";
+
 export default async function handler(req, res) {
   // CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -14,12 +16,14 @@ export default async function handler(req, res) {
   }
 
   try {
-    const token = process.env.TG_BOT_TOKEN;
-    const chatId = process.env.TG_CHAT_ID;
+    // Firebase Functions params dan olish
+    const token = functions.config().telegram?.bot_token;
+    const chatId = functions.config().telegram?.chat_id;
 
     if (!token) return res.status(500).json({ ok: false, error: "TG_BOT_TOKEN missing" });
     if (!chatId) return res.status(500).json({ ok: false, error: "TG_CHAT_ID missing" });
 
+    
     const { text } = req.body || {};
     if (!text) return res.status(400).json({ ok: false, error: "text required" });
 
