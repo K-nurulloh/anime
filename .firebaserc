@@ -1,9 +1,0 @@
-{
-  "projects": {
-    "default": "anime-shop-18e2d",
-    "                                                                  firebase functions:params:set telegram.bot_token=\"8238090465:AAGbMa3eflX7bFET2kpZsClfMyHyaPtjrAk\"": "anime-shop-18e2d",
-    "firebase functions:params:set telegram.chat_id=\"5128272954\"": "anime-shop-18e2d"
-  },
-  "targets": {},
-  "etags": {}
-}

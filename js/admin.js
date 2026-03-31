@@ -229,18 +229,18 @@ const buildOrderLink = (orderId) => {
 
 // ====== TELEGRAM (SERVER API via /api/telegram) ======
 async function sendTelegram(text) {
-  const res = await fetch("/api/telegram", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text }),
-  });
-
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok || data?.ok === false) {
-    console.error("Telegram error:", data);
-    throw new Error(data?.error || "Telegramga yuborilmadi");
+  try {
+    const res = await fetch("/api/telegram", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || "Telegramga yuborilmadi");
+    console.log("Telegramga yuborildi", data.result);
+  } catch (err) {
+    console.error(err);
   }
-  return data;
 }
 
 // ====== STATE ======
