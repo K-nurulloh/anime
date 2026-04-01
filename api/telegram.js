@@ -14,6 +14,7 @@ export default async function handler(req, res) {
     if (!token || !chatId)
       return res.status(500).json({ ok: false, error: "Missing token or chatId" });
 
+    
     const { text } = req.body || {};
     if (!text)
       return res.status(400).json({ ok: false, error: "text required" });
